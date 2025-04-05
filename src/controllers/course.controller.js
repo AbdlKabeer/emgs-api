@@ -126,7 +126,7 @@ exports.getCourseById = async (req, res) => {
 // Create new course (admin only)
 exports.createCourse = async (req, res) => {
   try {
-    const { title, description, category, isFree, price, isPublished } = req.body;
+    const { title, description, category, isFree, price, isPublished , thumbnail } = req.body;
     
     const course = new Course({
       title,
@@ -134,6 +134,7 @@ exports.createCourse = async (req, res) => {
       category,
       isFree,
       price,
+      thumbnail,
       createdBy: req.user.id,
       isPublished: isPublished || false,
     });
