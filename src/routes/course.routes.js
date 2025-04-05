@@ -1,6 +1,6 @@
 const express = require('express');
 const courseController = require('../controllers/course.controller');
-const { authenticate, isTutor } = require('../middleware/auth.middleware');
+const { authenticate, isTutor, isAdmin } = require('../middleware/auth.middleware');
 const { createCourseValidator } = require('../validators/course.validator');
 
 const router = express.Router();
@@ -46,12 +46,13 @@ router.get('/',authenticate, courseController.getAllCourses);
  */
 router.get('/:id',authenticate, courseController.getCourseById);
 
+
 /**
  * @swagger
  * /api/v1/courses:
  *   post:
  *     summary: Create a new course
- *     description: Only accessible to admins. Creates a new course.
+ *     description: Only accessible to tutors. Creates a new course.
  *     tags:
  *       - Courses
  *     requestBody:
@@ -65,25 +66,71 @@ router.get('/:id',authenticate, courseController.getCourseById);
  *                 type: string
  *               description:
  *                 type: string
+ *               category:
+ *                 type: string
+ *                 enum: ['IELTS', 'CV', 'NCLEX', 'CBT', 'OET', 'OSCE']
+ *               thumbnail:
+ *                 type: string
+ *               isFree:
+ *                 type: boolean
  *               price:
  *                 type: number
- *               duration:
- *                 type: string
- *               level:
- *                 type: string
- *               instructor:
- *                 type: string
+ *               isPublished:
+ *                 type: boolean
  *     responses:
  *       201:
  *         description: Course successfully created
  *       400:
  *         description: Invalid course data
  *       403:
- *         description: Forbidden, only admin can create courses
+ *         description: Forbidden, only tutors can create courses
  *       500:
  *         description: Internal server error
  */
-router.post('/', [authenticate, isTutor],createCourseValidator, courseController.createCourse);
+router.post('/', [authenticate, isAdmin], createCourseValidator, courseController.createCourse);
+
+
+/**
+ * @swagger
+ * /api/v1/courses/{id}/thumbnail:
+ *   patch:
+ *     summary: Update course thumbnail
+ *     description: Only accessible to tutors. Updates a course's thumbnail by its ID.
+ *     tags:
+ *       - Courses
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the course
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               thumbnailUrl:
+ *                 type: string
+ *                 required: true
+ *                 description: URL to the thumbnail image
+ *     responses:
+ *       200:
+ *         description: Course thumbnail successfully updated
+ *       400:
+ *         description: Invalid thumbnail URL
+ *       403:
+ *         description: Forbidden, only tutors can update courses
+ *       404:
+ *         description: Course not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/:id/thumbnail', [authenticate, isTutor], courseController.updateCourseThumbnail);
+
+
 
 /**
  * @swagger
@@ -132,6 +179,7 @@ router.post('/', [authenticate, isTutor],createCourseValidator, courseController
  *         description: Internal server error
  */
 router.put('/:id', [authenticate, isTutor], courseController.updateCourse);
+
 
 /**
  * @swagger

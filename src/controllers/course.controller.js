@@ -99,9 +99,6 @@ exports.getCourseById = async (req, res) => {
         userId, 
         courseId: req.params.id 
       }).populate('lastAccessedLesson');
-      console.log(progress)
-      console.log(progress)
-      console.log(progress)
       if (progress) {
         const courseObj = course.toObject();
         courseObj.progress = progress.progress;
@@ -338,6 +335,30 @@ exports.getBookmarkedCourses = async (req, res) => {
   }
 };
 
+// Update course thumbnail
+exports.updateCourseThumbnail = async (req, res) => {
+  try {
+    const { thumbnailUrl } = req.body;
+    
+    if (!thumbnailUrl) {
+      return badRequestResponse('Thumbnail URL is required', 'BAD_REQUEST', 400, res);
+    }
+    
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      { thumbnail: thumbnailUrl },
+      { new: true }
+    );
+    
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    return successResponse({ course }, res, 200, 'Course thumbnail updated successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
 
 
 // Rate a course

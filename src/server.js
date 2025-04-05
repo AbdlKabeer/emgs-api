@@ -21,6 +21,7 @@ const notificationRoutes = require('./routes/notification.routes');
 const quizRoutes = require('./routes/quiz.routes');
 const faqRoutes = require('./routes/faq.routes');
 const paymentRoutes = require('./routes/payment.routes');
+const imageRoutes = require('./routes/image.routes');
 
 // Initialize express app
 const app = express();
@@ -54,6 +55,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/quizzes', quizRoutes);
 app.use('/api/v1/payment', paymentRoutes);
 app.use('/api/v1/faqs', faqRoutes);
+app.use('/api/v1/file', imageRoutes);
 // app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerSpec)); 
 
 app.use('*', (req, res) => {
