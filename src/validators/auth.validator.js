@@ -10,7 +10,7 @@ exports.registerValidator = [
   body('phone').optional().isMobilePhone().withMessage('Please provide a valid phone number'),
   // add user type field or student, tutor, admin
   body('userType')
-    .optional()
+    .notEmpty()
     .isIn(['user', 'tutor', 'admin'])
     .withMessage('User type must be either user or tutor'),
   validateRequest

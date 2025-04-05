@@ -48,9 +48,14 @@ exports.register = async (req, res) => {
     // await emailService.sendVerificationEmail(user.email, user.fullName, verificationToken);
 
     // Send verification email with code
-    await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+    try{
+      await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+    }
+    catch (error) {
+      console.error('Error sending verification email:', error);
+    }
 
-    return successResponse({userId: user._id }, res, 201,  'User registered successfully. Please check your email to verify your account.');
+    return successResponse({userId: user._id , code: verificationCode }, res, 201,  'User registered successfully. Please check your email to verify your account.');
   } catch (error) {
     console.error(error); // Log the error for debugging
     return internalServerErrorResponse(error.message, res);
