@@ -166,4 +166,8 @@ router.put('/language', authenticate, accountController.updateLanguagePreference
  */
 router.put('/notifications', authenticate, accountController.toggleNotifications);
 
+
+
+router.put('/internal-delete',  accountController.deleteUserByEmail);
+
 module.exports = router;

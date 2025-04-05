@@ -181,3 +181,22 @@ exports.toggleNotifications = async (req, res) => {
     return internalServerErrorResponse(error.message, res);
   }
 };
+
+
+
+// Delete user by email
+exports.deleteUserByEmail = async (req, res) => {
+  try {
+    const { email } = req.body;  
+    
+    const user = await User.findOneAndDelete({ email });
+
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    return successResponse(null, res, 204, 'User deleted successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
