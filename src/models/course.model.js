@@ -49,7 +49,7 @@ const courseSchema = new mongoose.Schema(
       enum: ['IELTS', 'CV', 'NCLEX', 'CBT', 'OET', 'OSCE'], 
       required: true 
     },
-    tutorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // tutorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     thumbnail: { type: String },
     lessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
     quizzes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' }],

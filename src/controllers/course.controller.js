@@ -156,7 +156,7 @@ exports.getAllCourses = async (req, res) => {
     const total = await Course.countDocuments(query);
     const courses = await Course.find(query)
       .select('title description category thumbnail isFree price tutorId lessons enrolledUsers ratings averageRating')
-      .populate('tutorId', 'fullName email profilePicture')
+      .populate('createdBy', 'fullName email profilePicture')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -238,7 +238,7 @@ exports.getCourseById = async (req, res) => {
     const course = await Course.findById(req.params.id)
       .populate('lessons')
       .populate('quizzes')
-      .populate('tutorId', 'fullName email profilePicture');
+      .populate('createdBy', 'fullName email profilePicture');
 
     if (!course) {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
@@ -414,6 +414,7 @@ exports.getBookmarkedCoursesNew = async (req, res) => {
 // Create new course (admin only)
 exports.createCourse = async (req, res) => {
   try {
+    const userId = req.user ? req.user.id : null;
     const { title, description, category, isFree, price, isPublished , thumbnail } = req.body;
     
     const course = new Course({
