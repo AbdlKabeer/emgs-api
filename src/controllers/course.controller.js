@@ -2,9 +2,140 @@ const Course = require('../models/course.model');
 const User = require('../models/user.model');
 const Notification = require('../models/notification.model');
 const Progress = require('../models/progress.model');
+const Lesson = require('../models/lesson.model');
 
 const Bookmark = require('../models/bookmark.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../utils/custom_response/responses');
+
+// // Get all courses
+// exports.getAllCourses = async (req, res) => {
+//   try {
+//     const { category } = req.query;
+//     const userId = req.user ? req.user.id : null;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+
+//     let query = { isPublished: true };
+
+//     // Filter by category if provided
+//     if (category) {
+//       query.category = category;
+//     }
+
+//     const total = await Course.countDocuments(query);
+//     const courses = await Course.find(query)
+//       .select('title description category thumbnail isFree price tutorId lessons') // Include lessons in select
+//       .populate('tutorId', 'fullName email profilePicture')
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     // Add progress information if user is authenticated
+//     if (userId) {
+//       const progressRecords = await Progress.find({ userId });
+
+//       const coursesWithProgress = courses.map(course => {
+//         const courseObj = course.toObject();
+//         const progressRecord = progressRecords.find(
+//           p => p.courseId.toString() === course._id.toString()
+//         );
+
+//         if (progressRecord) {
+//           courseObj.progress = progressRecord.progress;
+//           courseObj.isCompleted = progressRecord.isCompleted;
+//         } else {
+//           courseObj.progress = 0;
+//           courseObj.isCompleted = false;
+//         }
+
+//         // Check if lessons exist and add lesson count
+//         courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
+
+//         return courseObj;
+//       });
+
+//       return paginationResponse(
+//         coursesWithProgress,
+//         total,
+//         page,
+//         limit,
+//         res
+//       );
+//     }
+
+//     // Add lesson count to courses without progress info
+//     const coursesWithLessonCount = courses.map(course => {
+//       const courseObj = course.toObject();
+//       // Check if lessons exist and add lesson count
+//       courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
+//       return courseObj;
+//     });
+
+//     return paginationResponse(
+//       coursesWithLessonCount,
+//       total,
+//       page,
+//       limit,
+//       res
+//     );
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
+
+
+// // Get single course by ID
+// exports.getCourseById = async (req, res) => {
+//   try {
+//     const userId = req.user ? req.user.id : null;
+//     console.log(userId);
+
+//     const course = await Course.findById(req.params.id)
+//       .populate('lessons')
+//       .populate('quizzes')
+//       .populate('tutorId', 'fullName email','profilePicture');  // Populate tutor details
+
+//     if (!course) {
+//       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+//     }
+
+//     // Add lesson count to course
+//     const courseObj = course.toObject();
+//     courseObj.lessonCount = course.lessons.length;  // Add the lesson count
+
+//     // Add progress information if user is authenticated
+//     if (userId) {
+//       const progress = await Progress.findOne({ 
+//         userId, 
+//         courseId: req.params.id 
+//       }).populate('lastAccessedLesson');
+
+//       if (progress) {
+//         courseObj.progress = progress.progress;
+//         courseObj.isCompleted = progress.isCompleted;
+//         courseObj.lastAccessedLesson = progress.lastAccessedLesson;
+
+//         // Add completion status to lessons
+//         if (courseObj.lessons && courseObj.lessons.length > 0) {
+//           courseObj.lessons = courseObj.lessons.map(lesson => {
+//             lesson.isCompleted = progress.completedLessons.includes(lesson._id);
+//             return lesson;
+//           });
+//         }
+
+//         return successResponse(courseObj, res);
+//       }
+//     }
+
+//     // Return the course with lesson count and tutor details
+//     return successResponse(courseObj, res);
+
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
+
 
 // Get all courses
 exports.getAllCourses = async (req, res) => {
@@ -24,22 +155,51 @@ exports.getAllCourses = async (req, res) => {
 
     const total = await Course.countDocuments(query);
     const courses = await Course.find(query)
-      .select('title description category thumbnail isFree price tutorId lessons') // Include lessons in select
+      .select('title description category thumbnail isFree price tutorId lessons enrolledUsers ratings averageRating')
       .populate('tutorId', 'fullName email profilePicture')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    // Add progress information if user is authenticated
+    // Get bookmarks if user is authenticated
+    let bookmarks = [];
     if (userId) {
-      const progressRecords = await Progress.find({ userId });
+      bookmarks = await Bookmark.find({ userId }).select('courseId');
+    }
 
-      const coursesWithProgress = courses.map(course => {
-        const courseObj = course.toObject();
-        const progressRecord = progressRecords.find(
-          p => p.courseId.toString() === course._id.toString()
-        );
-
+    // Map course data with additional information
+    const enhancedCourses = await Promise.all(courses.map(async (course) => {
+      const courseObj = course.toObject();
+      
+      // Add lesson count
+      courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
+      
+      // Calculate total duration
+      const lessonIds = course.lessons || [];
+      const lessonsData = await Lesson.find({ _id: { $in: lessonIds } }).select('duration');
+      courseObj.duration = lessonsData.reduce((total, lesson) => total + (lesson.duration || 0), 0);
+      
+      // Add instructor details
+      courseObj.instructor = course.tutorId ? {
+        fullName: course.tutorId.fullName,
+        email: course.tutorId.email,
+        profilePicture: course.tutorId.profilePicture
+      } : null;
+      
+      // Add ratings information
+      courseObj.averageRating = course.averageRating || 0;
+      courseObj.totalRatings = course.ratings ? course.ratings.length : 0;
+      
+      // Add enrolled students count
+      courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+      
+      // Add progress information if user is authenticated
+      if (userId) {
+        const progressRecord = await Progress.findOne({ 
+          userId, 
+          courseId: course._id 
+        });
+        
         if (progressRecord) {
           courseObj.progress = progressRecord.progress;
           courseObj.isCompleted = progressRecord.isCompleted;
@@ -47,32 +207,18 @@ exports.getAllCourses = async (req, res) => {
           courseObj.progress = 0;
           courseObj.isCompleted = false;
         }
+        
+        // Check if course is bookmarked
+        courseObj.isBookmarked = bookmarks.some(bookmark => 
+          bookmark.courseId.toString() === course._id.toString()
+        );
+      }
 
-        // Check if lessons exist and add lesson count
-        courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
-
-        return courseObj;
-      });
-
-      return paginationResponse(
-        coursesWithProgress,
-        total,
-        page,
-        limit,
-        res
-      );
-    }
-
-    // Add lesson count to courses without progress info
-    const coursesWithLessonCount = courses.map(course => {
-      const courseObj = course.toObject();
-      // Check if lessons exist and add lesson count
-      courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
       return courseObj;
-    });
+    }));
 
     return paginationResponse(
-      coursesWithLessonCount,
+      enhancedCourses,
       total,
       page,
       limit,
@@ -83,7 +229,6 @@ exports.getAllCourses = async (req, res) => {
   }
 };
 
-
 // Get single course by ID
 exports.getCourseById = async (req, res) => {
   try {
@@ -93,7 +238,7 @@ exports.getCourseById = async (req, res) => {
     const course = await Course.findById(req.params.id)
       .populate('lessons')
       .populate('quizzes')
-      .populate('tutorId', 'fullName email','profilePicture');  // Populate tutor details
+      .populate('tutorId', 'fullName email profilePicture');
 
     if (!course) {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
@@ -101,10 +246,28 @@ exports.getCourseById = async (req, res) => {
 
     // Add lesson count to course
     const courseObj = course.toObject();
-    courseObj.lessonCount = course.lessons.length;  // Add the lesson count
+    courseObj.lessonCount = course.lessons.length;
+    
+    // Calculate total duration
+    courseObj.duration = course.lessons.reduce((total, lesson) => total + (lesson.duration || 0), 0);
+    
+    // Add instructor details
+    courseObj.instructor = course.tutorId ? {
+      fullName: course.tutorId.fullName,
+      email: course.tutorId.email,
+      profilePicture: course.tutorId.profilePicture
+    } : null;
+    
+    // Add ratings information
+    courseObj.averageRating = course.averageRating || 0;
+    courseObj.totalRatings = course.ratings ? course.ratings.length : 0;
+    
+    // Add enrolled students count
+    courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
 
-    // Add progress information if user is authenticated
+    // Add progress and bookmark information if user is authenticated
     if (userId) {
+      // Get progress information
       const progress = await Progress.findOne({ 
         userId, 
         courseId: req.params.id 
@@ -122,18 +285,131 @@ exports.getCourseById = async (req, res) => {
             return lesson;
           });
         }
-
-        return successResponse(courseObj, res);
+      } else {
+        courseObj.progress = 0;
+        courseObj.isCompleted = false;
       }
+      
+      // Check if course is bookmarked
+      const bookmark = await Bookmark.findOne({ 
+        userId, 
+        courseId: req.params.id 
+      });
+      
+      courseObj.isBookmarked = !!bookmark;
     }
 
-    // Return the course with lesson count and tutor details
     return successResponse(courseObj, res);
 
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+// Toggle bookmark (add or remove)
+exports.toggleBookmarkNew = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+    
+    // Check if course exists
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Check if bookmark already exists
+    const existingBookmark = await Bookmark.findOne({ userId, courseId });
+    
+    if (existingBookmark) {
+      // Remove bookmark
+      await Bookmark.findByIdAndDelete(existingBookmark._id);
+      return successResponse({ isBookmarked: false }, res, 200, 'Bookmark removed successfully');
+    } else {
+      // Add bookmark
+      const newBookmark = new Bookmark({
+        userId,
+        courseId
+      });
+      
+      await newBookmark.save();
+      return successResponse({ isBookmarked: true }, res, 200, 'Course bookmarked successfully');
+    }
+  } catch (error) {
+    if (error.code === 11000) { // Duplicate key error
+      return badRequestResponse('You have already bookmarked this course', 'BAD_REQUEST', 400, res);
+    }
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get user's bookmarked courses
+exports.getBookmarkedCoursesNew = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const bookmarks = await Bookmark.find({ userId })
+      .sort({ createdAt: -1 });
+    
+    const courseIds = bookmarks.map(bookmark => bookmark.courseId);
+    
+    const courses = await Course.find({ _id: { $in: courseIds } })
+      .select('title description category thumbnail isFree price tutorId lessons enrolledUsers ratings averageRating')
+      .populate('tutorId', 'fullName email profilePicture');
+    
+    // Map course data with additional information
+    const enhancedCourses = await Promise.all(courses.map(async (course) => {
+      const courseObj = course.toObject();
+      
+      // Add lesson count
+      courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
+      
+      // Calculate total duration
+      const lessonIds = course.lessons || [];
+      const lessonsData = await Lesson.find({ _id: { $in: lessonIds } }).select('duration');
+      courseObj.duration = lessonsData.reduce((total, lesson) => total + (lesson.duration || 0), 0);
+      
+      // Add instructor details
+      courseObj.instructor = course.tutorId ? {
+        fullName: course.tutorId.fullName,
+        email: course.tutorId.email,
+        profilePicture: course.tutorId.profilePicture
+      } : null;
+      
+      // Add ratings information
+      courseObj.averageRating = course.averageRating || 0;
+      courseObj.totalRatings = course.ratings ? course.ratings.length : 0;
+      
+      // Add enrolled students count
+      courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+      
+      // Set bookmarked status
+      courseObj.isBookmarked = true;
+      
+      // Add progress information
+      const progressRecord = await Progress.findOne({ 
+        userId, 
+        courseId: course._id 
+      });
+      
+      if (progressRecord) {
+        courseObj.progress = progressRecord.progress;
+        courseObj.isCompleted = progressRecord.isCompleted;
+      } else {
+        courseObj.progress = 0;
+        courseObj.isCompleted = false;
+      }
+
+      return courseObj;
+    }));
+    
+    return successResponse(enhancedCourses, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
 
 // Create new course (admin only)
 exports.createCourse = async (req, res) => {
