@@ -6,7 +6,6 @@ const Progress = require('../models/progress.model');
 const Bookmark = require('../models/bookmark.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../utils/custom_response/responses');
 
-
 // Get all courses
 exports.getAllCourses = async (req, res) => {
   try {
@@ -25,8 +24,8 @@ exports.getAllCourses = async (req, res) => {
 
     const total = await Course.countDocuments(query);
     const courses = await Course.find(query)
-      .select('title description category thumbnail isFree price tutorId') 
-      .populate('tutorId', 'fullName email','profilePicture')
+      .select('title description category thumbnail isFree price tutorId lessons') // Include lessons in select
+      .populate('tutorId', 'fullName email profilePicture')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -49,8 +48,8 @@ exports.getAllCourses = async (req, res) => {
           courseObj.isCompleted = false;
         }
 
-        // Add lesson count
-        courseObj.lessonCount = course.lessons.length;
+        // Check if lessons exist and add lesson count
+        courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
 
         return courseObj;
       });
@@ -67,7 +66,8 @@ exports.getAllCourses = async (req, res) => {
     // Add lesson count to courses without progress info
     const coursesWithLessonCount = courses.map(course => {
       const courseObj = course.toObject();
-      courseObj.lessonCount = course.lessons.length;
+      // Check if lessons exist and add lesson count
+      courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
       return courseObj;
     });
 
