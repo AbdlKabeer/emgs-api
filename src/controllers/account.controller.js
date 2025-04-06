@@ -80,15 +80,12 @@ exports.updateUserProfile = async (req, res) => {
 // Update user profile picture
 exports.updateProfilePicture = async (req, res) => {
   try {
-    // Check if file was uploaded
-    if (!req.file) {
-      return badRequestResponse('No profile picture uploaded', 'BAD_REQUEST', 400, res);
-    }
+    const { profile_image } = req.body;
 
     // Update user with new profile picture path
     const user = await User.findByIdAndUpdate(
       req.user.id, 
-      { profilePicture: req.file.path }, 
+      { profilePicture: profile_image }, 
       { new: true }
     ).select('-password -__v');
 

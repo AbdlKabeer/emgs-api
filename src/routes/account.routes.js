@@ -84,7 +84,7 @@ router.put('/profile', authenticate, accountController.updateUserProfile);
  *       500:
  *         description: Internal server error
  */
-router.post(
+router.put(
   '/profile-picture', 
   authenticate, 
   uploadMiddleware.single('profilePicture'), 
