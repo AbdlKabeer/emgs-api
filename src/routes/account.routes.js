@@ -168,6 +168,6 @@ router.put('/notifications', authenticate, accountController.toggleNotifications
 
 
 
-router.put('/internal-delete',  accountController.deleteUserByEmail);
+router.delete('/internal-delete',  accountController.deleteUserByEmail);
 
 module.exports = router;
