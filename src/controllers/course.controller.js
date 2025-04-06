@@ -15,9 +15,9 @@ exports.getAllCourses = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    
+
     let query = { isPublished: true };
-    
+
     // Filter by category if provided
     if (category) {
       query.category = category;
@@ -25,25 +25,22 @@ exports.getAllCourses = async (req, res) => {
 
     const total = await Course.countDocuments(query);
     const courses = await Course.find(query)
-          .select('title description category thumbnail isFree price')
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit);
-    
-    // const courses1 = await Course.find(query)
-    //   .select('title description category thumbnail isFree price')
-    //   .sort({ createdAt: -1 });
-    
+      .select('title description category thumbnail isFree price tutorId') 
+      .populate('tutorId', 'fullName email','profilePicture')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
     // Add progress information if user is authenticated
     if (userId) {
       const progressRecords = await Progress.find({ userId });
-      
+
       const coursesWithProgress = courses.map(course => {
         const courseObj = course.toObject();
         const progressRecord = progressRecords.find(
           p => p.courseId.toString() === course._id.toString()
         );
-        
+
         if (progressRecord) {
           courseObj.progress = progressRecord.progress;
           courseObj.isCompleted = progressRecord.isCompleted;
@@ -51,60 +48,73 @@ exports.getAllCourses = async (req, res) => {
           courseObj.progress = 0;
           courseObj.isCompleted = false;
         }
-        
+
+        // Add lesson count
+        courseObj.lessonCount = course.lessons.length;
+
         return courseObj;
       });
-      
+
       return paginationResponse(
-          coursesWithProgress, 
-          total,
-          page,
-          limit,
-          res
-        );
-      // return successResponse(coursesWithProgress, res);
+        coursesWithProgress,
+        total,
+        page,
+        limit,
+        res
+      );
     }
-    
+
+    // Add lesson count to courses without progress info
+    const coursesWithLessonCount = courses.map(course => {
+      const courseObj = course.toObject();
+      courseObj.lessonCount = course.lessons.length;
+      return courseObj;
+    });
+
     return paginationResponse(
-      courses, 
+      coursesWithLessonCount,
       total,
       page,
       limit,
       res
     );
-    // return successResponse(courses, res);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
 
+
 // Get single course by ID
 exports.getCourseById = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : null;
-    console.log(userId)
-    
+    console.log(userId);
+
     const course = await Course.findById(req.params.id)
       .populate('lessons')
-      .populate('quizzes');
-      // .populate('assignments');
-    
+      .populate('quizzes')
+      .populate('tutorId', 'fullName email','profilePicture');  // Populate tutor details
+
     if (!course) {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
     }
-    
+
+    // Add lesson count to course
+    const courseObj = course.toObject();
+    courseObj.lessonCount = course.lessons.length;  // Add the lesson count
+
     // Add progress information if user is authenticated
     if (userId) {
       const progress = await Progress.findOne({ 
         userId, 
         courseId: req.params.id 
       }).populate('lastAccessedLesson');
+
       if (progress) {
-        const courseObj = course.toObject();
         courseObj.progress = progress.progress;
         courseObj.isCompleted = progress.isCompleted;
         courseObj.lastAccessedLesson = progress.lastAccessedLesson;
-        
+
         // Add completion status to lessons
         if (courseObj.lessons && courseObj.lessons.length > 0) {
           courseObj.lessons = courseObj.lessons.map(lesson => {
@@ -112,12 +122,14 @@ exports.getCourseById = async (req, res) => {
             return lesson;
           });
         }
-        
+
         return successResponse(courseObj, res);
       }
     }
-    
-    return successResponse(course, res);
+
+    // Return the course with lesson count and tutor details
+    return successResponse(courseObj, res);
+
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
@@ -437,6 +449,311 @@ exports.getCourseRatings = async (req, res) => {
       totalRatings: course.ratings.length,
       ratings: course.ratings
     }, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
+// Add video content to a course
+exports.addCourseVideo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { videoUrl, title, description } = req.body;
+    
+    if (!videoUrl) {
+      return badRequestResponse('Video URL is required', 'BAD_REQUEST', 400, res);
+    }
+    
+    const course = await Course.findById(id);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Create a new lesson with the video
+    const newLesson = new Lesson({
+      title: title || 'Untitled Video',
+      description: description || '',
+      courseId: id,
+      videoUrl,
+      order: course.lessons.length + 1,
+      isPublished: true
+    });
+    
+    const savedLesson = await newLesson.save();
+    
+    // Add the lesson to the course
+    course.lessons.push(savedLesson._id);
+    await course.save();
+    
+    return successResponse(
+      { lesson: savedLesson },
+      res, 
+      201, 
+      'Video added successfully'
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Add audio content to a course
+exports.addCourseAudio = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { audioUrl, title, description } = req.body;
+    
+    if (!audioUrl) {
+      return badRequestResponse('Audio URL is required', 'BAD_REQUEST', 400, res);
+    }
+    
+    const course = await Course.findById(id);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Create a new lesson with the audio
+    const newLesson = new Lesson({
+      title: title || 'Untitled Audio',
+      description: description || '',
+      courseId: id,
+      audioUrl: audioUrl, // You might need to add this field to your Lesson model
+      order: course.lessons.length + 1,
+      isPublished: true
+    });
+    
+    const savedLesson = await newLesson.save();
+    
+    // Add the lesson to the course
+    course.lessons.push(savedLesson._id);
+    await course.save();
+    
+    return successResponse(
+      { lesson: savedLesson },
+      res, 
+      201, 
+      'Audio added successfully'
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Update course price
+exports.updateCoursePrice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { price, isFree, benefits } = req.body;
+    
+    const course = await Course.findById(id);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Update price related info
+    course.isFree = !!isFree;
+    if (!isFree && price !== undefined) {
+      course.price = price;
+    }
+    
+    // Add benefits if provided
+    if (benefits && Array.isArray(benefits)) {
+      course.benefits = benefits;
+    }
+    
+    await course.save();
+    
+    return successResponse(
+      { course },
+      res, 
+      200, 
+      'Course price updated successfully'
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Add quiz/questions to a course
+exports.addCourseQuiz = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, duration, questions } = req.body;
+    
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return badRequestResponse('Valid questions array is required', 'BAD_REQUEST', 400, res);
+    }
+    
+    const course = await Course.findById(id);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Create a new quiz
+    const newQuiz = new Quiz({
+      title: title || 'Untitled Quiz',
+      description: description || '',
+      courseId: id,
+      duration: duration || 30, // Default 30 minutes
+      questions: questions.map((q, index) => ({
+        question: q.question,
+        questionType: q.questionType || 'multiple_choice',
+        options: q.options || [],
+        correctAnswer: q.correctAnswer,
+        order: index + 1,
+        marks: q.marks || 1
+      }))
+    });
+    
+    const savedQuiz = await newQuiz.save();
+    
+    // Add the quiz to the course
+    course.quizzes.push(savedQuiz._id);
+    await course.save();
+    
+    return successResponse(
+      { quiz: savedQuiz },
+      res, 
+      201, 
+      'Quiz added successfully'
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Add goals to a course
+exports.addCourseGoals = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { goals } = req.body;
+    
+    if (!goals || !Array.isArray(goals) || goals.length === 0) {
+      return badRequestResponse('Valid goals array is required', 'BAD_REQUEST', 400, res);
+    }
+    
+    const course = await Course.findById(id);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Add the goals to the course
+    course.goals = goals;
+    await course.save();
+    
+    return successResponse(
+      { goals: course.goals },
+      res, 
+      200, 
+      'Course goals updated successfully'
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Add notes to a course
+exports.addCourseNotes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    
+    if (!notes || !Array.isArray(notes) || notes.length === 0) {
+      return badRequestResponse('Valid notes array is required', 'BAD_REQUEST', 400, res);
+    }
+    
+    const course = await Course.findById(id);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Add the notes to the course
+    course.notes = notes;
+    await course.save();
+    
+    return successResponse(
+      { notes: course.notes },
+      res, 
+      200, 
+      'Course notes updated successfully'
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Upload resources/documents to a course
+exports.uploadCourseResources = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { resourceUrls, titles, descriptions } = req.body;
+    
+    if (!resourceUrls || !Array.isArray(resourceUrls) || resourceUrls.length === 0) {
+      return badRequestResponse('Resource URLs are required', 'BAD_REQUEST', 400, res);
+    }
+    
+    const course = await Course.findById(id);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Initialize resources array if it doesn't exist
+    if (!course.resources) {
+      course.resources = [];
+    }
+    
+    // Add new resources
+    resourceUrls.forEach((url, index) => {
+      course.resources.push({
+        url,
+        title: titles && titles[index] ? titles[index] : `Resource ${course.resources.length + 1}`,
+        description: descriptions && descriptions[index] ? descriptions[index] : '',
+        uploadedAt: new Date()
+      });
+    });
+    
+    await course.save();
+    
+    return successResponse(
+      { resources: course.resources },
+      res, 
+      200, 
+      'Course resources uploaded successfully'
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Save course progress (for tracking completion during creation)
+exports.saveCourseProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { completedSections, isComplete } = req.body;
+    
+    const course = await Course.findById(id);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Update course creation progress
+    if (completedSections && Array.isArray(completedSections)) {
+      course.completedCreationSections = completedSections;
+    }
+    
+    // Mark course as complete if specified
+    if (isComplete === true) {
+      course.isPublished = true;
+    }
+    
+    await course.save();
+    
+    return successResponse(
+      { course },
+      res, 
+      200, 
+      'Course progress saved successfully'
+    );
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }

@@ -6,6 +6,7 @@ const lessonSchema = new mongoose.Schema(
     description: { type: String },
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
     videoUrl: { type: String },
+    audioUrl: { type: String }, // Added for audio lessons
     duration: { type: Number }, // in minutes
     order: { type: Number, required: true }, // position in course
     resources: [{ type: String }], // additional resources for the lesson
@@ -13,6 +14,7 @@ const lessonSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
 
 const Lesson = mongoose.model('Lesson', lessonSchema);
 module.exports = Lesson;

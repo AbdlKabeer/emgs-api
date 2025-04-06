@@ -87,7 +87,7 @@ router.get('/:id',authenticate, courseController.getCourseById);
  *       500:
  *         description: Internal server error
  */
-router.post('/', [authenticate, isAdmin], createCourseValidator, courseController.createCourse);
+router.post('/', [authenticate, isTutor], createCourseValidator, courseController.createCourse);
 
 
 /**
@@ -207,6 +207,93 @@ router.put('/:id', [authenticate, isTutor], courseController.updateCourse);
  *         description: Internal server error
  */
 router.delete('/:id', [authenticate, isTutor], courseController.deleteCourse);
+
+
+/**
+ * @swagger
+ * /api/v1/courses/{id}/resources:
+ *   post:
+ *     summary: Upload resources/documents to a course
+ *     description: Only accessible to tutors. Uploads resources/documents to a course.
+ *     tags:
+ *       - Course Content
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the course
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               resourceUrls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               titles:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               descriptions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Course resources uploaded successfully
+ *       400:
+ *         description: Invalid data
+ *       404:
+ *         description: Course not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/:id/resources', [authenticate, isTutor], courseController.uploadCourseResources);
+
+/**
+ * @swagger
+ * /api/v1/courses/{id}/progress:
+ *   post:
+ *     summary: Save course creation progress
+ *     description: Only accessible to tutors. Saves course creation progress.
+ *     tags:
+ *       - Course Content
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the course
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               completedSections:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               isComplete:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Course progress saved successfully
+ *       404:
+ *         description: Course not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/:id/progress', [authenticate, isTutor], courseController.saveCourseProgress);
+
+
 
 /**
  * @swagger
