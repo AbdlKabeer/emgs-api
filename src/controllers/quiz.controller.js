@@ -320,7 +320,7 @@ exports.getQuizWithAnswers = async (req, res) => {
 };
 
 // User: Submit quiz answers
-exports.submitQuiz = async (req, res) => {
+exports.submitQuizOld = async (req, res) => {
   try {
     const { quizId } = req.params;
     const { answers } = req.body; // [{ questionIndex: 0, selectedOptionIndex: 1 }, ...]
@@ -420,6 +420,193 @@ exports.submitQuiz = async (req, res) => {
     return internalServerErrorResponse(error.message, res);
   }
 };
+
+
+// User: Submit quiz answers
+exports.submitQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { answers } = req.body;
+    const userId = req.user.id;
+    
+    // Validate answers array
+    if (!answers || !Array.isArray(answers)) {
+      return badRequestResponse('Answers must be provided as an array', 'VALIDATION_ERROR', 400, res);
+    }
+    
+    // Get the quiz with correct answers
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Check if number of answers matches number of questions
+    if (answers.length !== quiz.questions.length) {
+      return badRequestResponse(
+        `Number of answers (${answers.length}) doesn't match number of questions (${quiz.questions.length})`, 
+        'VALIDATION_ERROR', 
+        400, 
+        res
+      );
+    }
+    
+    // Process the answers and calculate score
+    let correctAnswers = 0;
+    const processedAnswers = answers.map((answer, index) => {
+      const question = quiz.questions[index];
+      const questionType = question.questionType;
+      
+      let isCorrect = false;
+      let answerDetails = {};
+      
+      switch (questionType) {
+        case 'singleChoice':
+          // Handle single choice (radio button selection)
+          if (typeof answer.selectedOptionIndex !== 'number') {
+            throw new Error(`Question ${index + 1}: Invalid answer format for single choice question`);
+          }
+          
+          // Validate indices
+          if (
+            answer.selectedOptionIndex < 0 || 
+            answer.selectedOptionIndex >= question.options.length
+          ) {
+            throw new Error(`Question ${index + 1}: Invalid option index`);
+          }
+          
+          // Check if the selected option is correct
+          isCorrect = question.options[answer.selectedOptionIndex].isCorrect;
+          answerDetails = {
+            selectedOptionIndex: answer.selectedOptionIndex
+          };
+          break;
+          
+        case 'multipleChoice':
+          // Handle multiple choice (checkbox selections)
+          if (!Array.isArray(answer.selectedOptionIndices)) {
+            throw new Error(`Question ${index + 1}: Invalid answer format for multiple choice question`);
+          }
+          
+          // Validate indices
+          for (const optionIndex of answer.selectedOptionIndices) {
+            if (optionIndex < 0 || optionIndex >= question.options.length) {
+              throw new Error(`Question ${index + 1}: Invalid option index ${optionIndex}`);
+            }
+          }
+          
+          // Calculate correctness:
+          // 1. All correct options must be selected
+          // 2. No incorrect options can be selected
+          const correctOptionIndices = question.options
+            .map((option, idx) => option.isCorrect ? idx : -1)
+            .filter(idx => idx !== -1);
+            
+          const selectedCorrectly = correctOptionIndices.every(idx => 
+            answer.selectedOptionIndices.includes(idx)
+          );
+          
+          const noIncorrectSelections = answer.selectedOptionIndices.every(idx => 
+            question.options[idx].isCorrect
+          );
+          
+          isCorrect = selectedCorrectly && noIncorrectSelections;
+          answerDetails = {
+            selectedOptionIndices: answer.selectedOptionIndices,
+            correctOptionIndices: correctOptionIndices
+          };
+          break;
+          
+        case 'boolean':
+          // Handle boolean (true/false) questions
+          if (typeof answer.booleanAnswer !== 'boolean') {
+            throw new Error(`Question ${index + 1}: Invalid answer format for boolean question`);
+          }
+          
+          isCorrect = answer.booleanAnswer === question.booleanAnswer;
+          answerDetails = {
+            selectedAnswer: answer.booleanAnswer
+          };
+          break;
+          
+        case 'fillInBlank':
+          // Handle fill in the blank (text input)
+          if (typeof answer.textAnswer !== 'string') {
+            throw new Error(`Question ${index + 1}: Invalid answer format for fill in the blank question`);
+          }
+          
+          // Case insensitive comparison and trim whitespace
+          const userAnswer = answer.textAnswer.trim().toLowerCase();
+          const correctAnswer = question.correctAnswer.trim().toLowerCase();
+          
+          isCorrect = userAnswer === correctAnswer;
+          answerDetails = {
+            submittedAnswer: answer.textAnswer,
+            correctAnswer: question.correctAnswer
+          };
+          break;
+          
+        default:
+          throw new Error(`Question ${index + 1}: Unsupported question type: ${questionType}`);
+      }
+      
+      if (isCorrect) {
+        correctAnswers++;
+      }
+      
+      return {
+        questionIndex: index,
+        questionType,
+        isCorrect,
+        ...answerDetails
+      };
+    });
+    
+    // Calculate score as percentage
+    const score = (correctAnswers / quiz.questions.length) * 100;
+    
+    // Create or update progress record
+    let progress = await QuizProgress.findOne({ userId, quizId });
+    
+    if (progress) {
+      // Existing progress - increment attempts and update if score is better
+      progress.attempts += 1;
+      progress.lastAttemptDate = new Date();
+      
+      if (score > progress.score) {
+        progress.score = score;
+        progress.correctAnswers = correctAnswers;
+        progress.answers = processedAnswers;
+      }
+    } else {
+      // New progress record
+      progress = new QuizProgress({
+        userId,
+        quizId,
+        score,
+        totalQuestions: quiz.questions.length,
+        correctAnswers,
+        completed: true,
+        answers: processedAnswers,
+        attempts: 1,
+        lastAttemptDate: new Date()
+      });
+    }
+    
+    await progress.save();
+    
+    return successResponse({
+      quizTitle: quiz.title,
+      score,
+      correctAnswers,
+      totalQuestions: quiz.questions.length,
+      attempts: progress.attempts,
+      answers: processedAnswers
+    }, res, 200, 'Quiz submitted successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
 
 // User: Get quiz progress
 exports.getUserQuizProgress = async (req, res) => {
