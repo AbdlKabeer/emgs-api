@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema(
     notificationsEnabled: { type: Boolean, default: true },
     enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
+    completedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     certificates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Certificate' }],
     notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }],
     serviceInquiries: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Inquiry' }],

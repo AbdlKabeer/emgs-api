@@ -567,6 +567,81 @@ exports.trackProgress = async (req, res) => {
   }
 };
 
+// Mark Course and All Lessons as Completed
+exports.markCourseAndLessonsCompleted = async (req, res) => {
+  try {
+    const { courseId } = req.params; // Get courseId from URL parameters
+    const userId = req.user.id; // Get userId from authenticated user (req.user)
+
+    // Find the course to check if it exists
+    const course = await Course.findById(courseId).populate('lessons'); // Assuming 'lessons' is an array of lesson IDs
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Find the user to check if they are enrolled in the course
+    const user = await User.findById(userId);
+
+    // Check if user is enrolled in the course
+    if (!user.enrolledCourses.includes(courseId)) {
+      return badRequestResponse('User must be enrolled in the course to mark it as completed', 'FORBIDDEN', 403, res);
+    }
+
+    // Mark all lessons as completed for the user
+    const lessonIds = course.lessons.map(lesson => lesson._id); // Get all lesson IDs for the course
+
+    await User.findByIdAndUpdate(
+      userId,
+      {
+        $addToSet: { completedLessons: { $each: lessonIds } }, // $addToSet ensures lessons aren't added multiple times
+        $addToSet: { completedCourses: courseId } // Add course to completed courses
+      }
+    );
+
+    // Optionally, send a notification or update course completion status here
+
+    return successResponse({}, res, 200, 'Course and lessons marked as completed successfully');
+  } catch (error) {
+    console.error('Error marking course and lessons as completed:', error);
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
+
+// Mark Lesson as Completed
+exports.markLessonCompleted = async (req, res) => {
+  try {
+    const { courseId, lessonId } = req.params;
+    const userId = req.user.id;
+
+    // Find the lesson to check if it exists
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) {
+      return badRequestResponse('Lesson not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Find the course that the lesson belongs to
+    const user = await User.findById(userId);
+
+    // Check if user is enrolled in the course
+    if (!user.enrolledCourses.includes(courseId)) {
+      return badRequestResponse('User must be enrolled in the course to mark lessons as completed', 'FORBIDDEN', 403, res);
+    }
+
+    // Add lesson to completed lessons
+    await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { completedLessons: lessonId } } // $addToSet ensures the lesson isn't added multiple times
+    );
+
+    // Optionally, you can check if the course is completed (e.g., if all lessons are completed)
+
+    return successResponse({}, res, 200, 'Lesson marked as completed successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
 
 
 // Toggle bookmark (add or remove)

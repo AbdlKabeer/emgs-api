@@ -322,6 +322,9 @@ router.post('/:id/progress', [authenticate, isTutor], courseController.saveCours
  */
 router.post('/:courseId/enroll', authenticate, courseController.enrollInCourse);
 
+
+router.put('/courses/:courseId/completed', authenticate, courseController.markCourseAndLessonsCompleted);
+
 /**
  * @swagger
  * /api/v1/courses/user/enrolled:
@@ -375,7 +378,9 @@ router.get('/user/enrolled', authenticate, courseController.getUserCourses);
  *       500:
  *         description: Internal server error
  */
-router.post('/:courseId/lesson/:lessonId/progress', authenticate, courseController.trackProgress);
+router.post('/:courseId/lesson/:lessonId/progress', authenticate, courseController.markLessonCompleted);
+
+router.put('/:courseId/lessons/:lessonId/completed', authenticate, courseController.markLessonCompleted);
 
 
 /**
