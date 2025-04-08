@@ -9,7 +9,7 @@ const {
 } = require('../utils/custom_response/responses');
 
 // Admin: Create a new quiz
-exports.createQuiz = async (req, res) => {
+exports.createQuizOld = async (req, res) => {
   try {
     const { title, description, questions, courseId } = req.body;
     const userId = req.user.id;
@@ -53,6 +53,106 @@ exports.createQuiz = async (req, res) => {
     return internalServerErrorResponse(error.message, res);
   }
 };
+
+
+
+
+// Updated createQuiz controller function
+exports.createQuiz = async (req, res) => {
+  try {
+    const { title, description, questions, courseId } = req.body;
+    const userId = req.user.id;
+
+    // Validate questions format
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return badRequestResponse('Quiz must have at least one question', 'VALIDATION_ERROR', 400, res);
+    }
+
+    // Ensure each question has the correct structure based on its type
+    for (const question of questions) {
+      if (!question.question || !question.questionType) {
+        return badRequestResponse('Each question must have content and a question type', 'VALIDATION_ERROR', 400, res);
+      }
+
+      switch (question.questionType) {
+        case 'multipleChoice':
+          // Multiple choice validation (multiple correct answers allowed)
+          if (!question.options || !Array.isArray(question.options) || question.options.length < 2) {
+            return badRequestResponse('Multiple choice questions must have at least two options', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Check if at least one option is marked as correct
+          const hasCorrectOptionMultiple = question.options.some(option => option.isCorrect);
+          if (!hasCorrectOptionMultiple) {
+            return badRequestResponse('Multiple choice questions must have at least one correct option', 'VALIDATION_ERROR', 400, res);
+          }
+          break;
+        
+        case 'singleChoice':
+          // Single choice validation (only one correct answer)
+          if (!question.options || !Array.isArray(question.options) || question.options.length < 2) {
+            return badRequestResponse('Single choice questions must have at least two options', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Count correct options
+          const correctOptionsCount = question.options.filter(option => option.isCorrect).length;
+          if (correctOptionsCount !== 1) {
+            return badRequestResponse('Single choice questions must have exactly one correct option', 'VALIDATION_ERROR', 400, res);
+          }
+          break;
+          
+        case 'boolean':
+          // Boolean validation
+          if (question.booleanAnswer === undefined) {
+            return badRequestResponse('Boolean questions must have a true or false answer', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Ensure options are set for boolean questions (True/False)
+          question.options = [
+            { option: 'True', isCorrect: question.booleanAnswer === true },
+            { option: 'False', isCorrect: question.booleanAnswer === false }
+          ];
+          break;
+          
+        case 'fillInBlank':
+          // Fill in the blank validation
+          if (!question.correctAnswer || typeof question.correctAnswer !== 'string') {
+            return badRequestResponse('Fill in the blank questions must have a correct answer string', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // For fillInBlank, options might be empty or could contain potential answers
+          if (!question.options) {
+            question.options = [];
+          }
+          break;
+          
+        default:
+          return badRequestResponse('Invalid question type. Must be multipleChoice, singleChoice, boolean, or fillInBlank', 'VALIDATION_ERROR', 400, res);
+      }
+    }
+
+    // Find course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    const quiz = new Quiz({
+      title,
+      description,
+      questions,
+      courseId,
+      createdBy: userId
+    });
+
+    await quiz.save();
+
+    return successResponse(quiz, res, 201, 'Quiz created successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
 
 // Admin: Update an existing quiz
 exports.updateQuiz = async (req, res) => {
