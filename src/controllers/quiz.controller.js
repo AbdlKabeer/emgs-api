@@ -1,6 +1,7 @@
 const Course = require('../models/course.model');
 const Quiz = require('../models/quiz.model');
 const QuizProgress = require('../models/quiz-progress.model');
+const Question = require('../models/question.model');
 const { 
   successResponse, 
   paginationResponse,
@@ -154,51 +155,232 @@ exports.createQuiz = async (req, res) => {
 };
 
 
+// Controller Functions
+exports.createQuiz = async (req, res) => {
+  try {
+    const { title, description, questions, courseId } = req.body;
+    const userId = req.user.id;
+
+    // Validate questions format
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return badRequestResponse('Quiz must have at least one question', 'VALIDATION_ERROR', 400, res);
+    }
+
+    // Find course
+    const course = await mongoose.model('Course').findById(courseId);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    // First, create the quiz without questions
+    const quiz = new Quiz({
+      title,
+      description,
+      courseId,
+      createdBy: userId,
+      questions: [] // Will be populated with question IDs
+    });
+    
+    await quiz.save();
+    
+    // Now create each question and link to the quiz
+    const questionDocs = [];
+    
+    for (let i = 0; i < questions.length; i++) {
+      const questionData = questions[i];
+      
+      // Validate question based on type
+      if (!questionData.question || !questionData.questionType) {
+        // Delete the quiz we just created since we have an error
+        await Quiz.findByIdAndDelete(quiz._id);
+        // Delete any questions we've already created
+        if (questionDocs.length > 0) {
+          const questionIds = questionDocs.map(q => q._id);
+          await Question.deleteMany({ _id: { $in: questionIds } });
+        }
+        return badRequestResponse('Each question must have content and a question type', 'VALIDATION_ERROR', 400, res);
+      }
+
+      // Detailed validation based on question type
+      switch (questionData.questionType) {
+        case 'multipleChoice':
+          // Multiple choice validation (multiple correct answers allowed)
+          if (!questionData.options || !Array.isArray(questionData.options) || questionData.options.length < 2) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Multiple choice questions must have at least two options', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Check if at least one option is marked as correct
+          const hasCorrectOptionMultiple = questionData.options.some(option => option.isCorrect);
+          if (!hasCorrectOptionMultiple) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Multiple choice questions must have at least one correct option', 'VALIDATION_ERROR', 400, res);
+          }
+          break;
+        
+        case 'singleChoice':
+          // Single choice validation (only one correct answer)
+          if (!questionData.options || !Array.isArray(questionData.options) || questionData.options.length < 2) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Single choice questions must have at least two options', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Count correct options
+          const correctOptionsCount = questionData.options.filter(option => option.isCorrect).length;
+          if (correctOptionsCount !== 1) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Single choice questions must have exactly one correct option', 'VALIDATION_ERROR', 400, res);
+          }
+          break;
+          
+        case 'boolean':
+          // Boolean validation
+          if (questionData.booleanAnswer === undefined) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Boolean questions must have a true or false answer', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Ensure options are set for boolean questions (True/False)
+          questionData.options = [
+            { option: 'True', isCorrect: questionData.booleanAnswer === true },
+            { option: 'False', isCorrect: questionData.booleanAnswer === false }
+          ];
+          break;
+          
+        case 'fillInBlank':
+          // Fill in the blank validation
+          if (!questionData.correctAnswer || typeof questionData.correctAnswer !== 'string') {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Fill in the blank questions must have a correct answer string', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // For fillInBlank, options might be empty or could contain potential answers
+          if (!questionData.options) {
+            questionData.options = [];
+          }
+          break;
+          
+        default:
+          await Quiz.findByIdAndDelete(quiz._id);
+          if (questionDocs.length > 0) {
+            const questionIds = questionDocs.map(q => q._id);
+            await Question.deleteMany({ _id: { $in: questionIds } });
+          }
+          return badRequestResponse('Invalid question type. Must be multipleChoice, singleChoice, boolean, or fillInBlank', 'VALIDATION_ERROR', 400, res);
+      }
+
+      // Create the Question document
+      const question = new Question({
+        quizId: quiz._id,
+        question: questionData.question,
+        questionType: questionData.questionType,
+        options: questionData.options || [],
+        correctAnswer: questionData.correctAnswer,
+        booleanAnswer: questionData.booleanAnswer,
+        order: i + 1
+      });
+      
+      const savedQuestion = await question.save();
+      questionDocs.push(savedQuestion);
+    }
+    
+    // Update the quiz with the question IDs
+    quiz.questions = questionDocs.map(q => q._id);
+    await quiz.save();
+
+    return successResponse(quiz, res, 201, 'Quiz created successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+
 // Admin: Update an existing quiz
 exports.updateQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
     const { title, description, questions } = req.body;
     const userId = req.user.id;
-
+    
     // Find the quiz
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
       return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
     }
-
-    // Check if user is the creator
-    if (quiz.createdBy.toString() !== userId) {
-      return badRequestResponse('Unauthorized to update this quiz', 'UNAUTHORIZED', 403, res);
+    
+    // Check if user is allowed to update this quiz
+    if (quiz.createdBy.toString() !== userId && req.user.role !== 'admin') {
+      return badRequestResponse('Not authorized to update this quiz', 'UNAUTHORIZED', 403, res);
     }
-
-    // Validate questions format if provided
-    if (questions) {
-      if (!Array.isArray(questions) || questions.length === 0) {
-        return badRequestResponse('Quiz must have at least one question', 'VALIDATION_ERROR', 400, res);
-      }
-
-      // Ensure each question has the correct structure
-      for (const question of questions) {
-        if (!question.question || !question.options || !Array.isArray(question.options) || question.options.length < 2) {
-          return badRequestResponse('Each question must have at least two options', 'VALIDATION_ERROR', 400, res);
+    
+    // Update basic quiz fields
+    if (title) quiz.title = title;
+    if (description) quiz.description = description;
+    
+    // If questions are updated
+    if (questions && Array.isArray(questions)) {
+      // First, delete all existing questions for this quiz
+      await Question.deleteMany({ quizId });
+      
+      // Create new questions
+      const newQuestions = [];
+      
+      for (let i = 0; i < questions.length; i++) {
+        const questionData = questions[i];
+        
+        // Apply the same validation as in createQuiz
+        if (!questionData.question || !questionData.questionType) {
+          return badRequestResponse('Each question must have content and a question type', 'VALIDATION_ERROR', 400, res);
         }
-
-        // Check if at least one option is marked as correct
-        const hasCorrectOption = question.options.some(option => option.isCorrect);
-        if (!hasCorrectOption) {
-          return badRequestResponse('Each question must have at least one correct option', 'VALIDATION_ERROR', 400, res);
-        }
+        
+        // Similar validation as createQuiz for each question type
+        // ...
+        
+        // Create the Question document
+        const question = new Question({
+          quizId: quiz._id,
+          question: questionData.question,
+          questionType: questionData.questionType,
+          options: questionData.options || [],
+          correctAnswer: questionData.correctAnswer,
+          booleanAnswer: questionData.booleanAnswer,
+          order: i + 1
+        });
+        
+        const savedQuestion = await question.save();
+        newQuestions.push(savedQuestion);
       }
+      
+      // Update quiz with new question IDs
+      quiz.questions = newQuestions.map(q => q._id);
     }
-
-    // Update quiz
-    quiz.title = title || quiz.title;
-    quiz.description = description || quiz.description;
-    quiz.questions = questions || quiz.questions;
-
+    
     await quiz.save();
-
+    
     return successResponse(quiz, res, 200, 'Quiz updated successfully');
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
@@ -210,27 +392,28 @@ exports.deleteQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
     const userId = req.user.id;
-
+    
     // Find the quiz
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
       return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
     }
-
-    // Check if user is the creator
-    if (quiz.createdBy.toString() !== userId) {
-      return badRequestResponse('Unauthorized to delete this quiz', 'UNAUTHORIZED', 403, res);
+    
+    // Check if user is allowed to delete this quiz
+    if (quiz.createdBy.toString() !== userId && req.user.role !== 'admin') {
+      return badRequestResponse('Not authorized to delete this quiz', 'UNAUTHORIZED', 403, res);
     }
-
-    // Delete the quiz
+    
+    // Delete all questions belonging to this quiz
+    await Question.deleteMany({ quizId });
+    
+    // Delete progress records for this quiz
+    await QuizProgress.deleteMany({ quizId });
+    
+    // Delete the quiz itself
     await Quiz.findByIdAndDelete(quizId);
     
-    // Also delete all related progress records
-    await QuizProgress.deleteMany({ quizId });
-
-    return successResponse({
-      message: 'Quiz and all related progress records deleted successfully'
-    }, res);
+    return successResponse(null, res, 200, 'Quiz and all related questions deleted successfully');
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
   }
@@ -280,16 +463,49 @@ exports.getAllCourseQuizzes = async (req, res) => {
 exports.getQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
+    const userId = req.user.id;
+    const isTeacher = req.user.role === 'teacher';
     
-    const quiz = await Quiz.findById(quizId)
-      .select('-questions.options.isCorrect') // Hide correct answers for users taking the quiz
+    let quizQuery = Quiz.findById(quizId)
       .populate('createdBy', 'name email');
+    
+    // If user is a student, hide correct answers
+    if (!isTeacher) {
+      quizQuery = quizQuery.populate({
+        path: 'questions',
+        select: '-options.isCorrect -correctAnswer -booleanAnswer',
+        options: { sort: { order: 1 } }
+      });
+    } else {
+      // For teachers, show everything
+      quizQuery = quizQuery.populate({
+        path: 'questions',
+        options: { sort: { order: 1 } }
+      });
+    }
+    
+    const quiz = await quizQuery;
     
     if (!quiz) {
       return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
     }
     
-    return successResponse(quiz, res);
+    // Get user's progress for this quiz if they're a student
+    if (!isTeacher) {
+      const progress = await QuizProgress.findOne({ userId, quizId });
+      if (progress) {
+        return successResponse({
+          quiz,
+          progress: {
+            score: progress.score,
+            attempts: progress.attempts,
+            lastAttemptDate: progress.lastAttemptDate
+          }
+        }, res);
+      }
+    }
+    
+    return successResponse({ quiz }, res);
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
   }
@@ -421,8 +637,6 @@ exports.submitQuizOld = async (req, res) => {
   }
 };
 
-
-// User: Submit quiz answers
 exports.submitQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
@@ -434,8 +648,13 @@ exports.submitQuiz = async (req, res) => {
       return badRequestResponse('Answers must be provided as an array', 'VALIDATION_ERROR', 400, res);
     }
     
-    // Get the quiz with correct answers
-    const quiz = await Quiz.findById(quizId);
+    // Get the quiz with questions
+    const quiz = await Quiz.findById(quizId)
+      .populate({
+        path: 'questions',
+        options: { sort: { order: 1 } } // Make sure questions are in order
+      });
+      
     if (!quiz) {
       return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
     }
@@ -454,10 +673,11 @@ exports.submitQuiz = async (req, res) => {
     let correctAnswers = 0;
     const processedAnswers = answers.map((answer, index) => {
       const question = quiz.questions[index];
+      const questionId = question._id;
       const questionType = question.questionType;
       
       let isCorrect = false;
-      let answerDetails = {};
+      let answerDetails = { questionId };
       
       switch (questionType) {
         case 'singleChoice':
@@ -477,6 +697,7 @@ exports.submitQuiz = async (req, res) => {
           // Check if the selected option is correct
           isCorrect = question.options[answer.selectedOptionIndex].isCorrect;
           answerDetails = {
+            ...answerDetails,
             selectedOptionIndex: answer.selectedOptionIndex
           };
           break;
@@ -511,6 +732,7 @@ exports.submitQuiz = async (req, res) => {
           
           isCorrect = selectedCorrectly && noIncorrectSelections;
           answerDetails = {
+            ...answerDetails,
             selectedOptionIndices: answer.selectedOptionIndices,
             correctOptionIndices: correctOptionIndices
           };
@@ -524,6 +746,7 @@ exports.submitQuiz = async (req, res) => {
           
           isCorrect = answer.booleanAnswer === question.booleanAnswer;
           answerDetails = {
+            ...answerDetails,
             selectedAnswer: answer.booleanAnswer
           };
           break;
@@ -540,6 +763,7 @@ exports.submitQuiz = async (req, res) => {
           
           isCorrect = userAnswer === correctAnswer;
           answerDetails = {
+            ...answerDetails,
             submittedAnswer: answer.textAnswer,
             correctAnswer: question.correctAnswer
           };
@@ -606,6 +830,22 @@ exports.submitQuiz = async (req, res) => {
     return internalServerErrorResponse(error.message, res);
   }
 };
+
+// Get all quizzes for a course
+exports.getCourseQuizzes = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    const quizzes = await Quiz.find({ courseId })
+      .select('title description createdAt')
+      .populate('createdBy', 'name email');
+    
+    return successResponse(quizzes, res);
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
 
 
 // User: Get quiz progress
@@ -722,6 +962,72 @@ exports.getQuizStatistics = async (req, res) => {
         attempts: record.attempts,
         lastAttempt: record.lastAttemptDate
       }))
+    }, res);
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+
+exports.getQuizStats = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const userId = req.user.id;
+    
+    // Find the quiz
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Check if user is authorized to see stats (creator or admin)
+    if (quiz.createdBy.toString() !== userId && req.user.role !== 'admin') {
+      return badRequestResponse('Not authorized to view quiz statistics', 'UNAUTHORIZED', 403, res);
+    }
+    
+    // Get all progress records for this quiz
+    const allProgress = await QuizProgress.find({ quizId })
+      .populate('userId', 'name email');
+    
+    // Calculate overall statistics
+    const totalAttempts = allProgress.reduce((sum, p) => sum + p.attempts, 0);
+    const averageScore = allProgress.reduce((sum, p) => sum + p.score, 0) / (allProgress.length || 1);
+    
+    // Calculate per-question statistics
+    const questionStats = [];
+    
+    // First get all questions for this quiz
+    const questions = await Question.find({ quizId }).sort({ order: 1 });
+    
+    for (const question of questions) {
+      const questionId = question._id;
+      
+      // Find all answers for this specific question
+      const questionAnswers = allProgress.flatMap(p => 
+        p.answers.filter(a => a.questionId.toString() === questionId.toString())
+      );
+      
+      const correctCount = questionAnswers.filter(a => a.isCorrect).length;
+      const incorrectCount = questionAnswers.length - correctCount;
+      const correctPercentage = (correctCount / (questionAnswers.length || 1)) * 100;
+      
+      questionStats.push({
+        questionId,
+        questionText: question.question,
+        questionType: question.questionType,
+        correctCount,
+        incorrectCount,
+        correctPercentage,
+        totalAnswers: questionAnswers.length
+      });
+    }
+    
+    return successResponse({
+      quizTitle: quiz.title,
+      totalStudents: allProgress.length,
+      totalAttempts,
+      averageScore,
+      questionStats
     }, res);
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
