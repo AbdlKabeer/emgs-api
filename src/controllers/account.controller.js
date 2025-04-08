@@ -30,6 +30,7 @@ exports.getUserProfile = async (req, res) => {
         preferredLanguage: user.preferredLanguage,
         profilePicture: user.profilePicture,
         isVerified: user.isVerified,
+        bio: user.bio,
         enrolledCourses: user.enrolledCourses,
         completedLessons: user.completedLessons,
         completedCoursesCount: user.completedLessons.length
@@ -43,7 +44,7 @@ exports.getUserProfile = async (req, res) => {
 // Update user profile
 exports.updateUserProfile = async (req, res) => {
   try {
-    const { fullName, phone, preferredLanguage, notificationsEnabled } = req.body;
+    const { fullName, phone, preferredLanguage, notificationsEnabled , bio } = req.body;
     
     // Find user and update
     const user = await User.findByIdAndUpdate(
@@ -52,6 +53,7 @@ exports.updateUserProfile = async (req, res) => {
         fullName, 
         phone,
         preferredLanguage,
+        bio,
         notificationsEnabled
       }, 
       { new: true }
