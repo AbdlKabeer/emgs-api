@@ -684,7 +684,7 @@ exports.toggleBookmark = async (req, res) => {
 // Get user's bookmarked courses
 exports.getBookmarkedCourses = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.id; 
     
     const bookmarks = await Bookmark.find({ userId })
       .sort({ createdAt: -1 });
@@ -692,7 +692,8 @@ exports.getBookmarkedCourses = async (req, res) => {
     const courseIds = bookmarks.map(bookmark => bookmark.courseId);
     
     const courses = await Course.find({ _id: { $in: courseIds } })
-      .select('title description category thumbnail isFree price averageRating');
+      .select('title description category thumbnail isFree price lessons ratings averageRating')
+      .populate('createdBy', 'fullName email profilePicture')
     
     return successResponse(courses, res);
   } catch (error) {
