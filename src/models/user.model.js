@@ -31,6 +31,15 @@ const userSchema = new mongoose.Schema(
     certificates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Certificate' }],
     notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }],
     serviceInquiries: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Inquiry' }],
+    ratings: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        rating: { type: Number, required: true, min: 1, max: 5 },
+        review: { type: String },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
+    averageRating: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -50,6 +59,13 @@ userSchema.pre('save', async function (next) {
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (password) {
   return bcrypt.compare(password, this.password);
+};
+
+userSchema.methods.calculateAverageRating = function() {
+  if (this.ratings.length === 0) return 0;
+  
+  const sum = this.ratings.reduce((total, ratingObj) => total + ratingObj.rating, 0);
+  return parseFloat((sum / this.ratings.length).toFixed(1));
 };
 
 const User = mongoose.model('User', userSchema);

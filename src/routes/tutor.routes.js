@@ -22,4 +22,8 @@ router.get('/:id/top-courses', authenticate, tutorController.getTopCourses);
 // Get course progress statistics for a tutor
 router.get('/:id/course-progress', authenticate, tutorController.getCourseProgress);
 
+router.get('/top-rated', tutorController.getTopRatedTutors);
+
+router.post('/:tutorId/rate', authenticate, tutorController.rateTutor);
+
 module.exports = router;
