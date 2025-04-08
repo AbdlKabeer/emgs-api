@@ -1,13 +1,25 @@
-// Create a new routes file: src/routes/tutor.routes.js
+// src/routes/tutor.routes.js
 const express = require('express');
 const router = express.Router();
 const tutorController = require('../controllers/tutor.controller');
-const { verifyToken } = require('../middleware/auth.middleware');
+const { authenticate, isAdmin } = require('../middleware/auth.middleware');
 
-// Get all tutors route
-router.get('/', tutorController.getAllTutors);
+// Get all tutors - admin only endpoint
+router.get('/', authenticate, tutorController.getAllTutors);
 
 // Get specific tutor by ID
-router.get('/:id', tutorController.getTutorById);
+router.get('/:id', authenticate, tutorController.getTutorById);
+
+// Get all courses created by a tutor
+router.get('/:id/courses', authenticate, tutorController.getTutorCourses);
+
+// Get tutor dashboard overview data
+router.get('/:id/overview', authenticate, tutorController.getTutorOverview);
+
+// Get top performing courses for a tutor
+router.get('/:id/top-courses', authenticate, tutorController.getTopCourses);
+
+// Get course progress statistics for a tutor
+router.get('/:id/course-progress', authenticate, tutorController.getCourseProgress);
 
 module.exports = router;

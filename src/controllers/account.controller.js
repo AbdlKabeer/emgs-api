@@ -26,7 +26,6 @@ exports.getUserProfile = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
-        phone: user.phone,
         notificationsEnabled: user.notificationsEnabled,
         preferredLanguage: user.preferredLanguage,
         profilePicture: user.profilePicture,
