@@ -69,7 +69,8 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.post('/', authenticate,isTutor,createQuizValidator, quizController.createQuiz);
+router.post('/', authenticate,isTutor, quizController.createQuizAdded);
+// router.post('/', authenticate,isTutor,createQuizValidator, quizController.createQuizAdded);
 
 /**
  * @swagger
