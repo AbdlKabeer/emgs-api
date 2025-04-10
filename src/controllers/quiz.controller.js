@@ -167,10 +167,31 @@ exports.createQuizAdded = async (req, res) => {
     // Update the quiz with the question IDs
     quiz.questions = questionDocs.map(q => q._id);
     await quiz.save();
+    // Fetch the complete quiz with populated questions
+    const populatedQuiz = await Quiz.findById(quiz._id)
+    .populate({
+      path: 'questions',
+      select: 'question questionType options order correctAnswer booleanAnswer',
+      // This transform function removes isCorrect from options when sending to client
+      transform: doc => {
+        if (doc.options && doc.options.length > 0) {
+          // Create a deep copy of the document to avoid modifying the database object
+          const docCopy = JSON.parse(JSON.stringify(doc));
+          docCopy.options = docCopy.options.map(option => ({
+            _id: option._id,
+            option: option.option
+            // isCorrect is intentionally omitted
+          }));
+          return docCopy;
+        }
+        return doc;
+      }
+    })
+    .populate('createdBy', 'name email');
 
-    return successResponse(quiz, res, 201, 'Quiz created successfully');
-  } catch (error) {
-    console.log(error)
+    return successResponse(populatedQuiz, res, 201, 'Quiz created successfully');
+    } catch (error) {
+    console.log(error);
     return internalServerErrorResponse(error.message, res);
   }
 };
