@@ -300,6 +300,9 @@ router.get('/:quizId/with-answers', authenticate, quizController.getQuizWithAnsw
  */
 router.post('/:quizId/submit', authenticate,submitQuizValidator, quizController.submitQuiz);
 
+
+router.post('/:quizId/mark', authenticate,submitQuizValidator, quizController.submitQuiz);
+
 /**
  * @swagger
  * /api/v1/quizzes/{quizId}/progress:
