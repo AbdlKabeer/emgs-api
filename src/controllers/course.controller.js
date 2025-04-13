@@ -415,8 +415,18 @@ exports.getBookmarkedCoursesNew = async (req, res) => {
 exports.createCourse = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : null;
-    const { title, description, category, isFree, price, isPublished , thumbnail } = req.body;
+    const { title, description, category, isFree, price, isPublished , thumbnail, goals, notes } = req.body;
     
+
+    if (goals && !Array.isArray(goals) || goals.length === 0) {
+      return badRequestResponse('Valid goals array is required', 'BAD_REQUEST', 400, res);
+    }
+
+    if (notes || !Array.isArray(notes) || notes.length === 0) {
+      return badRequestResponse('Valid notes array is required', 'BAD_REQUEST', 400, res);
+    }
+
+
     const course = new Course({
       title,
       description,
@@ -424,6 +434,8 @@ exports.createCourse = async (req, res) => {
       isFree,
       price,
       thumbnail,
+      goals: goals || [],
+      notes: notes || [],
       createdBy: req.user.id,
       isPublished: isPublished || false,
     });
