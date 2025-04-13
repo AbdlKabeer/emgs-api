@@ -3,7 +3,7 @@ const User = require('../models/user.model');
 const Notification = require('../models/notification.model');
 const Progress = require('../models/progress.model');
 const Lesson = require('../models/lesson.model');
-
+const Quiz = require('../models/quiz.model');
 const Bookmark = require('../models/bookmark.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../utils/custom_response/responses');
 
@@ -299,6 +299,28 @@ exports.getCourseById = async (req, res) => {
       courseObj.isBookmarked = !!bookmark;
     }
 
+
+    const quizzes = await Quiz.find({courseId:req.params.id})
+        .sort({ createdAt: -1 })
+        .populate('createdBy', 'name email')
+        // Populate the questions array with full question objects
+        .populate({
+          path: 'questions',
+          select: 'question questionType options order correctAnswer booleanAnswer',
+          // Remove isCorrect from the options to hide correct answers
+          transform: doc => {
+            if (doc.options && doc.options.length > 0) {
+              doc.options = doc.options.map(option => ({
+                _id: option._id,
+                option: option.option
+                // isCorrect is intentionally omitted
+              }));
+            }
+            return doc;
+          }
+        });
+    
+    courseObj.quizzes = quizzes
     return successResponse(courseObj, res);
 
   } catch (error) {
@@ -418,13 +440,13 @@ exports.createCourse = async (req, res) => {
     const { title, description, category, isFree, price, isPublished , thumbnail, goals, notes } = req.body;
     
 
-    if (goals && !Array.isArray(goals) || goals.length === 0) {
-      return badRequestResponse('Valid goals array is required', 'BAD_REQUEST', 400, res);
-    }
+    // if (goals && !Array.isArray(goals) || goals.length === 0) {
+    //   return badRequestResponse('Valid goals array is required', 'BAD_REQUEST', 400, res);
+    // }
 
-    if (notes || !Array.isArray(notes) || notes.length === 0) {
-      return badRequestResponse('Valid notes array is required', 'BAD_REQUEST', 400, res);
-    }
+    // if (notes && !Array.isArray(notes) || notes.length === 0) {
+    //   return badRequestResponse('Valid notes array is required', 'BAD_REQUEST', 400, res);
+    // }
 
 
     const course = new Course({
