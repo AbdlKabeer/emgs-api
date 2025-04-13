@@ -217,7 +217,7 @@ router.get('/course/:courseId', quizController.getAllCourseQuizzes);
  *       500:
  *         description: Internal server error
  */
-router.get('/:quizId',getQuizValidator, quizController.getQuiz);
+router.get('/:quizId',authenticate, getQuizValidator, quizController.getQuiz);
 
 /**
  * @swagger

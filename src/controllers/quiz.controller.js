@@ -393,6 +393,7 @@ exports.getAllCourseQuizzes = async (req, res) => {
 
 
 // Get a single quiz by ID (with questions but without correct answers)
+// Get a single quiz by ID (with questions but without correct answers)
 exports.getQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
@@ -406,8 +407,19 @@ exports.getQuiz = async (req, res) => {
     if (!isTeacher) {
       quizQuery = quizQuery.populate({
         path: 'questions',
-        select: '-options.isCorrect -correctAnswer -booleanAnswer',
-        options: { sort: { order: 1 } }
+        select: 'question questionType options order',
+        options: { sort: { order: 1 } },
+        // Remove isCorrect from the options to hide correct answers
+        transform: doc => {
+          if (doc.options && doc.options.length > 0) {
+            doc.options = doc.options.map(option => ({
+              _id: option._id,
+              option: option.option
+              // isCorrect is intentionally omitted
+            }));
+          }
+          return doc;
+        }
       });
     } else {
       // For teachers, show everything
@@ -440,6 +452,7 @@ exports.getQuiz = async (req, res) => {
     
     return successResponse({ quiz }, res);
   } catch (error) {
+    console.error('Get quiz error:', error);
     return internalServerErrorResponse(error.message, res);
   }
 };
@@ -570,7 +583,7 @@ exports.submitQuizOld = async (req, res) => {
   }
 };
 
-exports.submitQuiz = async (req, res) => {
+exports.submitQuizk = async (req, res) => {
   try {
     const { quizId } = req.params;
     const { answers } = req.body;
@@ -763,6 +776,432 @@ exports.submitQuiz = async (req, res) => {
     return internalServerErrorResponse(error.message, res);
   }
 };
+
+
+
+exports.submitQuizp = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { answers } = req.body;
+    const userId = req.user.id;
+    
+    // Validate answers array
+    if (!answers || !Array.isArray(answers)) {
+      return badRequestResponse('Answers must be provided as an array', 'VALIDATION_ERROR', 400, res);
+    }
+    
+    // Get the quiz with questions
+    const quiz = await Quiz.findById(quizId)
+      .populate({
+        path: 'questions',
+        options: { sort: { order: 1 } } // Make sure questions are in order
+      });
+
+
+    if (!quiz) {
+      return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
+    }
+    
+    
+    console.log(quiz.questions)
+    console.log(quiz.questions.length)
+    console.log(answers.length)
+    console.log(answers)
+    // Check if number of answers matches number of questions
+    if (answers.length !== quiz.questions.length) {
+      return badRequestResponse(
+        `Number of answers (${answers.length}) doesn't match number of questions (${quiz.questions.length})`, 
+        'VALIDATION_ERROR', 
+        400, 
+        res
+      );
+    }
+    
+    // Process the answers and calculate score
+    let correctAnswers = 0;
+    const processedAnswers = answers.map((answer, index) => {
+      const question = quiz.questions[index];
+      const questionId = question._id;
+      const questionType = question.questionType;
+      
+      let isCorrect = false;
+      let answerDetails = { questionId };
+      
+      switch (questionType) {
+        case 'singleChoice':
+          // Handle single choice (radio button selection)
+          if (typeof answer.selectedOptionIndex !== 'number') {
+            throw new Error(`Question ${index + 1}: Invalid answer format for single choice question`);
+          }
+          
+          // Validate indices
+          if (
+            answer.selectedOptionIndex < 0 || 
+            answer.selectedOptionIndex >= question.options.length
+          ) {
+            throw new Error(`Question ${index + 1}: Invalid option index`);
+          }
+          
+          // Check if the selected option is correct
+          isCorrect = question.options[answer.selectedOptionIndex].isCorrect;
+          answerDetails = {
+            ...answerDetails,
+            selectedOptionIndex: answer.selectedOptionIndex
+          };
+          break;
+          
+        case 'multipleChoice':
+          // Handle multiple choice (checkbox selections)
+          if (!Array.isArray(answer.selectedOptionIndices)) {
+            throw new Error(`Question ${index + 1}: Invalid answer format for multiple choice question`);
+          }
+          
+          // Validate indices
+          for (const optionIndex of answer.selectedOptionIndices) {
+            if (optionIndex < 0 || optionIndex >= question.options.length) {
+              throw new Error(`Question ${index + 1}: Invalid option index ${optionIndex}`);
+            }
+          }
+          
+          // Calculate correctness:
+          // 1. All correct options must be selected
+          // 2. No incorrect options can be selected
+          const correctOptionIndices = question.options
+            .map((option, idx) => option.isCorrect ? idx : -1)
+            .filter(idx => idx !== -1);
+            
+          const selectedCorrectly = correctOptionIndices.every(idx => 
+            answer.selectedOptionIndices.includes(idx)
+          );
+          
+          const noIncorrectSelections = answer.selectedOptionIndices.every(idx => 
+            question.options[idx].isCorrect
+          );
+          
+          isCorrect = selectedCorrectly && noIncorrectSelections;
+          answerDetails = {
+            ...answerDetails,
+            selectedOptionIndices: answer.selectedOptionIndices,
+            correctOptionIndices: correctOptionIndices
+          };
+          break;
+          
+        case 'boolean':
+          // Handle boolean (true/false) questions
+          if (typeof answer.booleanAnswer !== 'boolean') {
+            throw new Error(`Question ${index + 1}: Invalid answer format for boolean question`);
+          }
+          
+          isCorrect = answer.booleanAnswer === question.booleanAnswer;
+          answerDetails = {
+            ...answerDetails,
+            selectedAnswer: answer.booleanAnswer
+          };
+          break;
+          
+        case 'fillInBlank':
+          // Handle fill in the blank (text input)
+          if (typeof answer.textAnswer !== 'string') {
+            throw new Error(`Question ${index + 1}: Invalid answer format for fill in the blank question`);
+          }
+          
+          // Case insensitive comparison and trim whitespace
+          const userAnswer = answer.textAnswer.trim().toLowerCase();
+          const correctAnswer = question.correctAnswer.trim().toLowerCase();
+          
+          isCorrect = userAnswer === correctAnswer;
+          answerDetails = {
+            ...answerDetails,
+            submittedAnswer: answer.textAnswer,
+            correctAnswer: question.correctAnswer
+          };
+          break;
+          
+        default:
+          throw new Error(`Question ${index + 1}: Unsupported question type: ${questionType}`);
+      }
+      
+      if (isCorrect) {
+        correctAnswers++;
+      }
+      
+      return {
+        questionIndex: index,
+        questionType,
+        isCorrect,
+        ...answerDetails
+      };
+    });
+    
+    // Calculate score as percentage
+    const score = (correctAnswers / quiz.questions.length) * 100;
+    
+    // Create or update progress record
+    let progress = await QuizProgress.findOne({ userId, quizId });
+    
+    if (progress) {
+      // Existing progress - increment attempts and update if score is better
+      progress.attempts += 1;
+      progress.lastAttemptDate = new Date();
+      
+      if (score > progress.score) {
+        progress.score = score;
+        progress.correctAnswers = correctAnswers;
+        progress.answers = processedAnswers;
+      }
+    } else {
+      // New progress record
+      progress = new QuizProgress({
+        userId,
+        quizId,
+        score,
+        totalQuestions: quiz.questions.length,
+        correctAnswers,
+        completed: true,
+        answers: processedAnswers,
+        attempts: 1,
+        lastAttemptDate: new Date()
+      });
+    }
+    
+    await progress.save();
+    
+    return successResponse({
+      quizTitle: quiz.title,
+      score,
+      correctAnswers,
+      totalQuestions: quiz.questions.length,
+      attempts: progress.attempts,
+      answers: processedAnswers
+    }, res, 200, 'Quiz submitted successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+
+exports.submitQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { answers } = req.body;
+    const userId = req.user.id;
+    
+    // Validate answers array
+    if (!answers || !Array.isArray(answers)) {
+      return badRequestResponse('Answers must be provided as an array', 'VALIDATION_ERROR', 400, res);
+    }
+    
+    // Get the quiz with questions
+    const quiz = await Quiz.findById(quizId)
+      .populate({
+        path: 'questions',
+        options: { sort: { order: 1 } } // Make sure questions are in order
+      });
+
+    if (!quiz) {
+      return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Check if number of answers matches number of questions
+    if (answers.length !== quiz.questions.length) {
+      return badRequestResponse(
+        `Number of answers (${answers.length}) doesn't match number of questions (${quiz.questions.length})`, 
+        'VALIDATION_ERROR', 
+        400, 
+        res
+      );
+    }
+
+
+    console.log(quiz.questions)
+    
+    // Process the answers and calculate score
+    let correctAnswers = 0;
+    const processedAnswers = [];
+
+    // Map to convert client-side question IDs to indices for matching with quiz.questions
+    const questionIdToIndexMap = quiz.questions.reduce((map, question, index) => {
+      map[question._id.toString()] = index;
+      return map;
+    }, {});
+    
+    for (let i = 0; i < answers.length; i++) {
+      const answer = answers[i];
+      const questionId = answer.questionId;
+      
+      // Find corresponding question using the question ID
+      const questionIndex = questionIdToIndexMap[questionId];
+      
+      if (questionIndex === undefined) {
+        throw new Error(`Question with ID ${questionId} not found in quiz`);
+      }
+      
+      const question = quiz.questions[questionIndex];
+      const questionType = question.questionType;
+      
+      let isCorrect = false;
+      let answerDetails = { questionId };
+      
+      switch (questionType) {
+        case 'singleChoice':
+          // Handle single choice with selectedOptionId
+          if (!answer.selectedOptionId) {
+            throw new Error(`Question ${questionIndex + 1}: Missing selectedOptionId for single choice question`);
+          }
+          
+          // Find option index based on selectedOptionId
+          const selectedOptionIndex = question.options.findIndex(
+            option => option._id.toString() === answer.selectedOptionId
+          );
+          
+          if (selectedOptionIndex === -1) {
+            throw new Error(`Question ${questionIndex + 1}: Invalid option ID`);
+          }
+          
+          // Check if the selected option is correct
+          isCorrect = question.options[selectedOptionIndex].isCorrect;
+          answerDetails = {
+            ...answerDetails,
+            selectedOptionIndex,
+            selectedOptionId: answer.selectedOptionId
+          };
+          break;
+          
+        case 'multipleChoice':
+          // Handle multiple choice with selectedOptionIds array
+          if (!Array.isArray(answer.selectedOptionIds)) {
+            throw new Error(`Question ${questionIndex + 1}: Invalid answer format for multiple choice question`);
+          }
+          
+          // Map selected option IDs to indices
+          const selectedOptionIndices = answer.selectedOptionIds.map(optionId => {
+            const index = question.options.findIndex(
+              option => option._id.toString() === optionId
+            );
+            if (index === -1) {
+              throw new Error(`Question ${questionIndex + 1}: Invalid option ID ${optionId}`);
+            }
+            return index;
+          });
+          
+          // Calculate correctness:
+          // 1. All correct options must be selected
+          // 2. No incorrect options can be selected
+          const correctOptionIndices = question.options
+            .map((option, idx) => option.isCorrect ? idx : -1)
+            .filter(idx => idx !== -1);
+            
+          const selectedCorrectly = correctOptionIndices.every(idx => 
+            selectedOptionIndices.includes(idx)
+          );
+          
+          const noIncorrectSelections = selectedOptionIndices.every(idx => 
+            question.options[idx].isCorrect
+          );
+          
+          isCorrect = selectedCorrectly && noIncorrectSelections;
+          answerDetails = {
+            ...answerDetails,
+            selectedOptionIndices,
+            selectedOptionIds: answer.selectedOptionIds,
+            correctOptionIndices
+          };
+          break;
+          
+        case 'boolean':
+          // Handle boolean (true/false) questions with answer property
+          if (typeof answer.answer !== 'boolean') {
+            throw new Error(`Question ${questionIndex + 1}: Invalid answer format for boolean question`);
+          }
+          
+          isCorrect = answer.answer === question.booleanAnswer;
+          answerDetails = {
+            ...answerDetails,
+            selectedAnswer: answer.answer
+          };
+          break;
+          
+        case 'fillInBlank':
+          // Handle fill in the blank with answer property
+          if (typeof answer.answer !== 'string') {
+            throw new Error(`Question ${questionIndex + 1}: Invalid answer format for fill in the blank question`);
+          }
+          
+          // Case insensitive comparison and trim whitespace
+          const userAnswer = answer.answer.trim().toLowerCase();
+          const correctAnswer = question.correctAnswer.trim().toLowerCase();
+          
+          isCorrect = userAnswer === correctAnswer;
+          answerDetails = {
+            ...answerDetails,
+            submittedAnswer: answer.answer,
+            correctAnswer: question.correctAnswer
+          };
+          break;
+          
+        default:
+          throw new Error(`Question ${questionIndex + 1}: Unsupported question type: ${questionType}`);
+      }
+      
+      if (isCorrect) {
+        correctAnswers++;
+      }
+      
+      processedAnswers.push({
+        questionIndex,
+        questionType,
+        isCorrect,
+        ...answerDetails
+      });
+    }
+    
+    // Calculate score as percentage
+    const score = (correctAnswers / quiz.questions.length) * 100;
+    
+    // Create or update progress record
+    let progress = await QuizProgress.findOne({ userId, quizId });
+    
+    if (progress) {
+      // Existing progress - increment attempts and update if score is better
+      progress.attempts += 1;
+      progress.lastAttemptDate = new Date();
+      
+      if (score > progress.score) {
+        progress.score = score;
+        progress.correctAnswers = correctAnswers;
+        progress.answers = processedAnswers;
+      }
+    } else {
+      // New progress record
+      progress = new QuizProgress({
+        userId,
+        quizId,
+        score,
+        totalQuestions: quiz.questions.length,
+        correctAnswers,
+        completed: true,
+        answers: processedAnswers,
+        attempts: 1,
+        lastAttemptDate: new Date()
+      });
+    }
+    
+    await progress.save();
+    
+    return successResponse({
+      quizTitle: quiz.title,
+      score,
+      correctAnswers,
+      totalQuestions: quiz.questions.length,
+      attempts: progress.attempts,
+      answers: processedAnswers
+    }, res, 200, 'Quiz submitted successfully');
+  } catch (error) {
+    console.error('Quiz submission error:', error);
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
 
 // Get all quizzes for a course
 exports.getCourseQuizzes = async (req, res) => {
