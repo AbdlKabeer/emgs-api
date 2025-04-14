@@ -9,6 +9,9 @@ exports.initiatePaymentValidator = [
   body('itemType').isIn(['course', 'service']).withMessage(
     'itemType must be either course or service'
   ),
+  body('callbackUrl').notEmpty().withMessage(
+    'callbackUrl is required'
+  ),
   validateRequest
 ];
 

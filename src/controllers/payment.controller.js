@@ -1,14 +1,16 @@
 const Payment = require('../models/payment.model');
 const Course = require('../models/course.model');
 const Lesson = require('../models/lesson.model');
+const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
+const User = require('../models/user.model');
 
 const { 
   successResponse, 
   badRequestResponse, 
   internalServerErrorResponse 
 } = require('../utils/custom_response/responses');
-const { default: axios } = require('axios');
-const User = require('../models/user.model');
+
 
 
 // Get user progress for a specific course
@@ -66,10 +68,92 @@ exports.initiatePayment = async (req, res) => {
 
 
 
+exports.initiateCardPayment = async (req, res) => {
+  try {
+    const { itemType, itemId , callbackUrl} = req.body;
+    const userId = req.user.id; 
+
+    // check if itemType == "course" not in course or lesson
+    if (itemType === 'service') {
+      return badRequestResponse('Service payment not available yet',"NOT_AVAILABLE",400,res );
+    }
+
+    let progress = await Payment.findOne({ userId, itemId ,itemType ,status:'completed'})
+
+    if (progress){
+      return badRequestResponse('Payment already initiated',res);
+    }
+
+    // Helper to get Paystack headers
+    const paystackHeaders = () => ({
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      'Content-Type': 'application/json'
+    });
+ 
+    if (itemType == 'course') {
+      // If no progress record exists, create a new one
+      const course = await Course.findById(itemId);
+      if (!course) {
+        return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+      }
+
+      let payment = new Payment({
+        userId,
+        itemId,
+        itemType,
+        amount:100,
+        status:"pending",
+      });
+
+      await payment.save();
+
+
+      const  metadata = {
+        transactionRef: payment._id,
+        metadata: {
+          id: payment._id,
+          itemId,
+          itemType
+        }
+      }
+
+
+      const payload = {
+        amount: 10 * 100, // Paystack expects amount in kobo
+        email: req.user.email,
+        callback_url: callbackUrl,
+        cancel_url: callbackUrl,
+        currency: 'NGN',
+        channels: ['card'],
+        metadata
+      };
+
+      const response = await axios.post(`https://api.paystack.co/transaction/initialize`, payload, {
+        headers: paystackHeaders()
+      });
+  
+      if (response.data.status) {
+        const data = response.data.data;
+        console.log(data)
+  
+        return successResponse(data, res, 200, 'Payment initialization successful');
+      } else {
+        return badRequestResponse("Card tokenization can't be completed at the moment", 'INIT_FAILED', 400, res);
+      }
+
+
+    }
+  } catch (error) {
+    console.error('Error initializing card payment:', error);
+    return internalServerErrorResponse('Failed to initiate payment', res);
+  }
+};
+
+
 // Get user progress for a specific course
 exports.validatePayment = async (req, res) => {
   try {
-    const { transactionRef } = req.body;
+    const { reference: transactionRef } = req.body;
     const userId = req.user.id; 
     
     const headers = {
