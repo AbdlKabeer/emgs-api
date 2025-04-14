@@ -9,17 +9,26 @@ const { authenticate, isTutor } = require('../middleware/auth.middleware');
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
 
+// const upload = multer({ 
+//   storage,
+//   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit for both images and videos (can adjust as needed)
+//   fileFilter: (req, file, cb) => {
+//     // Accept only image or video files
+//     console.log(file)
+//     if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+//       cb(null, true);
+//     } else {
+//       cb(new Error('Only image and video files are allowed'), false); // Reject non-image/video files
+//     }
+//   }
+// });
+
 const upload = multer({ 
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit for both images and videos (can adjust as needed)
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit for all file types (can adjust as needed)
   fileFilter: (req, file, cb) => {
-    // Accept only image or video files
-    console.log(file)
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image and video files are allowed'), false); // Reject non-image/video files
-    }
+    console.log(file);
+    cb(null, true); // Allow all files
   }
 });
 

@@ -69,7 +69,8 @@ exports.uploadImageCloudinary = async (req, res) => {
       } else if (req.file.mimetype.startsWith('image/')) {
         uploadOptions.resource_type = 'image';  // Default to 'image' for image files
       } else {
-        return badRequestResponse('Only image and video files are allowed', 'BAD_REQUEST', 400, res);
+        // return badRequestResponse('Only image and video files are allowed', 'BAD_REQUEST', 400, res);
+        uploadOptions.resource_type = 'raw'
       }
   
       // Convert buffer to base64
