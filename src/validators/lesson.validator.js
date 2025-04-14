@@ -10,8 +10,8 @@ exports.createLessonValidator = [
   ),
   body('courseId') .notEmpty().withMessage( 'Course is required'
   ),
-  body('videoUrl').isURL().withMessage('Video URL is required'
-  ),
+  // body('videoUrl').isURL().withMessage('Video URL is required'
+  // ),
   body('isPublished').isBoolean().default(true),
   body('order').isNumeric().default(1),
   validateRequest
