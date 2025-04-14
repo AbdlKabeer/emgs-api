@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.post('/initiate-old', authenticate, initiatePaymentValidator, paymentController.initiatePayment);
 router.post('/initiate', authenticate, initiatePaymentValidator, paymentController.initiateCardPayment);
-router.post('/verify', authenticate,verifyPaymentValidator, paymentController.validatePayment);
+router.post('/verify', authenticate, paymentController.validatePayment);
+// router.post('/verify', authenticate,verifyPaymentValidator, paymentController.validatePayment);
 
 module.exports = router;

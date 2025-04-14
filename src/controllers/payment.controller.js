@@ -168,13 +168,14 @@ exports.validatePayment = async (req, res) => {
         { headers }
       );
 
-      const data = response.data;
-
+      const data = response.data; 
+      // console.log(data)
       if (data?.data?.status == 'success'){
+        
         let metadata = data?.data?.metadata
         let id = metadata?.id
-        let itemType = metadata?.itemType
-        let itemId = metadata?.itemId
+        let itemType = metadata?.metadata?.itemType
+        let courseId = metadata?.metadata?.itemId
         let payment = await Payment.findOne({id})
         if(payment){
           if(payment.status == 'completed'){
@@ -190,14 +191,14 @@ exports.validatePayment = async (req, res) => {
                 
                 // Check if user is already enrolled
                 const user = await User.findById(userId);
-                if (user.enrolledCourses.includes(itemId)) {
+                if (user.enrolledCourses.includes(courseId)) {
                   return badRequestResponse('User already enrolled in this course', 'BAD_REQUEST', 400, res);
                 }
                 
                 // Update user and course
                 await User.findByIdAndUpdate(
                   userId,
-                  { $push: { enrolledCourses: itemId } }
+                  { $push: { enrolledCourses: courseId } }
                 );
                 
                 await Course.findByIdAndUpdate(
@@ -221,8 +222,7 @@ exports.validatePayment = async (req, res) => {
             return badRequestResponse('Invalid payment type', 'BAD_REQUEST', 400, res);
           }
         }
-            
-
+        
       }
       
       return successResponse({}, res, 200, 'Payment validated successfully');
