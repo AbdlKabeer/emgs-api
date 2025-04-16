@@ -212,6 +212,10 @@ exports.getAllCourses = async (req, res) => {
         courseObj.isBookmarked = bookmarks.some(bookmark => 
           bookmark.courseId.toString() === course._id.toString()
         );
+        
+        // Check if user is enrolled in the course
+        courseObj.isEnrolled = course.enrolledUsers && 
+          course.enrolledUsers.some(enrolledId => enrolledId.toString() === userId.toString());
       }
 
       return courseObj;
@@ -267,6 +271,10 @@ exports.getCourseById = async (req, res) => {
 
     // Add progress and bookmark information if user is authenticated
     if (userId) {
+      // Check if user is enrolled in the course
+      courseObj.isEnrolled = course.enrolledUsers && 
+        course.enrolledUsers.some(enrolledId => enrolledId.toString() === userId.toString());
+      
       // Get progress information
       const progress = await Progress.findOne({ 
         userId, 
@@ -327,6 +335,197 @@ exports.getCourseById = async (req, res) => {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+// // Get all courses
+// exports.getAllCourses = async (req, res) => {
+//   try {
+//     const { category } = req.query;
+//     const userId = req.user ? req.user.id : null;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+
+//     let query = { isPublished: true };
+
+//     // Filter by category if provided
+//     if (category) {
+//       query.category = category;
+//     }
+
+//     const total = await Course.countDocuments(query);
+//     const courses = await Course.find(query)
+//       .select('title description category thumbnail isFree price tutorId lessons enrolledUsers ratings averageRating')
+//       .populate('createdBy', 'fullName email profilePicture')
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     // Get bookmarks if user is authenticated
+//     let bookmarks = [];
+//     if (userId) {
+//       bookmarks = await Bookmark.find({ userId }).select('courseId');
+//     }
+
+//     // Map course data with additional information
+//     const enhancedCourses = await Promise.all(courses.map(async (course) => {
+//       const courseObj = course.toObject();
+      
+//       // Add lesson count
+//       courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
+      
+//       // Calculate total duration
+//       const lessonIds = course.lessons || [];
+//       const lessonsData = await Lesson.find({ _id: { $in: lessonIds } }).select('duration');
+//       courseObj.duration = lessonsData.reduce((total, lesson) => total + (lesson.duration || 0), 0);
+      
+//       // Add instructor details
+//       courseObj.instructor = course.tutorId ? {
+//         fullName: course.tutorId.fullName,
+//         email: course.tutorId.email,
+//         profilePicture: course.tutorId.profilePicture
+//       } : null;
+      
+//       // Add ratings information
+//       courseObj.averageRating = course.averageRating || 0;
+//       courseObj.totalRatings = course.ratings ? course.ratings.length : 0;
+      
+//       // Add enrolled students count
+//       courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+      
+//       // Add progress information if user is authenticated
+//       if (userId) {
+//         const progressRecord = await Progress.findOne({ 
+//           userId, 
+//           courseId: course._id 
+//         });
+        
+//         if (progressRecord) {
+//           courseObj.progress = progressRecord.progress;
+//           courseObj.isCompleted = progressRecord.isCompleted;
+//         } else {
+//           courseObj.progress = 0;
+//           courseObj.isCompleted = false;
+//         }
+        
+//         // Check if course is bookmarked
+//         courseObj.isBookmarked = bookmarks.some(bookmark => 
+//           bookmark.courseId.toString() === course._id.toString()
+//         );
+//       }
+
+//       return courseObj;
+//     }));
+
+//     return paginationResponse(
+//       enhancedCourses,
+//       total,
+//       page,
+//       limit,
+//       res
+//     );
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
+
+// // Get single course by ID
+// exports.getCourseById = async (req, res) => {
+//   try {
+//     const userId = req.user ? req.user.id : null;
+//     console.log(userId);
+
+//     const course = await Course.findById(req.params.id)
+//       .populate('lessons')
+//       .populate('quizzes')
+//       .populate('createdBy', 'fullName email profilePicture');
+
+//     if (!course) {
+//       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+//     }
+
+//     // Add lesson count to course
+//     const courseObj = course.toObject();
+//     courseObj.lessonCount = course.lessons.length;
+    
+//     // Calculate total duration
+//     courseObj.duration = course.lessons.reduce((total, lesson) => total + (lesson.duration || 0), 0);
+    
+//     // Add instructor details
+//     courseObj.instructor = course.tutorId ? {
+//       fullName: course.tutorId.fullName,
+//       email: course.tutorId.email,
+//       profilePicture: course.tutorId.profilePicture
+//     } : null;
+    
+//     // Add ratings information
+//     courseObj.averageRating = course.averageRating || 0;
+//     courseObj.totalRatings = course.ratings ? course.ratings.length : 0;
+    
+//     // Add enrolled students count
+//     courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+
+//     // Add progress and bookmark information if user is authenticated
+//     if (userId) {
+//       // Get progress information
+//       const progress = await Progress.findOne({ 
+//         userId, 
+//         courseId: req.params.id 
+//       }).populate('lastAccessedLesson');
+
+//       if (progress) {
+//         courseObj.progress = progress.progress;
+//         courseObj.isCompleted = progress.isCompleted;
+//         courseObj.lastAccessedLesson = progress.lastAccessedLesson;
+
+//         // Add completion status to lessons
+//         if (courseObj.lessons && courseObj.lessons.length > 0) {
+//           courseObj.lessons = courseObj.lessons.map(lesson => {
+//             lesson.isCompleted = progress.completedLessons.includes(lesson._id);
+//             return lesson;
+//           });
+//         }
+//       } else {
+//         courseObj.progress = 0;
+//         courseObj.isCompleted = false;
+//       }
+      
+//       // Check if course is bookmarked
+//       const bookmark = await Bookmark.findOne({ 
+//         userId, 
+//         courseId: req.params.id 
+//       });
+      
+//       courseObj.isBookmarked = !!bookmark;
+//     }
+
+
+//     const quizzes = await Quiz.find({courseId:req.params.id})
+//         .sort({ createdAt: -1 })
+//         .populate('createdBy', 'name email')
+//         // Populate the questions array with full question objects
+//         .populate({
+//           path: 'questions',
+//           select: 'question questionType options order correctAnswer booleanAnswer',
+//           // Remove isCorrect from the options to hide correct answers
+//           transform: doc => {
+//             if (doc.options && doc.options.length > 0) {
+//               doc.options = doc.options.map(option => ({
+//                 _id: option._id,
+//                 option: option.option
+//                 // isCorrect is intentionally omitted
+//               }));
+//             }
+//             return doc;
+//           }
+//         });
+    
+//     courseObj.quizzes = quizzes
+//     return successResponse(courseObj, res);
+
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
 
 // Toggle bookmark (add or remove)
 exports.toggleBookmarkNew = async (req, res) => {
