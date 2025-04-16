@@ -201,6 +201,13 @@ exports.deleteUserByEmail = async (req, res) => {
 };
 
 
+// Helper function to generate a unique referral code
+function generateReferralCode() {
+  // Generate a random 8-character alphanumeric code
+  return Math.random().toString(36).substring(2, 6).toUpperCase() + 
+         Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
 
 // New endpoint to get user's referrals
 exports.getUserReferrals = async (req, res) => {
@@ -212,6 +219,11 @@ exports.getUserReferrals = async (req, res) => {
     
     if (!user) {
       return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    if(!user.referralCode){
+      user.referralCode = generateReferralCode();
+      await user.save();
     }
     
     const referralData = {
