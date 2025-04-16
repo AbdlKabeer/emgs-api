@@ -14,10 +14,18 @@ const generateVerificationCode = () => {
 };
 
 
+// Helper function to generate a unique referral code
+function generateReferralCode() {
+  // Generate a random 8-character alphanumeric code
+  return Math.random().toString(36).substring(2, 6).toUpperCase() + 
+         Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
+
 // Register new user
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password, phone , userType } = req.body;
+    const { fullName, email, password, phone , userType, referralCode } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -34,7 +42,17 @@ exports.register = async (req, res) => {
       password,
       phone,
       role:userType,
+      referralCode: generateReferralCode(), 
     });
+
+
+    // Handle referral if provided
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode });
+      if (referrer) {
+        user.referredBy = referrer._id;
+      }
+    }
 
     // Generate verification code
     const verificationCode = generateVerificationCode();
@@ -42,10 +60,6 @@ exports.register = async (req, res) => {
     user.verificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); 
 
     await user.save();
-
-    // // Send verification email
-    // const verificationToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    // await emailService.sendVerificationEmail(user.email, user.fullName, verificationToken);
 
     // Send verification email with code
     try{
@@ -61,6 +75,56 @@ exports.register = async (req, res) => {
     return internalServerErrorResponse(error.message, res);
   }
 };
+
+
+
+// Verify email with code
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { userId, verificationCode } = req.body;
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if verification code is correct and not expired
+    if (
+      user.verificationCode !== verificationCode || 
+      !user.verificationCodeExpiry || 
+      user.verificationCodeExpiry < new Date()
+    ) {
+      return badRequestResponse('Invalid or expired verification code', 'INVALID_CODE', 400, res);
+    }
+
+    // Mark user as verified and clear verification code
+    user.isVerified = true;
+    user.verificationCode = null;
+    user.verificationCodeExpiry = null;
+
+    await user.save();
+
+
+    // Process referral reward if user was referred
+    if (user.referredBy) {
+      const referrer = await User.findById(user.referredBy);
+      if (referrer) {
+        // Add 100 points to referrer
+        referrer.referralPoints += 100;
+        // Add this user to referrer's referrals list
+        referrer.referrals.push(user._id);
+        await referrer.save();
+      }
+    }
+
+
+    return successResponse({ message: 'Email verified successfully' }, res);
+  } catch (error) {
+    return badRequestResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 
 
 /**
@@ -127,39 +191,6 @@ exports.registerTutor = async (req, res) => {
   }
 };
 
-
-// Verify email with code
-exports.verifyEmail = async (req, res) => {
-  try {
-    const { userId, verificationCode } = req.body;
-
-    // Find user
-    const user = await User.findById(userId);
-    if (!user) {
-      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
-    }
-
-    // Check if verification code is correct and not expired
-    if (
-      user.verificationCode !== verificationCode || 
-      !user.verificationCodeExpiry || 
-      user.verificationCodeExpiry < new Date()
-    ) {
-      return badRequestResponse('Invalid or expired verification code', 'INVALID_CODE', 400, res);
-    }
-
-    // Mark user as verified and clear verification code
-    user.isVerified = true;
-    user.verificationCode = null;
-    user.verificationCodeExpiry = null;
-
-    await user.save();
-
-    return successResponse({ message: 'Email verified successfully' }, res);
-  } catch (error) {
-    return badRequestResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
-  }
-};
 
 // Resend verification code
 exports.resendVerificationCode = async (req, res) => {

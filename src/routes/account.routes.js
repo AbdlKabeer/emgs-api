@@ -170,4 +170,7 @@ router.put('/notifications', authenticate, accountController.toggleNotifications
 
 router.delete('/internal-delete',  accountController.deleteUserByEmail);
 
+
+router.get('/referrals', authenticate, accountController.getUserReferrals);
+
 module.exports = router;

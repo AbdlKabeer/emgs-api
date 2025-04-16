@@ -39,6 +39,10 @@ const userSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now }
       }
     ],
+    referralCode: { type: String, unique: true },
+    referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    referralPoints: { type: Number, default: 0 },
+    referrals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     averageRating: { type: Number, default: 0 },
   },
   { timestamps: true }

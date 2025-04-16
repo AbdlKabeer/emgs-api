@@ -30,6 +30,7 @@ exports.getUserProfile = async (req, res) => {
         preferredLanguage: user.preferredLanguage,
         profilePicture: user.profilePicture,
         isVerified: user.isVerified,
+        referralCode:user.referralCode,
         bio: user.bio,
         enrolledCourses: user.enrolledCourses,
         completedLessons: user.completedLessons,
@@ -194,6 +195,33 @@ exports.deleteUserByEmail = async (req, res) => {
     }
 
     return successResponse(null, res, 204, 'User deleted successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+
+
+// New endpoint to get user's referrals
+exports.getUserReferrals = async (req, res) => {
+  try {
+    const userId = req.user._id; 
+    
+    const user = await User.findById(userId)
+      .populate('referrals', 'fullName email profilePicture isVerified createdAt');
+    
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    
+    const referralData = {
+      referralCode: user.referralCode,
+      referralPoints: user.referralPoints,
+      referrals: user.referrals,
+      totalReferrals: user.referrals.length
+    };
+    
+    return successResponse(referralData, res, 200, 'Referral information retrieved successfully');
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
   }
