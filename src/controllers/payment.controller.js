@@ -213,7 +213,7 @@ exports.validatePayment = async (req, res) => {
                   title: 'Course Enrollment',
                   message: `You have successfully enrolled in ${course.title}`,
                   type: 'course',
-                  relatedItemId: itemId
+                  relatedItemId: courseId
                 });
                 
                 await notification.save();
