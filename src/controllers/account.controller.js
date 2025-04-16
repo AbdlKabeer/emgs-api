@@ -205,7 +205,7 @@ exports.deleteUserByEmail = async (req, res) => {
 // New endpoint to get user's referrals
 exports.getUserReferrals = async (req, res) => {
   try {
-    const userId = req.user._id; 
+    const userId = req.user.id; 
     
     const user = await User.findById(userId)
       .populate('referrals', 'fullName email profilePicture isVerified createdAt');
