@@ -2,8 +2,9 @@
 const User = require('../models/user.model');
 const Course = require('../models/course.model');
 const mongoose = require('mongoose');
+const emailService = require('../services/email.service');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
-// Get all tutors
+
 
 
 // Get all tutors
@@ -400,5 +401,161 @@ exports.getTopRatedTutors = async (req, res) => {
   } catch (error) {
     console.error('Error getting top tutors:', error);
     return internalServerErrorResponse('Server error while fetching top tutors', res, 500);
+  }
+};
+
+
+// Helper function to generate a verification code
+const generateVerificationCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Helper function to generate a unique referral code
+function generateReferralCode() {
+  return Math.random().toString(36).substring(2, 6).toUpperCase() + 
+         Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
+// Register new tutor
+exports.registerTutor = async (req, res) => {
+  try {
+    const { 
+      fullName, 
+      email, 
+      password, 
+      phone, 
+      bio, 
+      preferredLanguage, 
+      proficiency,
+      certificateType,
+      certificate,
+      introduction,
+      referralCode 
+    } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return badRequestResponse('User already exists with this email', 'BAD_REQUEST', 400, res);
+    }
+
+    // Create new tutor
+    const tutor = new User({
+      fullName,
+      email,
+      password,
+      phone,
+      bio,
+      preferredLanguage,
+      proficiency,
+      certificateType,
+      certificate,
+      introduction,
+      role: 'tutor',
+      referralCode: generateReferralCode(),
+    });
+
+    // Handle referral if provided
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode });
+      if (referrer) {
+        tutor.referredBy = referrer._id;
+      }
+    }
+
+    // // Generate verification code
+    // const verificationCode = generateVerificationCode();
+    // tutor.verificationCode = verificationCode;
+    // tutor.verificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000);
+
+    await tutor.save();
+
+    // // Send verification email with code
+    // try {
+    //   await emailService.sendVerificationCodeEmail(tutor.email, tutor.fullName, verificationCode);
+    // } catch (error) {
+    //   console.error('Error sending verification email:', error);
+    // }
+
+    return successResponse(
+      { userId: tutor._id}, 
+      res, 
+      201, 
+      'Tutor registered successfully.'
+    );
+  } catch (error) {
+    console.error(error);
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// Update tutor profile
+exports.updateTutorProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { 
+      bio, 
+      preferredLanguage, 
+      profilePicture
+    } = req.body;
+
+    // Find the tutor
+    const tutor = await User.findById(userId);
+    
+    if (!tutor) {
+      return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
+    }
+
+    if (tutor.role !== 'tutor') {
+      return badRequestResponse('User is not a tutor', 'UNAUTHORIZED', 401, res);
+    }
+
+    // Update fields
+    if (bio) tutor.bio = bio;
+    if (preferredLanguage) tutor.preferredLanguage = preferredLanguage;
+    if (profilePicture) tutor.profilePicture = profilePicture;
+
+    await tutor.save();
+
+    return successResponse(
+      { tutor: { 
+        _id: tutor._id,
+        fullName: tutor.fullName,
+        email: tutor.email,
+        bio: tutor.bio,
+        preferredLanguage: tutor.preferredLanguage,
+        profilePicture: tutor.profilePicture,
+        averageRating: tutor.averageRating
+      }}, 
+      res, 
+      200, 
+      'Tutor profile updated successfully'
+    );
+  } catch (error) {
+    console.error(error);
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// Get tutor profile
+exports.getTutorProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const tutor = await User.findById(userId)
+      .select('-password -verificationCode -verificationCodeExpiry');
+    
+    if (!tutor) {
+      return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
+    }
+
+    if (tutor.role !== 'tutor') {
+      return badRequestResponse('User is not a tutor', 'UNAUTHORIZED', 401, res);
+    }
+
+    return successResponse({ tutor }, res, 200, 'Tutor profile retrieved successfully');
+  } catch (error) {
+    console.error(error);
+    return internalServerErrorResponse(error.message, res);
   }
 };

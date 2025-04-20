@@ -2,7 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const tutorController = require('../controllers/tutor.controller');
-const { authenticate, isAdmin } = require('../middleware/auth.middleware');
+const {
+    registerValidator,
+  } = require('../validators/tutor.validator');
+const { authenticate, isAdmin, isTutor } = require('../middleware/auth.middleware');
 
 // Get all tutors - admin only endpoint
 router.get('/', authenticate, tutorController.getAllTutors);
@@ -25,5 +28,17 @@ router.get('/:id/course-progress', authenticate, tutorController.getCourseProgre
 router.get('/top-rated', tutorController.getTopRatedTutors);
 
 router.post('/:tutorId/rate', authenticate, tutorController.rateTutor);
+
+
+// Register a new tutor
+router.post('/register',registerValidator, tutorController.registerTutor);
+
+// Update tutor profile (protected route)
+router.put('/profile/:userId',[ authenticate,isTutor], tutorController.updateTutorProfile);
+
+// Get tutor profile
+router.get('/profile/:userId', tutorController.getTutorProfile);
+
+
 
 module.exports = router;

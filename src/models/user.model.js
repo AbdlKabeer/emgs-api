@@ -44,6 +44,9 @@ const userSchema = new mongoose.Schema(
     referralPoints: { type: Number, default: 0 },
     referrals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     averageRating: { type: Number, default: 0 },
+    // add year of experience, teaching level, certificateType, certificate,
+    // add introduction video
+
   },
   { timestamps: true }
 );
