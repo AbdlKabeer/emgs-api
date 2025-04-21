@@ -270,7 +270,7 @@ router.post('/forgot-password', forgotPasswordValidator, authController.forgotPa
  *       500:
  *         description: Internal server error
  */
-router.post('/reset-password/:token', resetPasswordValidator, authController.resetPassword);
+router.post('/forgot-password/verify', resetPasswordValidator, authController.resetPassword);
 
 /**
  * @swagger

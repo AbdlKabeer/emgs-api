@@ -81,7 +81,7 @@ exports.register = async (req, res) => {
 // Verify email with code
 exports.verifyEmail = async (req, res) => {
   try {
-    const { userId, verificationCode } = req.body;
+    const { userId, verificationCode } = req.body; 
 
     // Find user
     const user = await User.findById(userId);
@@ -306,13 +306,30 @@ exports.forgotPassword = async (req, res) => {
       return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
     }
 
-    // Generate reset token
-    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Generate verification code
+    const verificationCode = generateVerificationCode();
+    user.passwordVerificationCode = verificationCode;
+    user.passwordVerificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); 
 
-    // Send reset email (dummy placeholder function)
-    await emailService.sendPasswordResetEmail(user.email, resetToken);
+    await user.save();
 
-    return successResponse({ message: 'Password reset email sent' }, res);
+    // Send verification email with code
+    try{
+      await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+    }
+    catch (error) {
+      console.error('Error sending verification email:', error);
+    }
+
+    return successResponse(
+      {
+        code: verificationCode,
+        userID: user._id
+      },
+      res,
+      200,
+      `Password reset email sent` 
+    );
   } catch (error) {
     return internalServerErrorResponse(error.message,res, 500);
   }
@@ -321,16 +338,21 @@ exports.forgotPassword = async (req, res) => {
 // Reset password
 exports.resetPassword = async (req, res) => {
   try {
-    const { token } = req.params;
-    const { password } = req.body;
-
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { code, password,userId} = req.body;
 
     // Find user
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(userId);
     if (!user) {
       return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if verification code is correct and not expired
+    if (
+      user.passwordVerificationCode !== code || 
+      !user.passwordVerificationCodeExpiry || 
+      user.passwordVerificationCodeExpiry < new Date()
+    ) {
+      return badRequestResponse('Invalid or expired verification code', 'INVALID_CODE', 400, res);
     }
 
     // Update password

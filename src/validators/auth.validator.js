@@ -28,7 +28,8 @@ exports.forgotPasswordValidator = [
 ];
 
 exports.resetPasswordValidator = [
-  param('token').notEmpty().withMessage('Token is required'),
+  body('code').notEmpty().withMessage('code is required'),
+  body('userId').notEmpty().withMessage('userId is required'),
   body('password')
     .isLength({ min: 6 })
     .withMessage('New password must be at least 6 characters long'),

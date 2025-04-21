@@ -24,6 +24,17 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
+
+    // forget password and reset password otp
+    passwordVerificationCode: {
+      type: String,
+      default: null
+    },
+    passwordVerificationCodeExpiry: {
+      type: Date,
+      default: null
+    },
+
     notificationsEnabled: { type: Boolean, default: true },
     enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
