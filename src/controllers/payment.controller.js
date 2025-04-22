@@ -1,6 +1,7 @@
 const Payment = require('../models/payment.model');
 const Course = require('../models/course.model');
 const Lesson = require('../models/lesson.model');
+const walletController = require('./wallet.controller');
 const Notification = require('../models/notification.model');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
@@ -152,7 +153,7 @@ exports.initiateCardPayment = async (req, res) => {
 
 
 // Get user progress for a specific course
-exports.validatePayment = async (req, res) => {
+exports.validatePaymentOld = async (req, res) => {
   try {
     const { reference: transactionRef } = req.body;
     const userId = req.user.id; 
@@ -243,3 +244,104 @@ exports.validatePayment = async (req, res) => {
   }
 };
 
+
+
+
+
+exports.validatePayment = async (req, res) => {
+  try {
+    const { reference: transactionRef } = req.body;
+    const userId = req.user.id; 
+    
+    const headers = {
+      'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+    };
+
+    try {
+      const response = await axios.get(
+        `https://api.paystack.co/transaction/verify/${transactionRef}`,
+        { headers }
+      );
+
+      const data = response.data; 
+      if (data?.data?.status == 'success'){
+        
+        let metadata = data?.data?.metadata;
+        let id = metadata?.id;
+        let itemType = metadata?.metadata?.itemType;
+        let courseId = metadata?.metadata?.itemId;
+        let payment = await Payment.findById(id);
+        
+        if(payment){
+          if(payment.status == 'completed'){
+            return successResponse(null, res, 200, 'Payment already completed');
+          }
+
+          if(itemType == 'course'){
+            // Find course
+            const course = await Course.findById(courseId);
+            if (!course) {
+              return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+            }
+            
+            // Check if user is already enrolled
+            const user = await User.findById(userId);
+            if (user.enrolledCourses.includes(courseId)) {
+              return badRequestResponse('User already enrolled in this course', 'BAD_REQUEST', 400, res);
+            }
+            
+            // Update user and course
+            await User.findByIdAndUpdate(
+              userId,
+              { $push: { enrolledCourses: courseId } }
+            );
+            
+            await Course.findByIdAndUpdate(
+              courseId,
+              { $push: { enrolledUsers: userId } }
+            );
+            
+            // Create notification
+            const notification = new Notification({
+              userId,
+              title: 'Course Enrollment',
+              message: `You have successfully enrolled in ${course.title}`,
+              type: 'course',
+              relatedItemId: courseId
+            });
+            
+            await notification.save();
+            
+            // Mark payment as completed
+            payment.status = 'completed';
+            await payment.save();
+            
+            // Update tutor earnings
+            try {
+              await walletController.updateEarningsFromPurchase(courseId, payment.amount, payment._id);
+            } catch (walletError) {
+              console.error('Error updating wallet:', walletError);
+              // Continue with enrollment even if wallet update fails
+            }
+            
+            return successResponse(null, res, 200, 'Enrolled in course successfully');
+          } else {
+            return badRequestResponse('Invalid payment type', 'BAD_REQUEST', 400, res);
+          }
+        }
+      }
+      
+      return successResponse({}, res, 200, 'Payment validated successfully');
+    } catch (error) {
+      if (error.status == 400 || error.status == 404) {
+        return badRequestResponse("Invalid transaction ref", 'BAD_REQUEST', 400, res); 
+      }
+      return internalServerErrorResponse(error.message, res);
+    }
+  } catch (error) {
+    if (error.status == 400){
+      return badRequestResponse(error.message, "NOT_AVAILABLE", 400, res);
+    }
+    return internalServerErrorResponse(error.message, res);
+  }
+};
