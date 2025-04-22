@@ -5,7 +5,7 @@ const Withdrawal = require('../models/withdrawal.model');
 const User = require('../models/user.model');
 const Payment = require('../models/payment.model');
 const Course = require('../models/course.model');
-const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
+const { successResponse, badRequestResponse, internalServerErrorResponse , paginationResponse} = require('../utils/custom_response/responses');
 
 // Get wallet balance and transactions
 exports.getWallet = async (req, res) => {
@@ -321,4 +321,450 @@ exports.updateEarningsFromPurchase = async (courseId, amount, paymentId) => {
     throw error;
   }
 };
+
+
+// Retry failed withdrawal
+exports.retryWithdrawal = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { withdrawalId } = req.params;
+      
+      // Find failed withdrawal
+      const withdrawal = await Withdrawal.findOne({ 
+        _id: withdrawalId, 
+        userId,
+        status: 'failed' 
+      });
+      
+      if (!withdrawal) {
+        return badRequestResponse('Failed withdrawal not found or already processed', 'NOT_FOUND', 404, res);
+      }
+      
+      // Find wallet and check balance
+      const wallet = await Wallet.findOne({ userId });
+      if (!wallet) {
+        return badRequestResponse('Wallet not found', 'NOT_FOUND', 404, res);
+      }
+      
+      // Verify sufficient funds
+      if (wallet.balance < withdrawal.amount) {
+        return badRequestResponse('Insufficient funds', 'INSUFFICIENT_FUNDS', 400, res);
+      }
+      
+      // Update withdrawal status
+      withdrawal.status = 'pending';
+      withdrawal.remarks = 'Retry after failure';
+      withdrawal.updatedAt = Date.now();
+      await withdrawal.save();
+      
+      // Create new transaction for retry
+      const transaction = new Transaction({
+        userId,
+        walletId: wallet._id,
+        amount: withdrawal.amount,
+        type: 'withdrawal',
+        status: 'pending',
+        metadata: {
+          bankName: withdrawal.bankName,
+          accountNumber: withdrawal.accountNumber,
+          accountName: withdrawal.accountName,
+          withdrawalId: withdrawal._id
+        },
+        description: 'Retry withdrawal request'
+      });
+      await transaction.save();
+      
+      // Update withdrawal with new transaction reference
+      withdrawal.transactionId = transaction._id;
+      withdrawal.reference = transaction.reference;
+      await withdrawal.save();
+      
+      return successResponse({
+        withdrawalId: withdrawal._id,
+        reference: withdrawal.reference,
+        status: withdrawal.status
+      }, res, 200, 'Withdrawal request resubmitted successfully');
+    } catch (error) {
+      return internalServerErrorResponse(error.message, res);
+    }
+};
+  
+
+// Get withdrawal history
+exports.getWithdrawalHistory = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { page = 1, limit = 10, status } = req.query;
+      
+      // Build query
+      const query = { userId };
+      if (status && ['pending', 'processing', 'completed', 'failed'].includes(status)) {
+        query.status = status;
+      }
+      
+      // Get total count for pagination
+      const total = await Withdrawal.countDocuments(query);
+      
+      // Get withdrawals with pagination
+      const withdrawals = await Withdrawal.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(parseInt(limit));
+
+    const formatedList = withdrawals.map(w => ({
+        id: w._id,
+        amount: w.amount,
+        status: w.status,
+        bankName: w.bankName,
+        accountNumber: w.accountNumber,
+        reference: w.reference,
+        date: w.createdAt
+      }))
+      
+    return paginationResponse(
+        formatedList,
+        total,
+        parseInt(page),
+        parseInt(limit),
+        res,
+        'History retrieved successfully'
+        );
+      
+ 
+    } catch (error) {
+      return internalServerErrorResponse(error.message, res);
+    }
+  
+};
+  
+
+exports.getWallet = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { page = 1, limit = 10, type } = req.query;
+      
+      // Find or create wallet
+      let wallet = await Wallet.findOne({ userId });
+      if (!wallet) {
+        wallet = new Wallet({ userId });
+        await wallet.save();
+      }
+      
+      // Build query for transactions
+      const query = { userId };
+      if (type && ['course_purchase', 'withdrawal', 'platform_fee', 'earnings'].includes(type)) {
+        query.type = type;
+      }
+      
+      // Get total count for pagination
+      const total = await Transaction.countDocuments(query);
+      
+      // Get transactions with pagination
+      const transactions = await Transaction.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(parseInt(limit))
+        .populate({
+          path: 'metadata.courseId',
+          select: 'title'
+        });
+      
+      // Format transactions to match UI requirements
+      const formattedTransactions = transactions.map(t => {
+        const baseTransaction = {
+          id: t._id,
+          type: t.type,
+          amount: t.amount,
+          status: t.status,
+          reference: t.reference,
+          date: t.createdAt,
+          formattedDate: new Date(t.createdAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          })
+        };
+        
+        // Add type-specific fields
+        switch (t.type) {
+          case 'course_purchase':
+            return {
+              ...baseTransaction,
+              description: 'Course Purchase',
+              courseTitle: t.metadata.courseId ? t.metadata.courseId.title : 'Unknown Course'
+            };
+          case 'withdrawal':
+            return {
+              ...baseTransaction,
+              description: 'Withdrawal',
+              bankName: t.metadata.bankName,
+              accountNumber: t.metadata.accountNumber
+            };
+          case 'platform_fee':
+            return {
+              ...baseTransaction,
+              description: 'Platform Fee Deduction',
+              courseTitle: t.metadata.courseId ? t.metadata.courseId.title : 'Unknown Course'
+            };
+          case 'earnings':
+            return {
+              ...baseTransaction,
+              description: 'Course Earnings',
+              courseTitle: t.metadata.courseId ? t.metadata.courseId.title : 'Unknown Course'
+            };
+          default:
+            return {
+              ...baseTransaction,
+              description: 'Transaction'
+            };
+        }
+      });
+      
+      return successResponse({
+        wallet: {
+          balance: wallet.balance,
+          earned: wallet.earned,
+          withdrawn: wallet.withdrawn,
+          currency: wallet.currency
+        },
+        transactions: formattedTransactions,
+        pagination: {
+          total,
+          page: parseInt(page),
+          pages: Math.ceil(total / limit),
+          limit: parseInt(limit)
+        }
+      }, res);
+    } catch (error) {
+      return internalServerErrorResponse(error.message, res);
+    }
+  
+};
+
+// Get transaction history with filtering options
+exports.getTransactionHistory = async (req, res) => {
+try {
+    const userId = req.user.id;
+    const { 
+    page = 1, 
+    limit = 10, 
+    type, 
+    status,
+    startDate,
+    endDate
+    } = req.query;
+    
+    // Build query
+    const query = { userId };
+    
+    // Apply filters
+    if (type && ['course_purchase', 'withdrawal', 'platform_fee', 'earnings'].includes(type)) {
+    query.type = type;
+    }
+    
+    if (status && ['pending', 'completed', 'failed'].includes(status)) {
+    query.status = status;
+    }
+    
+    // Date filtering
+    if (startDate || endDate) {
+    query.createdAt = {};
+    
+    if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+    }
+    
+    if (endDate) {
+        query.createdAt.$lte = new Date(endDate);
+    }
+    }
+    
+    // Get total count for pagination
+    const total = await Transaction.countDocuments(query);
+    
+    // Get transactions with pagination
+    const transactions = await Transaction.find(query)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(parseInt(limit))
+    .populate({
+        path: 'metadata.courseId',
+        select: 'title'
+    });
+    
+    // Format transactions to match the UI
+    const formattedTransactions = transactions.map(t => {
+    // Base transaction details
+    const baseTransaction = {
+        id: t._id,
+        type: t.type,
+        amount: t.amount,
+        status: t.status,
+        reference: t.reference,
+        date: t.createdAt,
+        formattedDate: new Date(t.createdAt).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+        }),
+        formattedTime: new Date(t.createdAt).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+        })
+    };
+    
+    // Type-specific details
+    switch (t.type) {
+        case 'course_purchase':
+        return {
+            ...baseTransaction,
+            description: 'Course Purchase',
+            courseTitle: t.metadata.courseId ? t.metadata.courseId.title : 'Unknown Course',
+            icon: 'cart-shopping',
+            statusClass: t.status === 'completed' ? 'completed' : (t.status === 'failed' ? 'failed' : 'pending')
+        };
+        case 'withdrawal':
+        return {
+            ...baseTransaction,
+            description: 'Withdrawal',
+            bankName: t.metadata.bankName,
+            accountNumber: t.metadata.accountNumber,
+            icon: 'money-bill-transfer',
+            statusClass: t.status === 'completed' ? 'completed' : (t.status === 'failed' ? 'failed' : 'pending')
+        };
+        case 'platform_fee':
+        return {
+            ...baseTransaction,
+            description: 'Platform Fee Deduction',
+            courseTitle: t.metadata.courseId ? t.metadata.courseId.title : 'Unknown Course',
+            icon: 'building',
+            statusClass: t.status === 'completed' ? 'completed' : (t.status === 'failed' ? 'failed' : 'pending')
+        };
+        case 'earnings':
+        return {
+            ...baseTransaction,
+            description: 'Course Earnings',
+            courseTitle: t.metadata.courseId ? t.metadata.courseId.title : 'Unknown Course',
+            icon: 'coins',
+            statusClass: t.status === 'completed' ? 'completed' : (t.status === 'failed' ? 'failed' : 'pending')
+        };
+        default:
+        return {
+            ...baseTransaction,
+            description: 'Transaction',
+            icon: 'receipt',
+            statusClass: t.status === 'completed' ? 'completed' : (t.status === 'failed' ? 'failed' : 'pending')
+        };
+    }
+    });
+    
+    return paginationResponse(
+        formattedTransactions,
+          total,
+          parseInt(page),
+          parseInt(limit),
+          res,
+          'History retrieved successfully'
+          );
+
+    } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+}
+};
+
+// Get transaction summary and statistics
+exports.getTransactionStats = async (req, res) => {
+try {
+    const userId = req.user.id;
+    const { period = 'month' } = req.query;
+    
+    // Calculate date range based on period
+    const endDate = new Date();
+    let startDate = new Date();
+    
+    switch (period) {
+    case 'week':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+    case 'month':
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+    case 'year':
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        break;
+    default:
+        startDate.setMonth(startDate.getMonth() - 1); // Default to month
+    }
+    
+    // Find wallet
+    const wallet = await Wallet.findOne({ userId });
+    if (!wallet) {
+    return badRequestResponse('Wallet not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Get transaction counts by type
+    const typeStats = await Transaction.aggregate([
+    { 
+        $match: { 
+        userId: mongoose.Types.ObjectId(userId),
+        createdAt: { $gte: startDate, $lte: endDate }
+        } 
+    },
+    { 
+        $group: { 
+        _id: '$type', 
+        count: { $sum: 1 },
+        total: { $sum: '$amount' }
+        } 
+    }
+    ]);
+    
+    // Get transaction counts by status
+    const statusStats = await Transaction.aggregate([
+    { 
+        $match: { 
+        userId: mongoose.Types.ObjectId(userId),
+        createdAt: { $gte: startDate, $lte: endDate }
+        } 
+    },
+    { 
+        $group: { 
+        _id: '$status', 
+        count: { $sum: 1 } 
+        } 
+    }
+    ]);
+    
+    // Format statistics
+    const statistics = {
+    period,
+    balance: wallet.balance,
+    earned: wallet.earned,
+    withdrawn: wallet.withdrawn,
+    periodStats: {
+        totalTransactions: typeStats.reduce((sum, stat) => sum + stat.count, 0),
+        earnings: typeStats.find(stat => stat._id === 'earnings')?.total || 0,
+        withdrawals: typeStats.find(stat => stat._id === 'withdrawal')?.total || 0,
+        platformFees: typeStats.find(stat => stat._id === 'platform_fee')?.total || 0
+    },
+    statusBreakdown: {
+        completed: statusStats.find(stat => stat._id === 'completed')?.count || 0,
+        pending: statusStats.find(stat => stat._id === 'pending')?.count || 0,
+        failed: statusStats.find(stat => stat._id === 'failed')?.count || 0
+    },
+    typeBreakdown: typeStats.reduce((obj, stat) => {
+        obj[stat._id] = {
+        count: stat.count,
+        total: stat.total
+        };
+        return obj;
+    }, {})
+    };
+    
+    return successResponse(statistics, res);
+} catch (error) {
+    return internalServerErrorResponse(error.message, res);
+}
+};
+  
 

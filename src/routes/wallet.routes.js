@@ -16,10 +16,23 @@ router.post('/withdraw', authenticate, withdrawalValidator, walletController.ini
 // Confirm withdrawal
 router.post('/withdraw/:withdrawalId/confirm', [authenticate,isAdmin], walletController.confirmWithdrawal);
 
+
+router.post('/withdraw/:withdrawalId/retry', authenticate, walletController.retryWithdrawal);
+
 // Get withdrawal details
 router.get('/withdraw/:withdrawalId', authenticate, walletController.getWithdrawalDetails);
 
-// Get transaction details
-router.get('/transactions/:transactionId', authenticate, walletController.getTransactionDetails);
+// Get transaction history with filters
+router.get('/transactions', authenticate, walletController.getTransactionHistory);
+
+// Get transaction statistics
+router.get('/stats', authenticate, walletController.getTransactionStats);
+
+// Get withdrawal history
+router.get('/withdrawals', authenticate, walletController.getWithdrawalHistory);
+
+// Retry failed withdrawal
+router.post('/withdraw/:withdrawalId/retry', authenticate, walletController.retryWithdrawal);
+
 
 module.exports = router;
