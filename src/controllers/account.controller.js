@@ -1,6 +1,14 @@
 const User = require('../models/user.model');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
 
+
+// Generate 6-digit verification code
+const generateVerificationCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+
+
 // Get user profile
 exports.getUserProfile = async (req, res) => {
   try {
@@ -236,5 +244,81 @@ exports.getUserReferrals = async (req, res) => {
     return successResponse(referralData, res, 200, 'Referral information retrieved successfully');
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
+  }
+};
+
+
+
+// Forgot password
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id; 
+
+    // Find user
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Generate verification code
+    const verificationCode = generateVerificationCode();
+    user.passwordVerificationCode = verificationCode;
+    user.passwordVerificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); 
+
+    await user.save();
+
+    // Send verification email with code
+    try{
+      await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+    }
+    catch (error) {
+      console.error('Error sending verification email:', error);
+    }
+
+    return successResponse(
+      {
+        code: verificationCode,
+        userID: user._id
+      },
+      res,
+      200,
+      `Password reset email sent` 
+    );
+  } catch (error) {
+    return internalServerErrorResponse(error.message,res, 500);
+  }
+};
+
+
+// Reset password
+exports.chagePasswordConfirm = async (req, res) => {
+  try {
+    const { code, password} = req.body;
+
+    const userId = req.user.id; 
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if verification code is correct and not expired
+    if (
+      user.passwordVerificationCode !== code || 
+      !user.passwordVerificationCodeExpiry || 
+      user.passwordVerificationCodeExpiry < new Date()
+    ) {
+      return badRequestResponse('Invalid or expired verification code', 'INVALID_CODE', 400, res);
+    }
+
+    // Update password
+    user.password = password;
+    await user.save();
+
+    return successResponse({ }, res, 200,"Password changed successfully");
+  } catch (error) {
+    return internalServerErrorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };

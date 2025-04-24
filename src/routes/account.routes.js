@@ -173,4 +173,9 @@ router.delete('/internal-delete',  accountController.deleteUserByEmail);
 
 router.get('/referrals', authenticate, accountController.getUserReferrals);
 
+
+router.post('/change-password', authenticate, accountController.changePassword);
+
+router.post('/change-password-confirm', authenticate, accountController.chagePasswordConfirm);
+
 module.exports = router;
