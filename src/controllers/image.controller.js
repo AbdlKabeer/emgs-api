@@ -88,5 +88,40 @@ exports.uploadImageCloudinary = async (req, res) => {
       console.error('Error during file upload to Cloudinary:', error);
       return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
     }
-  };
+};
   
+exports.uploadMultipleImagesCloudinary = async (req, res) => {
+  try {
+    const files = req.files;
+
+    if (!files || files.length === 0) {
+      return badRequestResponse('No files uploaded', 'BAD_REQUEST', 400, res);
+    }
+
+    const uploadResults = await Promise.all(files.map(async (file) => {
+      const uploadOptions = {
+        folder: file.mimetype.startsWith('video/') ? 'course-content' : 'course-thumbnails',
+        resource_type: file.mimetype.startsWith('video/') ? 'video' :
+                       file.mimetype.startsWith('image/') ? 'image' : 'raw'
+      };
+
+      const fileStr = Buffer.from(file.buffer).toString('base64');
+      const uploadStr = `data:${file.mimetype};base64,${fileStr}`;
+
+      const result = await cloudinary.uploader.upload(uploadStr, uploadOptions);
+
+      return {
+        originalName: file.originalname,
+        url: result.secure_url,
+        public_id: result.public_id
+      };
+    }));
+
+    return successResponse({
+      files: uploadResults
+    }, res, 200);
+  } catch (error) {
+    console.error('Error during multiple file upload:', error);
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
