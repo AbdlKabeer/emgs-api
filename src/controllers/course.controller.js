@@ -709,6 +709,12 @@ exports.deleteCourse = async (req, res) => {
     if (!course) {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
     }
+
+    if (course.isPublished) {
+      return badRequestResponse('Cannot delete a published course', 'FORBIDDEN', 403, res);
+    }
+
+    await Course.findByIdAndDelete(req.params.id);
     
     return successResponse(null, res,204,'Course deleted successfully');
   } catch (error) {
@@ -1129,7 +1135,7 @@ exports.addCourseAudio = async (req, res) => {
 exports.updateCoursePrice = async (req, res) => {
   try {
     const { id } = req.params;
-    const { price, isFree, benefits } = req.body;
+    const { price, isFree } = req.body;
     
     const course = await Course.findById(id);
     if (!course) {
@@ -1142,10 +1148,10 @@ exports.updateCoursePrice = async (req, res) => {
       course.price = price;
     }
     
-    // Add benefits if provided
-    if (benefits && Array.isArray(benefits)) {
-      course.benefits = benefits;
-    }
+    // // Add benefits if provided
+    // if (benefits && Array.isArray(benefits)) {
+    //   course.benefits = benefits;
+    // }
     
     await course.save();
     

@@ -67,9 +67,8 @@ const courseSchema = new mongoose.Schema(
     averageRating: { type: Number, default: 0 },
     
     // New fields for course creation features
-    goals: [{ type: String }],
+    goals: [{ type: String }],// What students will get from the course
     notes: [{ type: String }],
-    benefits: [{ type: String }], // What students will get from the course
     completedCreationSections: [{ type: String }], // Track which sections are complete during creation
     resources: [{
       url: { type: String, required: true },
