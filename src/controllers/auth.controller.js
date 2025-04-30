@@ -105,20 +105,6 @@ exports.verifyEmail = async (req, res) => {
 
     await user.save();
 
-
-    // Process referral reward if user was referred
-    if (user.referredBy) {
-      const referrer = await User.findById(user.referredBy);
-      if (referrer) {
-        // Add 100 points to referrer
-        referrer.referralPoints += 100;
-        // Add this user to referrer's referrals list
-        referrer.referrals.push(user._id);
-        await referrer.save();
-      }
-    }
-
-
     return successResponse({ message: 'Email verified successfully' }, res);
   } catch (error) {
     return badRequestResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);

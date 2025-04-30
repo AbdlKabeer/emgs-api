@@ -330,6 +330,21 @@ exports.validatePayment = async (req, res) => {
               console.error('Error updating wallet:', walletError);
               // Continue with enrollment even if wallet update fails
             }
+
+
+            // Process referral reward if user was referred
+            if (user.referredBy) {
+              const referrer = await User.findById(user.referredBy);
+              if (referrer && !user.referralPointDisbursed) {
+                // Add 100 points to referrer
+                referrer.referralPoints += 100;
+                // Add this user to referrer's referrals list
+                referrer.referrals.push(user._id);
+                user.referralPointDisbursed = true
+                await user.save()
+                await referrer.save();
+              }
+            }
             
             return successResponse(null, res, 200, 'Enrolled in course successfully');
           } else {

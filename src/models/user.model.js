@@ -52,6 +52,7 @@ const userSchema = new mongoose.Schema(
     ],
     referralCode: { type: String, unique: true },
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    referralPointDisbursed: { type: Boolean, default: false },
     referralPoints: { type: Number, default: 0 },
     referrals: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     averageRating: { type: Number, default: 0 },
