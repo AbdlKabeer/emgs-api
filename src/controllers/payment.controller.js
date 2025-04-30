@@ -119,11 +119,8 @@ exports.initiateCardPayment = async (req, res) => {
 
       const  metadata = {
         transactionRef: payment._id,
-        metadata: {
-          id: payment._id,
-          itemId,
-          itemType
-        }
+        itemId,
+        itemType
       }
 
 
@@ -134,7 +131,7 @@ exports.initiateCardPayment = async (req, res) => {
         cancel_url: callbackUrl,
         currency: 'NGN',
         channels: ['card'],
-        metadata
+        metadata: metadata
       };
 
       const response = await axios.post(`https://api.paystack.co/transaction/initialize`, payload, {
@@ -271,15 +268,21 @@ exports.validatePayment = async (req, res) => {
       );
 
       const data = response.data; 
+      console.log(data?.data?.status == 'success')
       if (data?.data?.status == 'success'){
         
         let metadata = data?.data?.metadata;
-        let id = metadata?.id;
-        let itemType = metadata?.metadata?.itemType;
-        let courseId = metadata?.metadata?.itemId;
+
+        console.log(metadata)
+        let id = metadata?.transactionRef;
+        let itemType = metadata?.itemType;
+        let courseId = metadata?.itemId;
         let payment = await Payment.findById(id);
         
         if(payment){
+          console.log(payment.status)
+          console.log(payment.status == 'completed')
+          console.log(payment.status == 'completed')
           if(payment.status == 'completed'){
             return successResponse(null, res, 200, 'Payment already completed');
           }
