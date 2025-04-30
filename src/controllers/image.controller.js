@@ -50,46 +50,53 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
   
-
 exports.uploadImageCloudinary = async (req, res) => {
-    try {
-      console.log('Received file:', req.file);  // Log the file object
-  
-      if (!req.file) {
-        return badRequestResponse('No file uploaded', 'BAD_REQUEST', 400, res);
-      }
-  
-      // Set up the upload options
-      const uploadOptions = {
-        folder: req.file.mimetype.startsWith('video/') ? 'course-content' : 'course-thumbnails', // Use different folders for video and image
-      };
-  
-      if (req.file.mimetype.startsWith('video/')) {
-        uploadOptions.resource_type = 'video';  // Specify resource_type as 'video' for video files
-      } else if (req.file.mimetype.startsWith('image/')) {
-        uploadOptions.resource_type = 'image';  // Default to 'image' for image files
-      } else {
-        // return badRequestResponse('Only image and video files are allowed', 'BAD_REQUEST', 400, res);
-        uploadOptions.resource_type = 'raw'
-      }
-  
-      // Convert buffer to base64
-      const fileStr = Buffer.from(req.file.buffer).toString('base64');
-      const uploadStr = `data:${req.file.mimetype};base64,${fileStr}`;
-  
-      // Upload to Cloudinary
-      const uploadResponse = await cloudinary.uploader.upload(uploadStr, uploadOptions);
-  
-      return successResponse({
-        url: uploadResponse.secure_url,
-        public_id: uploadResponse.public_id,
-      }, res, 200, 'File uploaded successfully');
-    } catch (error) {
-      console.error('Error during file upload to Cloudinary:', error);
-      return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  try {
+    console.log('Received file:', req.file);  // Log the file object
+
+    if (!req.file) {
+      return badRequestResponse('No file uploaded', 'BAD_REQUEST', 400, res);
     }
+
+    // Set up the upload options
+    const uploadOptions = {
+      folder: req.file.mimetype.startsWith('video/') ? 'course-content' : 'course-thumbnails', // Use different folders for video and image
+    };
+
+    // Determine the appropriate resource type
+    if (req.file.mimetype.startsWith('video/')) {
+      uploadOptions.resource_type = 'video';  // Specify resource_type as 'video' for video files
+    } else if (req.file.mimetype.startsWith('image/')) {
+      uploadOptions.resource_type = 'image';  // Default to 'image' for image files
+    } else if (req.file.mimetype.startsWith('audio/')) {
+      uploadOptions.resource_type = 'video';  // Use 'video' resource type for audio as Cloudinary recommends
+    } else {
+      uploadOptions.resource_type = 'raw';
+      
+      // For raw files, add the file extension to ensure correct handling
+      const fileExtension = req.file.originalname.split('.').pop();
+      if (fileExtension) {
+        uploadOptions.public_id = `${Date.now()}.${fileExtension}`;  // Add timestamp to ensure uniqueness
+      }
+    }
+
+    // Convert buffer to base64
+    const fileStr = Buffer.from(req.file.buffer).toString('base64');
+    const uploadStr = `data:${req.file.mimetype};base64,${fileStr}`;
+
+    // Upload to Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(uploadStr, uploadOptions);
+
+    return successResponse({
+      url: uploadResponse.secure_url,
+      public_id: uploadResponse.public_id,
+    }, res, 200, 'File uploaded successfully');
+  } catch (error) {
+    console.error('Error during file upload to Cloudinary:', error);
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
 };
-  
+
 exports.uploadMultipleImagesCloudinary = async (req, res) => {
   try {
     const files = req.files;
@@ -99,11 +106,30 @@ exports.uploadMultipleImagesCloudinary = async (req, res) => {
     }
 
     const uploadResults = await Promise.all(files.map(async (file) => {
+      // Set appropriate resource type based on mimetype
+      let resourceType = 'raw';
+      if (file.mimetype.startsWith('video/')) {
+        resourceType = 'video';
+      } else if (file.mimetype.startsWith('image/')) {
+        resourceType = 'image';
+      } else if (file.mimetype.startsWith('audio/')) {
+        resourceType = 'video';  // Use 'video' resource type for audio files
+      }
+
       const uploadOptions = {
-        folder: file.mimetype.startsWith('video/') ? 'course-content' : 'course-thumbnails',
-        resource_type: file.mimetype.startsWith('video/') ? 'video' :
-                       file.mimetype.startsWith('image/') ? 'image' : 'raw'
+        folder: file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/') 
+          ? 'course-content' 
+          : 'course-thumbnails',
+        resource_type: resourceType
       };
+
+      // For raw files, add the file extension to ensure correct handling
+      if (resourceType === 'raw') {
+        const fileExtension = file.originalname.split('.').pop();
+        if (fileExtension) {
+          uploadOptions.public_id = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExtension}`;
+        }
+      }
 
       const fileStr = Buffer.from(file.buffer).toString('base64');
       const uploadStr = `data:${file.mimetype};base64,${fileStr}`;
