@@ -658,7 +658,7 @@ exports.createCourse = async (req, res) => {
       goals: goals || [],
       notes: notes || [],
       createdBy: req.user.id,
-      isPublished: isPublished || false,
+      status: 'review'
     });
     
     await course.save();
@@ -700,6 +700,34 @@ exports.updateCourse = async (req, res) => {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+
+exports.publishCourse = async (req, res) => {
+  try {
+    const courseId = req.params.courseId;
+
+    const updatedCourse = await Course.findByIdAndUpdate(
+      courseId,
+      {
+        status: 'published',
+        isPublished: true
+      },
+      { new: true }
+    );
+
+    if (!updatedCourse) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    return successResponse({}, res, 200, 'Course published successfully');
+    
+  } catch (error) {
+    console.error('Error publishing course:', error);
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
 
 // Delete course (admin only)
 exports.deleteCourse = async (req, res) => {

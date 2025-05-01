@@ -328,6 +328,7 @@ router.post('/:id/progress', [authenticate, isTutor], courseController.saveCours
  */
 router.post('/:courseId/enroll', authenticate, courseController.enrollInCourse);
 
+router.put('/courses/:courseId/publish',  [authenticate, isTutor], courseController.publishCourse);
 
 router.put('/courses/:courseId/completed', authenticate, courseController.markCourseAndLessonsCompleted);
 
