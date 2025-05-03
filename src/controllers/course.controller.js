@@ -968,6 +968,34 @@ exports.getBookmarkedCourses = async (req, res) => {
   }
 };
 
+exports.getCompletedCourses = async (req, res) => {
+  try {
+    const userId = req.user.id; // Get userId from authenticated user (req.user)
+
+    // Find the user to check if they have any completed courses
+    const user = await User.findById(userId).populate('completedCourses').populate({
+      path: 'completedCourses',
+      populate: { path: 'lessons' } // Populating lessons within the courses
+    });
+
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    // If the user has no completed courses
+    if (!user.completedCourses || user.completedCourses.length === 0) {
+      return successResponse([], res, 200, 'No completed courses found');
+    }
+
+    // Send the response with the completed courses and lessons
+    return successResponse(user.completedCourses, res, 200, 'Completed courses retrieved successfully');
+  } catch (error) {
+    console.error('Error fetching completed courses:', error);
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
 // Update course thumbnail
 exports.updateCourseThumbnail = async (req, res) => {
   try {

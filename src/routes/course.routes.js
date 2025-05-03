@@ -300,6 +300,7 @@ router.post('/:id/resources', [authenticate, isTutor], courseController.uploadCo
 router.post('/:id/progress', [authenticate, isTutor], courseController.saveCourseProgress);
 
 
+router.get('completed-courses', authenticate, getCompletedCourses);
 
 /**
  * @swagger
@@ -501,6 +502,9 @@ router.post('/:courseId/bookmark', authenticate, courseController.toggleBookmark
  *         description: Internal server error
  */
 router.get('/user/bookmarked', authenticate, courseController.getBookmarkedCourses);
+
+
+
 
 
 module.exports = router;
