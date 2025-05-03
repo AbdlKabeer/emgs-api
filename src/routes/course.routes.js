@@ -300,7 +300,7 @@ router.post('/:id/resources', [authenticate, isTutor], courseController.uploadCo
 router.post('/:id/progress', [authenticate, isTutor], courseController.saveCourseProgress);
 
 
-router.get('completed-courses', authenticate, getCompletedCourses);
+router.get('completed-courses', authenticate, courseController.getCompletedCourses);
 
 /**
  * @swagger
