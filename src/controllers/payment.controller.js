@@ -6,7 +6,7 @@ const Notification = require('../models/notification.model');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const User = require('../models/user.model');
-
+const Wallet = require('../models/wallet.model');
 const { 
   successResponse, 
   badRequestResponse, 
@@ -339,8 +339,11 @@ exports.validatePayment = async (req, res) => {
             if (user.referredBy) {
               const referrer = await User.findById(user.referredBy);
               if (referrer && !user.referralPointDisbursed) {
-                // Add 100 points to referrer
-                referrer.referralPoints += 100;
+                const wallet = await Wallet.findOneAndUpdate(
+                  { userId },
+                  { $inc: { balance:100 } },
+                  { new: true, upsert: true } // Create wallet if it doesn't exist
+                );
                 // Add this user to referrer's referrals list
                 referrer.referrals.push(user._id);
                 user.referralPointDisbursed = true
