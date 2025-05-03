@@ -51,6 +51,24 @@ exports.getWallet = async (req, res) => {
   }
 };
 
+// Admin: Add 10,000 to all wallets
+exports.creditAllWallets = async (req, res) => {
+  try {
+    const amountToAdd = 10000;
+
+    // Update all wallets by incrementing balance
+    await Wallet.updateMany({}, { $inc: { balance: amountToAdd } });
+
+    return successResponse(
+      { message: `All wallets credited with ${amountToAdd}` },
+      res
+    );
+  } catch (error) {
+    console.error('Error crediting wallets:', error);
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
 // Initiate withdrawal request
 exports.initiateWithdrawal = async (req, res) => {
   try {

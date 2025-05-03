@@ -34,5 +34,6 @@ router.get('/withdrawals', authenticate, walletController.getWithdrawalHistory);
 // Retry failed withdrawal
 router.post('/withdraw/:withdrawalId/retry', authenticate, walletController.retryWithdrawal);
 
+router.post('/wallet/credit-all', walletController.creditAllWallets);
 
 module.exports = router;
