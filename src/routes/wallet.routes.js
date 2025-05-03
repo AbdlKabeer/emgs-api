@@ -25,6 +25,9 @@ router.get('/withdraw/:withdrawalId', authenticate, walletController.getWithdraw
 // Get transaction history with filters
 router.get('/transactions', authenticate, walletController.getTransactionHistory);
 
+
+router.get('/transactions/:transactionId', authenticate, walletController.getTransactionDetails);
+
 // Get transaction statistics
 router.get('/stats', authenticate, walletController.getTransactionStats);
 
