@@ -703,3 +703,67 @@ exports.getTutorProfile = async (req, res) => {
     return internalServerErrorResponse(error.message, res);
   }
 };
+
+
+/**
+ * Add an EMGS verified tutor (Admin only)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.addEmgsTutor = async (req, res) => {
+  try {
+    const {
+      fullName,
+      email,
+      password,
+      phone,
+      bio,
+      preferredLanguage,
+      // Add other fields as needed
+    } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already in use'
+      });
+    }
+
+    // Create new EMGS tutor user
+    const newEmgsTutor = new User({
+      fullName,
+      email,
+      password,
+      phone,
+      role: 'tutor',
+      bio: bio || '',
+      preferredLanguage: preferredLanguage || 'English',
+      isEmgsTutor: true, // Mark as EMGS tutor
+      isVerified: true, // Auto-verify EMGS tutors
+      // No verification code needed for admin-added tutors
+    });
+
+    await newEmgsTutor.save();
+
+    return successResponse(
+      {
+        userId: newEmgsTutor._id,
+        email: newEmgsTutor.email,
+        fullName: newEmgsTutor.fullName,
+        isEmgsTutor: true
+      }, 
+      res, 
+      201, 
+      'EMGS Tutor added successfully'
+    );
+  } catch (error) {
+    console.error('Error adding EMGS tutor:', error);
+    return internalServerErrorResponse(
+      'Server error while adding EMGS tutor', 
+      res, 
+      500
+    );
+  }
+};

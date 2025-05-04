@@ -39,6 +39,7 @@ router.put('/profile/:userId',[ authenticate,isTutor], tutorController.updateTut
 // Get tutor profile
 router.get('/profile/:userId', tutorController.getTutorProfile);
 
-
+// Admin route to add an EMGS verified tutor
+router.post('/admin/add-emgs-tutor', [authenticate, isAdmin], tutorController.addEmgsTutor);
 
 module.exports = router;
