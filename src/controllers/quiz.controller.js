@@ -197,8 +197,191 @@ exports.createQuizAdded = async (req, res) => {
 };
 
 
-// Admin: Update an existing quiz
+
+// Update an existing quiz
 exports.updateQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { title, description, questions } = req.body;
+    const userId = req.user.id;
+
+    // Find the quiz
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return badRequestResponse('Quiz not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user has permission to update this quiz
+    if (quiz.createdBy.toString() !== userId) {
+      return badRequestResponse('You are not authorized to update this quiz', 'AUTHORIZATION_ERROR', 403, res);
+    }
+
+    // Update basic quiz info
+    if (title) quiz.title = title;
+    if (description) quiz.description = description;
+
+    // Handle question updates if provided
+    if (questions && Array.isArray(questions)) {
+      // Validate questions format
+      if (questions.length === 0) {
+        return badRequestResponse('Quiz must have at least one question', 'VALIDATION_ERROR', 400, res);
+      }
+
+      // Store existing question IDs before making changes
+      const existingQuestionIds = [...quiz.questions];
+      
+      // Clear existing questions from quiz
+      quiz.questions = [];
+      
+      // Track new questions to link to quiz
+      const questionDocs = [];
+      
+      for (let i = 0; i < questions.length; i++) {
+        const questionData = questions[i];
+        
+        // Validate question based on type
+        if (!questionData.question || !questionData.questionType) {
+          return badRequestResponse('Each question must have content and a question type', 'VALIDATION_ERROR', 400, res);
+        }
+
+        // Detailed validation based on question type
+        switch (questionData.questionType) {
+          case 'multipleChoice':
+            // Multiple choice validation (multiple correct answers allowed)
+            if (!questionData.options || !Array.isArray(questionData.options) || questionData.options.length < 2) {
+              return badRequestResponse('Multiple choice questions must have at least two options', 'VALIDATION_ERROR', 400, res);
+            }
+            
+            // Check if at least one option is marked as correct
+            const hasCorrectOptionMultiple = questionData.options.some(option => option.isCorrect);
+            if (!hasCorrectOptionMultiple) {
+              return badRequestResponse('Multiple choice questions must have at least one correct option', 'VALIDATION_ERROR', 400, res);
+            }
+            break;
+          
+          case 'singleChoice':
+            // Single choice validation (only one correct answer)
+            if (!questionData.options || !Array.isArray(questionData.options) || questionData.options.length < 2) {
+              return badRequestResponse('Single choice questions must have at least two options', 'VALIDATION_ERROR', 400, res);
+            }
+            
+            // Count correct options
+            const correctOptionsCount = questionData.options.filter(option => option.isCorrect).length;
+            if (correctOptionsCount !== 1) {
+              return badRequestResponse('Single choice questions must have exactly one correct option', 'VALIDATION_ERROR', 400, res);
+            }
+            break;
+            
+          case 'boolean':
+            // Boolean validation
+            if (questionData.booleanAnswer === undefined) {
+              return badRequestResponse('Boolean questions must have a true or false answer', 'VALIDATION_ERROR', 400, res);
+            }
+            
+            // Ensure options are set for boolean questions (True/False)
+            questionData.options = [
+              { option: 'True', isCorrect: questionData.booleanAnswer === true },
+              { option: 'False', isCorrect: questionData.booleanAnswer === false }
+            ];
+            break;
+            
+          case 'fillInBlank':
+            // Fill in the blank validation
+            if (!questionData.correctAnswer || typeof questionData.correctAnswer !== 'string') {
+              return badRequestResponse('Fill in the blank questions must have a correct answer string', 'VALIDATION_ERROR', 400, res);
+            }
+            
+            // For fillInBlank, options might be empty or could contain potential answers
+            if (!questionData.options) {
+              questionData.options = [];
+            }
+            break;
+            
+          default:
+            return badRequestResponse('Invalid question type. Must be multipleChoice, singleChoice, boolean, or fillInBlank', 'VALIDATION_ERROR', 400, res);
+        }
+
+        // Check if question has an ID (meaning it's an existing question)
+        let question;
+        if (questionData._id) {
+          // Update existing question
+          question = await Question.findById(questionData._id);
+          if (!question || question.quizId.toString() !== quizId) {
+            return badRequestResponse(`Question with ID ${questionData._id} not found or doesn't belong to this quiz`, 'NOT_FOUND', 404, res);
+          }
+          
+          question.question = questionData.question;
+          question.questionType = questionData.questionType;
+          question.options = questionData.options || [];
+          question.correctAnswer = questionData.correctAnswer;
+          question.booleanAnswer = questionData.booleanAnswer;
+          question.order = i + 1;
+          
+          await question.save();
+        } else {
+          // Create new question
+          question = new Question({
+            quizId: quiz._id,
+            question: questionData.question,
+            questionType: questionData.questionType,
+            options: questionData.options || [],
+            correctAnswer: questionData.correctAnswer,
+            booleanAnswer: questionData.booleanAnswer,
+            order: i + 1
+          });
+          
+          await question.save();
+        }
+        
+        questionDocs.push(question);
+      }
+      
+      // Update the quiz with the question IDs
+      quiz.questions = questionDocs.map(q => q._id);
+      
+      // Delete questions that are no longer part of the quiz
+      const newQuestionIds = new Set(quiz.questions.map(id => id.toString()));
+      const questionsToDelete = existingQuestionIds.filter(id => !newQuestionIds.has(id.toString()));
+      
+      if (questionsToDelete.length > 0) {
+        await Question.deleteMany({ _id: { $in: questionsToDelete } });
+      }
+    }
+    
+    await quiz.save();
+    
+    // Fetch the complete updated quiz with populated questions
+    const populatedQuiz = await Quiz.findById(quiz._id)
+      .populate({
+        path: 'questions',
+        select: 'question questionType options order correctAnswer booleanAnswer',
+        // This transform function removes isCorrect from options when sending to client
+        transform: doc => {
+          if (doc.options && doc.options.length > 0) {
+            // Create a deep copy of the document to avoid modifying the database object
+            const docCopy = JSON.parse(JSON.stringify(doc));
+            docCopy.options = docCopy.options.map(option => ({
+              _id: option._id,
+              option: option.option
+              // isCorrect is intentionally omitted
+            }));
+            return docCopy;
+          }
+          return doc;
+        }
+      })
+      .populate('createdBy', 'name email');
+
+    return successResponse(populatedQuiz, res, 200, 'Quiz updated successfully');
+  } catch (error) {
+    console.log(error);
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+
+// Admin: Update an existing quiz
+exports.updateQuiz1 = async (req, res) => {
   try {
     const { quizId } = req.params;
     const { title, description, questions } = req.body;
