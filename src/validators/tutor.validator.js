@@ -9,7 +9,7 @@ exports.registerValidator = [
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
-  body('phone').optional().withMessage('Please provide a valid phone number'),
+  body('phone').optional().isString().withMessage('Please provide a valid phone number'),
   body('bio').notEmpty().withMessage('Bio is required'),
   body('preferredLanguage').notEmpty().withMessage('preferredLanguage is required'),
   body('proficiency')
