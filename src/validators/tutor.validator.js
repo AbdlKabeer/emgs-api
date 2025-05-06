@@ -19,7 +19,7 @@ exports.registerValidator = [
 
   body('certificateType')
     .notEmpty()
-    .isIn(['bsc', 'master', 'oLevel'])
+    // .isIn(['bsc', 'master', 'oLevel'])
     .withMessage('User type must be either bsc, master or oLevel'),
 
   body('certificate').isURL().withMessage('certificate is required and should be a link '
