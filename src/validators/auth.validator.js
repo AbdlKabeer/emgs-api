@@ -7,7 +7,7 @@ exports.registerValidator = [
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
-  body('phone').optional().isMobilePhone().withMessage('Please provide a valid phone number'),
+  body('phone').optional().withMessage('Please provide a valid phone number'),
   // add user type field or student, tutor, admin
   body('userType')
     .notEmpty()
