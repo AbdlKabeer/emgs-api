@@ -40,6 +40,8 @@ const userSchema = new mongoose.Schema(
     completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
     completedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     certificates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Certificate' }],
+    certificateType: { type: String, default: null },
+    certificate: { type: String, default: null },
     notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }],
     serviceInquiries: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Inquiry' }],
     ratings: [
