@@ -5,6 +5,10 @@ const { createCourseValidator } = require('../validators/course.validator');
 
 const router = express.Router();
 
+
+router.get('/user/completed-courses', authenticate, courseController.getCompletedCourses);
+
+
 /**
  * @swagger
  * /api/v1/courses:
@@ -129,6 +133,7 @@ router.post('/', [authenticate, isTutor], createCourseValidator, courseControlle
  *         description: Internal server error
  */
 router.patch('/:id/thumbnail', [authenticate, isTutor], courseController.updateCourseThumbnail);
+
 
 
 
@@ -299,8 +304,6 @@ router.post('/:id/resources', [authenticate, isTutor], courseController.uploadCo
  */
 router.post('/:id/progress', [authenticate, isTutor], courseController.saveCourseProgress);
 
-
-router.get('completed-courses', authenticate, courseController.getCompletedCourses);
 
 /**
  * @swagger
