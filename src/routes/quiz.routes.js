@@ -8,7 +8,7 @@ const {
     submitQuizValidator,
     getQuizValidator ,
     getQuizProgressValidator
-} = require('../validators/quiz.validator');
+} = require('../validators/quiz.validator'); 
 
 const router = express.Router();
 
