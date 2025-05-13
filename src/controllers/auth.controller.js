@@ -255,7 +255,7 @@ exports.login = async (req, res) => {
 
 
     // Check if user is verified
-    if (!user.isVerified) {
+    if (!user.isVerified && user.role !== 'tutor') {
       return badRequestResponse('Please verify your email first', 'UNAUTHORIZED', 401, res);
     }
 
