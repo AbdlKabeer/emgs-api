@@ -273,7 +273,10 @@ exports.login = async (req, res) => {
         fullName: user.fullName,
         phone: user.phone,
         email: user.email,
-        role: user.role
+        role: user.role,
+        isVerified: user.isVerified,
+        isEmgsTutor: user.isEmgsTutor,
+        profilePicture:user.profilePicture
       }
     }, res);
   } catch (error) {
