@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['user','tutor', 'admin'], default: 'user' },
     profilePicture: { type: String, default: null },
     isVerified: { type: Boolean, default: false },
-    bio: { type: String },
+    bio: { type: String, default: '' },
     preferredLanguage: { 
       type: String, 
       enum: ['English', 'German', 'Spanish', 'French', 'Dutch'], 
