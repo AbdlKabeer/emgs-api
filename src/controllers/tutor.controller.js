@@ -8,13 +8,40 @@ const { successResponse, badRequestResponse, internalServerErrorResponse } = req
 
 
 // Get all tutors
+// exports.getAllTutors = async (req, res) => {
+//   try {
+//     const tutors = await User.find({ role: 'tutor' })
+//       .select('-password -verificationCode -verificationCodeExpiry')
+//       .sort({ fullName: 1 });
+
+//     // Add rating information to each tutor
+//     const tutorsWithRatings = tutors.map(tutor => {
+//       const tutorObj = tutor.toObject();
+//       tutorObj.averageRating = tutor.averageRating || 0;
+//       tutorObj.totalRatings = tutor.ratings?.length || 0;
+//       return tutorObj;
+//     });
+
+//     return successResponse(tutorsWithRatings, res, 200, 'Success');
+//   } catch (error) {
+//     console.error('Error fetching tutors:', error);
+
+//     return internalServerErrorResponse('Server error when fetching tutors', res, 500);
+//   }
+// };
 exports.getAllTutors = async (req, res) => {
   try {
     const tutors = await User.find({ role: 'tutor' })
-      .select('-password -verificationCode -verificationCodeExpiry')
+      .select(`
+        fullName email phone role profilePicture isVerified preferredLanguage
+        notificationsEnabled enrolledCourses completedLessons completedCourses
+        certificates certificateType certificate notifications serviceInquiries
+        referralCode referralPointDisbursed referralPoints referrals
+        averageRating isEmgsTutor ratings createdAt updatedAt bio
+      `) // explicitly include fields
       .sort({ fullName: 1 });
 
-    // Add rating information to each tutor
+    // Add rating info
     const tutorsWithRatings = tutors.map(tutor => {
       const tutorObj = tutor.toObject();
       tutorObj.averageRating = tutor.averageRating || 0;
@@ -25,10 +52,10 @@ exports.getAllTutors = async (req, res) => {
     return successResponse(tutorsWithRatings, res, 200, 'Success');
   } catch (error) {
     console.error('Error fetching tutors:', error);
-
     return internalServerErrorResponse('Server error when fetching tutors', res, 500);
   }
 };
+
 
 // Get tutor by ID
 exports.getTutorById = async (req, res) => {
