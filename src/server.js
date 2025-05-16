@@ -1,4 +1,3 @@
-// src/server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -25,6 +24,8 @@ const imageRoutes = require('./routes/image.routes');
 const tutorRoutes = require('./routes/tutor.routes'); 
 const supportRoutes = require('./routes/support.routes'); 
 const walletRoutes = require('./routes/wallet.routes'); 
+const waitlistRoutes = require('./routes/waitlist.routes'); // Import waitlist routes
+
 // Initialize express app
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/api/v1/file', imageRoutes);
 app.use('/api/v1/tutors', tutorRoutes);
 app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/wallet', walletRoutes);
+app.use('/api/v1/waitlist', waitlistRoutes); // Add waitlist routes
 // app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerSpec)); 
 
 app.use('*', (req, res) => {
