@@ -141,7 +141,7 @@ exports.getCourseById = async (req, res) => {
     const course = await Course.findById(req.params.id)
       .populate('lessons')
       .populate('quizzes')
-      .populate('createdBy', 'fullName email profilePicture');
+      .populate('createdBy', 'fullName email profilePicture bio');
 
     if (!course) {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
