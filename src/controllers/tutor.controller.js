@@ -284,6 +284,170 @@ exports.getCourseProgressold = async (req, res) => {
   }
 };
 
+// exports.getCourseProgress = async (req, res) => {
+//   try {
+//     const tutorId = req.params.id;
+    
+//     // Validate request parameters
+//     if (!mongoose.Types.ObjectId.isValid(tutorId)) {
+//       return badRequestResponse('Invalid tutor ID format', 'BAD_REQUEST', 400, res);
+//     }
+
+//     // Verify user is requesting their own data or is an admin
+//     if (req.user.id.toString() !== tutorId && req.user.role !== 'admin') {
+//       return badRequestResponse('Access denied: You can only view your own course progress', 'FORBIDDEN', 403, res);
+//     }
+
+//     // Get all published courses created by this tutor
+//     const courses = await Course.find({ createdBy: tutorId, isPublished: true });
+    
+//     if (!courses || courses.length === 0) {
+//       return successResponse({ 
+//         inProgress: { count: 0, percentage: 0 },
+//         dropped: { count: 0, percentage: 0 },
+//         completed: { count: 0, percentage: 0 },
+//         totalStudents: 0,
+//         courses: []
+//       }, res, 200, 'No courses found for this tutor');
+//     }
+//     console.log(courses.length)
+//     const courseIds = courses.map(course => course._id);
+    
+//     // Find all users who are enrolled in any of these courses
+//     // We'll use aggregation to efficiently gather this data
+//     const enrolledUsers = await User.find(
+//       { enrolledCourses: { $in: courseIds } },
+//       'enrolledCourses completedLessons lastActive'
+//     );
+
+//     // console.log(enrolledUsers)
+    
+//     if (!enrolledUsers || enrolledUsers.length === 0) {
+//       return successResponse({ 
+//         inProgress: { count: 0, percentage: 0 },
+//         dropped: { count: 0, percentage: 0 },
+//         completed: { count: 0, percentage: 0 },
+//         totalStudents: 0,
+//         courses: courses.map(course => ({
+//           _id: course._id,
+//           title: course.title,
+//           studentsCount: 0,
+//           completionRate: 0
+//         }))
+//       }, res, 200, 'No students enrolled in courses by this tutor');
+//     }
+    
+//     // Calculate progress metrics for each course and overall
+//     let inProgressCount = 0;
+//     let completedCount = 0;
+//     let droppedCount = 0;
+    
+//     // Process course-specific stats
+//     const courseStats = await Promise.all(courses.map(async (course) => {
+//       // Find users enrolled in this specific course
+//       const courseEnrolledUsers = enrolledUsers.filter(user => 
+//         user.enrolledCourses.some(id => id.toString() === course._id.toString())
+//       );
+
+
+//       console.log('Enrolled user cound')
+//       console.log(courseEnrolledUsers.length)
+      
+//       const studentsCount = courseEnrolledUsers.length;
+      
+//       if (studentsCount === 0) {
+//         return {
+//           _id: course._id,
+//           title: course.title,
+//           studentsCount: 0,
+//           completionRate: 0
+//         };
+//       }
+      
+//       let courseCompletedCount = 0;
+      
+//       // Get all lessons for this course
+//       const courseLessons = course.lessons || [];
+      
+//       // Check completion status for each enrolled user
+//       courseEnrolledUsers.forEach(user => {
+//         // If no lessons in course, we can't determine completion
+//         if (courseLessons.length === 0) return;
+        
+//         // Check how many lessons the user has completed for this course
+//         const completedLessonsInCourse = user.completedLessons.filter(lessonId => 
+//           courseLessons.some(courseLesson => courseLesson.toString() === lessonId.toString())
+//         );
+
+//         // console.log(courseLessons)
+
+//         console.log(completedLessonsInCourse)
+//         const completionPercentage = (completedLessonsInCourse.length / courseLessons.length) * 100;
+//         // console.log(completionPercentage)
+//         // Consider a course completed if all lessons are completed
+//         if (completionPercentage === 100) {
+//           courseCompletedCount++;
+//           completedCount++;
+//         } 
+//         // If user hasn't been active in the last 30 days, consider them dropped
+//         else if (user.lastActive && (new Date() - user.lastActive) > (30 * 24 * 60 * 60 * 1000)) {
+//           droppedCount++;
+//         } 
+//         // Otherwise, they're in progress
+//         else {
+//           inProgressCount++;
+//         }
+//       });
+      
+//       return {
+//         _id: course._id,
+//         title: course.title,
+//         studentsCount,
+//         completionRate: studentsCount > 0 ? (courseCompletedCount / studentsCount) * 100 : 0
+//       };
+//     }));
+
+
+    
+//     // Count unique enrolled users across all courses
+//     // A user might be enrolled in multiple courses by the same tutor
+//     const uniqueEnrolledUserIds = new Set();
+//     enrolledUsers.forEach(user => {
+//       uniqueEnrolledUserIds.add(user._id.toString());
+//     });
+//     const totalStudents = uniqueEnrolledUserIds.size;
+    
+//     // console.log(inProgressCount)
+//     console.log(courses.length)
+//     console.log(totalStudents)
+
+//     // Calculate percentages
+//     const progressStats = {
+//       inProgress: {
+//         count: inProgressCount,
+//         percentage: totalStudents > 0 ? (inProgressCount / totalStudents) * 100 : 0
+//       },
+//       dropped: {
+//         count: droppedCount,
+//         percentage: totalStudents > 0 ? (droppedCount / totalStudents) * 100 : 0
+//       },
+//       completed: {
+//         count: completedCount,
+//         percentage: totalStudents > 0 ? (completedCount / totalStudents) * 100 : 0
+//       },
+//       totalStudents,
+//       courses: courseStats
+//     };
+    
+//     return successResponse(progressStats, res, 200, 'Course progress fetched successfully');
+//   } catch (error) {
+//     console.error('Error getting course progress:', error);
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
+// Get tutor by ID
+
+
 exports.getCourseProgress = async (req, res) => {
   try {
     const tutorId = req.params.id;
@@ -314,7 +478,6 @@ exports.getCourseProgress = async (req, res) => {
     const courseIds = courses.map(course => course._id);
     
     // Find all users who are enrolled in any of these courses
-    // We'll use aggregation to efficiently gather this data
     const enrolledUsers = await User.find(
       { enrolledCourses: { $in: courseIds } },
       'enrolledCourses completedLessons lastActive'
@@ -335,10 +498,15 @@ exports.getCourseProgress = async (req, res) => {
       }, res, 200, 'No students enrolled in courses by this tutor');
     }
     
-    // Calculate progress metrics for each course and overall
-    let inProgressCount = 0;
-    let completedCount = 0;
-    let droppedCount = 0;
+    // Count unique enrolled users across all courses
+    const uniqueEnrolledUserIds = new Set();
+    enrolledUsers.forEach(user => {
+      uniqueEnrolledUserIds.add(user._id.toString());
+    });
+    const totalStudents = uniqueEnrolledUserIds.size;
+    
+    // Track user status across all courses - each user should only be counted once in the overall stats
+    const userStatus = new Map(); // Will store userId -> 'completed', 'dropped', or 'inProgress'
     
     // Process course-specific stats
     const courseStats = await Promise.all(courses.map(async (course) => {
@@ -365,28 +533,44 @@ exports.getCourseProgress = async (req, res) => {
       
       // Check completion status for each enrolled user
       courseEnrolledUsers.forEach(user => {
+        const userId = user._id.toString();
+        
         // If no lessons in course, we can't determine completion
         if (courseLessons.length === 0) return;
         
         // Check how many lessons the user has completed for this course
         const completedLessonsInCourse = user.completedLessons.filter(lessonId => 
-          courseLessons.some(courseLesson => courseLesson.toString() === lessonId.toString())
+          courseLessons.some(courseLesson => 
+            courseLesson._id ? courseLesson._id.toString() === lessonId.toString() : courseLesson.toString() === lessonId.toString()
+          )
         );
         
-        const completionPercentage = (completedLessonsInCourse.length / courseLessons.length) * 100;
+        const completionPercentage = courseLessons.length > 0 
+          ? (completedLessonsInCourse.length / courseLessons.length) * 100
+          : 0;
         
         // Consider a course completed if all lessons are completed
         if (completionPercentage === 100) {
           courseCompletedCount++;
-          completedCount++;
+          
+          // For overall status, prioritize completion over other statuses
+          if (!userStatus.has(userId) || userStatus.get(userId) !== 'completed') {
+            userStatus.set(userId, 'completed');
+          }
         } 
         // If user hasn't been active in the last 30 days, consider them dropped
         else if (user.lastActive && (new Date() - user.lastActive) > (30 * 24 * 60 * 60 * 1000)) {
-          droppedCount++;
+          // Only set as dropped if not already marked as completed in another course
+          if (!userStatus.has(userId) || userStatus.get(userId) !== 'completed') {
+            userStatus.set(userId, 'dropped');
+          }
         } 
         // Otherwise, they're in progress
         else {
-          inProgressCount++;
+          // Only set as in progress if not already marked as completed or dropped
+          if (!userStatus.has(userId)) {
+            userStatus.set(userId, 'inProgress');
+          }
         }
       });
       
@@ -398,13 +582,16 @@ exports.getCourseProgress = async (req, res) => {
       };
     }));
     
-    // Count unique enrolled users across all courses
-    // A user might be enrolled in multiple courses by the same tutor
-    const uniqueEnrolledUserIds = new Set();
-    enrolledUsers.forEach(user => {
-      uniqueEnrolledUserIds.add(user._id.toString());
+    // Count users in each status category
+    let inProgressCount = 0;
+    let completedCount = 0;
+    let droppedCount = 0;
+    
+    userStatus.forEach(status => {
+      if (status === 'completed') completedCount++;
+      else if (status === 'dropped') droppedCount++;
+      else if (status === 'inProgress') inProgressCount++;
     });
-    const totalStudents = uniqueEnrolledUserIds.size;
     
     // Calculate percentages
     const progressStats = {
@@ -430,7 +617,8 @@ exports.getCourseProgress = async (req, res) => {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
-// Get tutor by ID
+
+
 exports.getTutorByIdNew = async (req, res) => {
   try {
     const tutor = await User.findOne({ 
