@@ -614,7 +614,7 @@ exports.getCourseProgress = async (req, res) => {
     return successResponse(progressStats, res, 200, 'Course progress fetched successfully');
   } catch (error) {
     console.error('Error getting course progress:', error);
-    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res); 
   }
 };
 
