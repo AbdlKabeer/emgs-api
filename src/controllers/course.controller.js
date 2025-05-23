@@ -36,7 +36,49 @@ async function clearCompletedCourses() {
 // clearCompletedCourses();
 
 
-// Get all courses
+// // Get all courses
+// exports.getAllCourses = async (req, res) => {
+//   try {
+//     const { category } = req.query;
+//     const userId = req.user ? req.user.id : null;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+
+//     let query = { isPublished: true };
+
+//     // Filter by category if provided
+//     if (category) {
+//       query.category = category;
+//     }
+
+//     const total = await Course.countDocuments(query);
+//     const courses = await Course.find(query)
+//       .select('title description category thumbnail isFree price tutorId lessons enrolledUsers ratings averageRating')
+//       .populate('createdBy', 'fullName email profilePicture bio')
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     // Get bookmarks if user is authenticated
+//     let bookmarks = [];
+//     if (userId) {
+//       bookmarks = await Bookmark.find({ userId }).select('courseId');
+//     }
+
+
+//     return paginationResponse(
+//       enhancedCourses,
+//       total,
+//       page,
+//       limit,
+//       res
+//     );
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
+
 exports.getAllCourses = async (req, res) => {
   try {
     const { category } = req.query;
@@ -66,59 +108,54 @@ exports.getAllCourses = async (req, res) => {
       bookmarks = await Bookmark.find({ userId }).select('courseId');
     }
 
-    // Map course data with additional information
-    const enhancedCourses = await Promise.all(courses.map(async (course) => {
-      const courseObj = course.toObject();
-      
-      // Add lesson count
-      courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
-      
-      // Calculate total duration
-      const lessonIds = course.lessons || [];
-      const lessonsData = await Lesson.find({ _id: { $in: lessonIds } }).select('duration');
-      courseObj.duration = lessonsData.reduce((total, lesson) => total + (lesson.duration || 0), 0);
-      
-      // Add instructor details
-      courseObj.instructor = course.tutorId ? {
-        fullName: course.tutorId.fullName,
-        email: course.tutorId.email,
-        profilePicture: course.tutorId.profilePicture
-      } : null;
-      
-      // Add ratings information
-      courseObj.averageRating = course.averageRating || 0;
-      courseObj.totalRatings = course.ratings ? course.ratings.length : 0;
-      
-      // Add enrolled students count
-      courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
-      
-      // Add progress information if user is authenticated
-      if (userId) {
-        const progressRecord = await Progress.findOne({ 
-          userId, 
-          courseId: course._id 
-        });
-        
-        if (progressRecord) {
-          courseObj.progress = progressRecord.progress;
-          courseObj.isCompleted = progressRecord.isCompleted;
-        } else {
-          courseObj.progress = 0;
-          courseObj.isCompleted = false;
-        }
-        
-        // Check if course is bookmarked
+    // Get user's completed lessons if authenticated
+    let completedLessons = [];
+    if (userId) {
+      const user = await User.findById(userId).select('completedLessons');
+      completedLessons = user ? user.completedLessons.map(id => id.toString()) : [];
+    }
+
+    // Enhance courses with progress and isCompleted
+    const enhancedCourses = await Promise.all(
+      courses.map(async (course) => {
+        const courseObj = course.toObject();
+
+        // Add bookmark status
         courseObj.isBookmarked = bookmarks.some(bookmark => 
           bookmark.courseId.toString() === course._id.toString()
         );
-        
-        // Check if user is enrolled in the course
-        courseObj.isEnrolled = course.enrolledUsers && 
-          course.enrolledUsers.some(enrolledId => enrolledId.toString() === userId.toString());
-      }
 
-      return courseObj;
-    }));
+        // Calculate progress and isCompleted
+        if (userId) {
+          // Get total lessons for the course
+          const totalLessons = await Lesson.countDocuments({ 
+            courseId: course._id, 
+            isPublished: true 
+          });
+
+          // Count completed lessons for this course
+          const completedLessonsForCourse = await Lesson.countDocuments({
+            courseId: course._id,
+            isPublished: true,
+            _id: { $in: completedLessons }
+          });
+
+          // Calculate progress as a percentage
+          courseObj.progress = totalLessons > 0 
+            ? Math.round((completedLessonsForCourse / totalLessons) * 100) 
+            : 0;
+
+          // Check if course is completed
+          courseObj.isCompleted = totalLessons > 0 && completedLessonsForCourse === totalLessons;
+        } else {
+          // For unauthenticated users, set progress and isCompleted to default values
+          courseObj.progress = 0;
+          courseObj.isCompleted = false;
+        }
+
+        return courseObj;
+      })
+    );
 
     return paginationResponse(
       enhancedCourses,

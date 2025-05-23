@@ -220,6 +220,8 @@ router.put('/:id/notes', [authenticate, isTutor], courseController.addCourseNote
 router.delete('/:id', [authenticate, isTutor], courseController.deleteCourse);
 
 
+router.put('/:courseId/lessons/:lessonId/completed', authenticate, courseController.markLessonCompleted);
+
 /**
  * @swagger
  * /api/v1/courses/{id}/resources:
@@ -391,7 +393,7 @@ router.get('/user/enrolled', authenticate, courseController.getUserCourses);
  */
 router.post('/:courseId/lesson/:lessonId/progress', authenticate, courseController.markLessonCompleted);
 
-router.put('/:courseId/lessons/:lessonId/completed', authenticate, courseController.markLessonCompleted);
+
 
 
 /**
