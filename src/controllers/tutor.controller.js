@@ -2,6 +2,7 @@
 const User = require('../models/user.model');
 const Course = require('../models/course.model');
 const mongoose = require('mongoose');
+const Quiz = require('../models/quiz.model');
 const emailService = require('../services/email.service');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
 
@@ -85,14 +86,90 @@ exports.getTutorById = async (req, res) => {
   }
 };
 
+// exports.getTutorCourses = async (req, res) => {
+//   try {
+//     const tutorId = req.params.id;
+    
+//     // Validate request parameters
+//     if (!mongoose.Types.ObjectId.isValid(tutorId)) {
+//       return badRequestResponse('Invalid tutor ID format', 'BAD_REQUEST', 400, res);
+     
+//     }
+
+//     // Check if the tutor exists
+//     const tutor = await User.findOne({ _id: tutorId, role: 'tutor' });
+//     if (!tutor) {
+//       return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
+//     }
+
+//     // Optional query parameters for filtering
+//     const { isPublished, category, sort } = req.query;
+    
+//     // Build query
+//     const query = { createdBy: tutorId };
+    
+//     // Add optional filters
+//     if (isPublished !== undefined) {
+//       query.isPublished = isPublished === 'true';
+//     }
+    
+//     if (category) {
+//       query.category = category;
+//     }
+    
+//     // Define sort options
+//     let sortOptions = {};
+//     if (sort) {
+//       switch (sort) {
+//         case 'recent':
+//           sortOptions = { createdAt: -1 };
+//           break;
+//         case 'oldest':
+//           sortOptions = { createdAt: 1 };
+//           break;
+//         case 'popular':
+//           sortOptions = { 'enrolledUsers.length': -1 };
+//           break;
+//         case 'rating':
+//           sortOptions = { averageRating: -1 };
+//           break;
+//         default:
+//           sortOptions = { createdAt: -1 };
+//       }
+//     } else {
+//       sortOptions = { createdAt: -1 }; // Default sort by most recent
+//     }
+
+//     console.log(query)
+//     const courses = await Course.find(query)
+//       .sort(sortOptions)
+//       .populate('lessons', 'title duration')
+//       .populate('quizzes')
+//       // .populate('quizzes', 'title')
+//       // .select('title description category thumbnail isPublished price averageRating enrolledUsers lessons quizzes createdAt');
+    
+//     return res.status(200).json({
+//       success: true,
+//       count: courses.length,
+//       data: courses
+//     });
+//   } catch (error) {
+//     console.error('Error getting tutor courses:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Server error while fetching tutor courses',
+//       error: error.message
+//     });
+//   }
+// };
+
 exports.getTutorCourses = async (req, res) => {
   try {
     const tutorId = req.params.id;
-    
+
     // Validate request parameters
     if (!mongoose.Types.ObjectId.isValid(tutorId)) {
       return badRequestResponse('Invalid tutor ID format', 'BAD_REQUEST', 400, res);
-     
     }
 
     // Check if the tutor exists
@@ -103,19 +180,19 @@ exports.getTutorCourses = async (req, res) => {
 
     // Optional query parameters for filtering
     const { isPublished, category, sort } = req.query;
-    
+
     // Build query
     const query = { createdBy: tutorId };
-    
+
     // Add optional filters
     if (isPublished !== undefined) {
       query.isPublished = isPublished === 'true';
     }
-    
+
     if (category) {
       query.category = category;
     }
-    
+
     // Define sort options
     let sortOptions = {};
     if (sort) {
@@ -140,15 +217,54 @@ exports.getTutorCourses = async (req, res) => {
     }
 
     const courses = await Course.find(query)
-      .sort(sortOptions)
+      .select('title description category thumbnail isPublished price averageRating enrolledUsers lessons createdAt')
       .populate('lessons', 'title duration')
-      .populate('quizzes', 'title')
-      .select('title description category thumbnail isPublished price averageRating enrolledUsers lessons quizzes createdAt');
-    
+      .populate('createdBy', 'name email')
+      .sort(sortOptions);
+
+    // Enhance courses with additional information, including quizzes
+    const enhancedCourses = await Promise.all(
+      courses.map(async (course) => {
+        const courseObj = course.toObject();
+
+        // Add lesson count
+        courseObj.lessonCount = course.lessons.length;
+
+        // Calculate total duration
+        courseObj.duration = course.lessons.reduce((total, lesson) => total + (lesson.duration || 0), 0);
+
+        // Add enrolled students count
+        courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+
+        // Add ratings information
+        courseObj.totalRatings = course.ratings ? course.ratings.length : 0;
+
+        // Fetch quizzes directly from Quiz collection
+        courseObj.quizzes = await Quiz.find({ courseId: course._id })
+          .sort({ createdAt: -1 })
+          .populate('createdBy', 'name email')
+          .populate({
+            path: 'questions',
+            select: 'question questionType options order correctAnswer booleanAnswer',
+            transform: doc => {
+              if (doc.options && doc.options.length > 0) {
+                doc.options = doc.options.map(option => ({
+                  _id: option._id,
+                  option: option.option
+                }));
+              }
+              return doc;
+            }
+          });
+
+        return courseObj;
+      })
+    );
+
     return res.status(200).json({
       success: true,
-      count: courses.length,
-      data: courses
+      count: enhancedCourses.length,
+      data: enhancedCourses
     });
   } catch (error) {
     console.error('Error getting tutor courses:', error);
@@ -159,6 +275,7 @@ exports.getTutorCourses = async (req, res) => {
     });
   }
 };
+
 
 exports.getTutorOverview = async (req, res) => {
   try {
