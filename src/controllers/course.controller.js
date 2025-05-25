@@ -257,6 +257,11 @@ exports.getAllCourses = async (req, res) => {
           ? course.enrolledUsers?.some(id => id.toString() === userId.toString())
           : false;
 
+
+        courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+
+        courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
+
         // Add progress and isCompleted
         if (userId) {
           const totalLessons = await Lesson.countDocuments({
