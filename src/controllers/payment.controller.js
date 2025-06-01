@@ -280,9 +280,6 @@ exports.validatePayment = async (req, res) => {
         let payment = await Payment.findById(id);
         
         if(payment){
-          console.log(payment.status)
-          console.log(payment.status == 'completed')
-          console.log(payment.status == 'completed')
           if(payment.status == 'completed'){
             return successResponse(null, res, 200, 'Payment already completed');
           }
@@ -325,31 +322,36 @@ exports.validatePayment = async (req, res) => {
             // Mark payment as completed
             payment.status = 'completed';
             await payment.save();
-            
+            let fullAmount  = payment.amount
             // Update tutor earnings
-            try {
-              await walletController.updateEarningsFromPurchase(courseId, payment.amount, payment._id);
-            } catch (walletError) {
-              console.error('Error updating wallet:', walletError);
-              // Continue with enrollment even if wallet update fails
-            }
-
+            
 
             // Process referral reward if user was referred
             if (user.referredBy) {
               const referrer = await User.findById(user.referredBy);
-              if (referrer && !user.referralPointDisbursed) {
+              if (referrer) {
+              // if (referrer && !user.referralPointDisbursed) {
+                // get 10% of the money paid 
+                const referralReward = fullAmount * 0.1;
                 const wallet = await Wallet.findOneAndUpdate(
                   { userId },
-                  { $inc: { balance:100 } },
+                  { $inc: { balance:referralReward } },
                   { new: true, upsert: true } // Create wallet if it doesn't exist
                 );
+                fullAmount = fullAmount - referralReward
                 // Add this user to referrer's referrals list
                 referrer.referrals.push(user._id);
                 user.referralPointDisbursed = true
                 await user.save()
                 await referrer.save();
               }
+            }
+
+            try {
+              await walletController.updateEarningsFromPurchase(courseId,fullAmount,payment._id);
+            } catch (walletError) {
+              console.error('Error updating wallet:', walletError);
+              // Continue with enrollment even if wallet update fails
             }
             
             return successResponse(null, res, 200, 'Enrolled in course successfully');
