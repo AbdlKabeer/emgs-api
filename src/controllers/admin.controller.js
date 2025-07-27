@@ -6,7 +6,7 @@ const Service = require('../models/service.model');
 const Inquiry = require('../models/inquiry.model');
 const Payment = require('../models/payment.model');
 const Notification = require('../models/notification.model');
-const { successResponse, errorResponse, validationErrorResponse } = require('../utils/custom_response/responses');
+const { successResponse, errorResponse, validationErrorResponse , paginationResponse} = require('../utils/custom_response/responses');
 
 // Dashboard stats
 exports.getDashboardStats = async (req, res) => {
@@ -83,11 +83,19 @@ exports.getDashboardStats = async (req, res) => {
 // Get all users (admin only)
 exports.getAllUsers = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const total = await User.countDocuments();
+
     const users = await User.find()
       .select('-password')
-      .sort({ createdAt: -1 });
-    
-    return successResponse(users, res);
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return paginationResponse(users, total, page, limit, res);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
@@ -132,10 +140,7 @@ exports.updateUser = async (req, res) => {
       return errorResponse('User not found', 'NOT_FOUND', 404, res);
     }
     
-    return successResponse({
-      message: 'User updated successfully',
-      user
-    }, res);
+    return successResponse(user, res,200, 'User updated successfully',);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
@@ -159,15 +164,33 @@ exports.deleteUser = async (req, res) => {
 // Get all payments (admin only)
 exports.getAllPayments = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const total = await Payment.countDocuments();
+
     const payments = await Payment.find()
       .populate('userId', 'firstName lastName email')
-      .sort({ createdAt: -1 });
-    
-    return successResponse(payments, res);
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Convert _id to id in each payment
+    const formattedPayments = payments.map(payment => {
+      const paymentObj = payment.toObject();
+      return {
+        id: paymentObj._id,
+        ...paymentObj
+      };
+    });
+
+    return paginationResponse(formattedPayments, total, page, limit, res);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
 
 // Update payment status (admin only)
 exports.updatePaymentStatus = async (req, res) => {
@@ -195,10 +218,7 @@ exports.updatePaymentStatus = async (req, res) => {
     
     await notification.save();
     
-    return successResponse({
-      message: 'Payment status updated successfully',
-      payment
-    }, res);
+    return successResponse(payment, res,200,'Payment status updated successfully');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
@@ -317,11 +337,29 @@ exports.getSystemAnalytics = async (req, res) => {
     ]);
     
     return successResponse({
-      userGrowth,
-      enrollmentTrend,
-      serviceInquiries,
-      revenueByMonth
+      analytics: {
+        userGrowth: userGrowth.map(item => ({
+          year: item._id.year,
+          month: item._id.month,
+          count: item.count
+        })),
+        enrollmentTrend: enrollmentTrend.map(item => ({
+          year: item._id.year,
+          month: item._id.month,
+          count: item.count
+        })),
+        serviceInquiries: serviceInquiries.map(item => ({
+          category: item._id,
+          count: item.count
+        })),
+        revenueByMonth: revenueByMonth.map(item => ({
+          year: item._id.year,
+          month: item._id.month,
+          totalRevenue: item.total
+        }))
+      }
     }, res);
+
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
