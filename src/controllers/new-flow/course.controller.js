@@ -1,146 +1,136 @@
-const Course = require('../models/course.model');
-const User = require('../models/user.model');
-const Notification = require('../models/notification.model');
-const Progress = require('../models/progress.model');
-const Lesson = require('../models/lesson.model');
-const Quiz = require('../models/quiz.model');
-const Bookmark = require('../models/bookmark.model');
-const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../utils/custom_response/responses');
+const Course = require('../../models/course.model');
+const Lesson = require('../../models/lesson.model');
+const Quiz = require('../../models/quiz.model');
+const Bookmark = require('../../models/bookmark.model');
+const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../../utils/custom_response/responses');
 
-
-const mongoose = require('mongoose');
 
 
 
 // ==================== MODELS ====================
 
 
-const mongoose = require('mongoose');
 
 
 
 // Lesson Model (models/Lesson.js)
 
 
-const Lesson = mongoose.model('Lesson', lessonSchema);
 
-// Module Model (models/Module.js)
-const moduleSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  lessonId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Lesson',
-    required: true
-  },
-  order: {
-    type: Number,
-    required: true
-  },
-  content: {
-    video: {
-      url: String,
-      duration: Number, // in seconds
-      thumbnail: String
-    },
-    audio: {
-      url: String,
-      duration: Number // in seconds
-    },
-    materials: [{
-      type: {
-        type: String,
-        enum: ['pdf', 'doc', 'image', 'link', 'text']
-      },
-      title: String,
-      url: String,
-      description: String
-    }],
-    textContent: {
-      type: String
-    }
-  },
-  isPublished: {
-    type: Boolean,
-    default: false
-  }
-}, {
-  timestamps: true
-});
+// // Module Model (models/Module.js)
+// const moduleSchema = new mongoose.Schema({
+//   title: {
+//     type: String,
+//     required: true,
+//     trim: true
+//   },
+//   description: {
+//     type: String,
+//     required: true
+//   },
+//   lessonId: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: 'Lesson',
+//     required: true
+//   },
+//   order: {
+//     type: Number,
+//     required: true
+//   },
+//   content: {
+//     video: {
+//       url: String,
+//       duration: Number, // in seconds
+//       thumbnail: String
+//     },
+//     audio: {
+//       url: String,
+//       duration: Number // in seconds
+//     },
+//     materials: [{
+//       type: {
+//         type: String,
+//         enum: ['pdf', 'doc', 'image', 'link', 'text']
+//       },
+//       title: String,
+//       url: String,
+//       description: String
+//     }],
+//     textContent: {
+//       type: String
+//     }
+//   },
+//   isPublished: {
+//     type: Boolean,
+//     default: false
+//   }
+// }, {
+//   timestamps: true
+// });
 
-const Module = mongoose.model('Module', moduleSchema);
+// const Module = mongoose.model('Module', moduleSchema);
 
-// Quiz Model (models/Quiz.js)
-const quizSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String
-  },
-  moduleId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Module',
-    required: true
-  },
-  useTimer: {
-    type: Boolean,
-    default: false
-  },
-  timeLimit: {
-    type: Number, // in minutes
-    default: 30
-  },
-  passingScore: {
-    type: Number,
-    default: 80,
-    min: 0,
-    max: 100
-  },
-  questions: [{
-    question: {
-      type: String,
-      required: true
-    },
-    type: {
-      type: String,
-      enum: ['multiple_choice', 'true_false', 'fill_blank'],
-      required: true
-    },
-    options: [{
-      text: String,
-      isCorrect: Boolean
-    }],
-    correctAnswer: String, // for fill_blank type
-    explanation: String,
-    points: {
-      type: Number,
-      default: 1
-    }
-  }],
-  isPublished: {
-    type: Boolean,
-    default: false
-  }
-}, {
-  timestamps: true
-});
+// // Quiz Model (models/Quiz.js)
+// const quizSchema = new mongoose.Schema({
+//   title: {
+//     type: String,
+//     required: true,
+//     trim: true
+//   },
+//   description: {
+//     type: String
+//   },
+//   moduleId: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: 'Module',
+//     required: true
+//   },
+//   useTimer: {
+//     type: Boolean,
+//     default: false
+//   },
+//   timeLimit: {
+//     type: Number, // in minutes
+//     default: 30
+//   },
+//   passingScore: {
+//     type: Number,
+//     default: 80,
+//     min: 0,
+//     max: 100
+//   },
+//   questions: [{
+//     question: {
+//       type: String,
+//       required: true
+//     },
+//     type: {
+//       type: String,
+//       enum: ['multiple_choice', 'true_false', 'fill_blank'],
+//       required: true
+//     },
+//     options: [{
+//       text: String,
+//       isCorrect: Boolean
+//     }],
+//     correctAnswer: String, // for fill_blank type
+//     explanation: String,
+//     points: {
+//       type: Number,
+//       default: 1
+//     }
+//   }],
+//   isPublished: {
+//     type: Boolean,
+//     default: false
+//   }
+// }, {
+//   timestamps: true
+// });
 
-const Quiz = mongoose.model('Quiz', quizSchema);
 
-// ==================== CONTROLLERS ====================
 
-// Course Controller (controllers/courseController.js)
-const { successResponse, errorResponse } = require('../utils/responseHelper');
+
 
 // Create Course
 exports.createCourse = async (req, res) => {
