@@ -5,133 +5,6 @@ const Bookmark = require('../../models/bookmark.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../../utils/custom_response/responses');
 
 
-
-
-// ==================== MODELS ====================
-
-
-
-
-
-// Lesson Model (models/Lesson.js)
-
-
-
-// // Module Model (models/Module.js)
-// const moduleSchema = new mongoose.Schema({
-//   title: {
-//     type: String,
-//     required: true,
-//     trim: true
-//   },
-//   description: {
-//     type: String,
-//     required: true
-//   },
-//   lessonId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: 'Lesson',
-//     required: true
-//   },
-//   order: {
-//     type: Number,
-//     required: true
-//   },
-//   content: {
-//     video: {
-//       url: String,
-//       duration: Number, // in seconds
-//       thumbnail: String
-//     },
-//     audio: {
-//       url: String,
-//       duration: Number // in seconds
-//     },
-//     materials: [{
-//       type: {
-//         type: String,
-//         enum: ['pdf', 'doc', 'image', 'link', 'text']
-//       },
-//       title: String,
-//       url: String,
-//       description: String
-//     }],
-//     textContent: {
-//       type: String
-//     }
-//   },
-//   isPublished: {
-//     type: Boolean,
-//     default: false
-//   }
-// }, {
-//   timestamps: true
-// });
-
-// const Module = mongoose.model('Module', moduleSchema);
-
-// // Quiz Model (models/Quiz.js)
-// const quizSchema = new mongoose.Schema({
-//   title: {
-//     type: String,
-//     required: true,
-//     trim: true
-//   },
-//   description: {
-//     type: String
-//   },
-//   moduleId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: 'Module',
-//     required: true
-//   },
-//   useTimer: {
-//     type: Boolean,
-//     default: false
-//   },
-//   timeLimit: {
-//     type: Number, // in minutes
-//     default: 30
-//   },
-//   passingScore: {
-//     type: Number,
-//     default: 80,
-//     min: 0,
-//     max: 100
-//   },
-//   questions: [{
-//     question: {
-//       type: String,
-//       required: true
-//     },
-//     type: {
-//       type: String,
-//       enum: ['multiple_choice', 'true_false', 'fill_blank'],
-//       required: true
-//     },
-//     options: [{
-//       text: String,
-//       isCorrect: Boolean
-//     }],
-//     correctAnswer: String, // for fill_blank type
-//     explanation: String,
-//     points: {
-//       type: Number,
-//       default: 1
-//     }
-//   }],
-//   isPublished: {
-//     type: Boolean,
-//     default: false
-//   }
-// }, {
-//   timestamps: true
-// });
-
-
-
-
-
 // Create Course
 exports.createCourse = async (req, res) => {
   try {
@@ -215,6 +88,7 @@ exports.updateCourse = async (req, res) => {
   }
 };
 
+
 // Submit Course for Review
 exports.submitCourseForReview = async (req, res) => {
   try {
@@ -244,7 +118,7 @@ exports.submitCourseForReview = async (req, res) => {
   }
 };
 
-// Lesson Controller (controllers/lessonController.js)
+
 // Create Lesson
 exports.createLesson = async (req, res) => {
   try {
