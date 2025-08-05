@@ -29,6 +29,7 @@ const supportRoutes = require('./routes/support.routes');
 const walletRoutes = require('./routes/wallet.routes'); 
 const waitlistRoutes = require('./routes/waitlist.routes'); // Import waitlist routes
 const chatRoutes = require('./routes/new-flow/chat.routes');
+const studentRoutes = require('./routes/new-flow/user.routes');
 // const chatSocket = require('./socket/chatSocket');
 
 // Initialize express app
@@ -69,6 +70,8 @@ app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/wallet', walletRoutes);
 app.use('/api/v1/waitlist', waitlistRoutes); // Add waitlist routes
 
+
+app.use('/api/v2/student', studentRoutes);
 app.use('/api/v2/tutors', newTutorRoutes); // Add waitlist routes
 app.use('/api/v2/chat', chatRoutes); 
 // app.use('/api/v1/waitlist', ); // Add waitlist routes

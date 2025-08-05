@@ -105,6 +105,11 @@ const courseSchema = new mongoose.Schema({
     enum: ['draft', 'review', 'published', 'rejected'],
     default: 'draft'
   },
+  courseType: {
+    type: String,
+    enum: ['emgs', 'tutor'],
+    default: 'tutor'
+  },
   isPublished: {
     type: Boolean,
     default: false
