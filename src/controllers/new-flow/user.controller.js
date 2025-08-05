@@ -178,7 +178,8 @@ exports.getAllCourses = async (req, res) => {
       search, 
       isFree, 
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      courseType = 'tutor'
     } = req.query;
 
     const query = { 
@@ -188,6 +189,7 @@ exports.getAllCourses = async (req, res) => {
 
     // Add filters
     if (category) query.category = category;
+    if (courseType) query.courseType = courseType;
     if (isFree !== undefined) query.isFree = isFree === 'true';
     if (search) {
       query.$or = [
