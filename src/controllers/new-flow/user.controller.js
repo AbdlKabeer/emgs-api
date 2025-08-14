@@ -169,6 +169,8 @@ const { successResponse, errorResponse, badRequestResponse, paginationResponse }
 
 
 // Get All Published Courses (Browse/Search)
+
+
 exports.getAllCourses = async (req, res) => {
   try {
     const { 
