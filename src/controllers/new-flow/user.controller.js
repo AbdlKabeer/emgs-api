@@ -173,20 +173,20 @@ const { successResponse, errorResponse, badRequestResponse, paginationResponse }
 
 exports.getAllCourses = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      category, 
-      search, 
-      isFree, 
+    const {
+      page = 1,
+      limit = 10,
+      category,
+      search,
+      isFree,
       sortBy = 'createdAt',
       sortOrder = 'desc',
       courseType = 'tutor'
     } = req.query;
 
-    const query = { 
-      isPublished: true, 
-      status: 'published' 
+    const query = {
+      isPublished: true,
+      status: 'published'
     };
 
     // Add filters
@@ -203,43 +203,34 @@ exports.getAllCourses = async (req, res) => {
     const sortOptions = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const options = {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      sort: sortOptions,
-      populate: {
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Course.countDocuments(query);
+
+    let courses = await Course.find(query)
+      .populate({
         path: 'createdBy',
         select: 'firstName lastName profilePicture'
-      }
-    };
+      })
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
 
-    const courses = await Course.paginate(query, options);
-
-    // Add enrollment count and rating for each course
-    const coursesWithStats = await Promise.all(
-      courses.docs.map(async (course) => {
+    // Add enrollment count and lesson count for each course
+    const formattedCourses = await Promise.all(
+      courses.map(async (course) => {
         const enrollmentCount = await Enrollment.countDocuments({ courseId: course._id });
         const lessonCount = await Lesson.countDocuments({ courseId: course._id });
-        
         return {
+          id: course._id,
           ...course.toObject(),
           enrollmentCount,
           lessonCount,
-          // You can add average rating here if you have a rating system
           averageRating: 0 // Placeholder
         };
       })
     );
 
-    return paginationResponse({
-      docs: coursesWithStats,
-      totalDocs: courses.totalDocs,
-      limit: courses.limit,
-      page: courses.page,
-      totalPages: courses.totalPages,
-      hasNextPage: courses.hasNextPage,
-      hasPrevPage: courses.hasPrevPage
-    }, res, 200);
+    return paginationResponse(formattedCourses, total, parseInt(page), parseInt(limit), res);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
