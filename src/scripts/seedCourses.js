@@ -12,10 +12,10 @@ console.log(process.env.MONGODB_URI)
 async function seed() {
   try {
     // Connect to MongoDB
-    await mongoose.connect("mongodb+srv://programmerolakay:karantashi1@cluster0.gga6a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" || 'mongodb://localhost:27017/your-db-name', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/your-db-name', {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+        });
 
     console.log('Connected to DB');
 
