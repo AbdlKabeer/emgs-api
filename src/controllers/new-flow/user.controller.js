@@ -811,3 +811,309 @@ exports.getDashboard = async (req, res) => {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+
+
+// Get All Lessons for a Course
+exports.getCourseLessons = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user ? req.user.id : null;
+    const { page = 1, limit = 10 } = req.query;
+
+    const course = await Course.findOne({ 
+      _id: courseId, 
+      isPublished: true 
+    });
+
+    if (!course) {
+      return errorResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user is enrolled (if authenticated)
+    let isEnrolled = false;
+    if (userId) {
+      const enrollment = await Enrollment.findOne({ 
+        userId, 
+        courseId, 
+        status: 'active' 
+      });
+      isEnrolled = !!enrollment;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Lesson.countDocuments({ courseId, isPublished: true });
+
+    const lessons = await Lesson.find({ 
+      courseId, 
+      isPublished: true 
+    })
+    .select(isEnrolled ? '' : 'title description order duration thumbnail isPublished') // Limit fields for non-enrolled users
+    .sort({ order: 1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+
+    // Add progress information for enrolled users
+    const enhancedLessons = await Promise.all(
+      lessons.map(async (lesson) => {
+        const lessonObj = lesson.toObject();
+        
+        if (isEnrolled && userId) {
+          // Get module count and completion status
+          const totalModules = await Module.countDocuments({ 
+            lessonId: lesson._id 
+          });
+          
+          const progress = await Progress.findOne({ userId, courseId });
+          const completedModules = progress ? progress.completedModules : [];
+          
+          const completedModulesInLesson = await Module.countDocuments({
+            lessonId: lesson._id,
+            _id: { $in: completedModules }
+          });
+
+          lessonObj.moduleCount = totalModules;
+          lessonObj.completedModules = completedModulesInLesson;
+          lessonObj.isCompleted = totalModules > 0 && completedModulesInLesson === totalModules;
+          lessonObj.progressPercentage = totalModules > 0 
+            ? Math.round((completedModulesInLesson / totalModules) * 100) 
+            : 0;
+        } else {
+          lessonObj.moduleCount = await Module.countDocuments({ lessonId: lesson._id });
+        }
+
+        return lessonObj;
+      })
+    );
+
+    return paginationResponse(enhancedLessons, total, parseInt(page), parseInt(limit), res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get All Modules for a Lesson
+exports.getLessonModules = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const userId = req.user ? req.user.id : null;
+    const { page = 1, limit = 10 } = req.query;
+
+    const lesson = await Lesson.findOne({ 
+      _id: lessonId, 
+      isPublished: true 
+    }).populate('courseId', '_id');
+
+    if (!lesson) {
+      return errorResponse('Lesson not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user is enrolled
+    let isEnrolled = false;
+    if (userId) {
+      const enrollment = await Enrollment.findOne({ 
+        userId, 
+        courseId: lesson.courseId._id, 
+        status: 'active' 
+      });
+      isEnrolled = !!enrollment;
+    }
+
+    // If not enrolled, only show basic module info
+    if (!isEnrolled) {
+      const moduleCount = await Module.countDocuments({ lessonId });
+      return successResponse({
+        message: 'Enroll in the course to access module content',
+        moduleCount,
+        lessonTitle: lesson.title
+      }, res, 200);
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Module.countDocuments({ lessonId });
+
+    const modules = await Module.find({ lessonId })
+      .sort({ order: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Add completion status for enrolled users
+    const progress = await Progress.findOne({ 
+      userId, 
+      courseId: lesson.courseId._id 
+    });
+    
+    const completedModules = progress ? progress.completedModules.map(id => id.toString()) : [];
+
+    const enhancedModules = modules.map(module => {
+      const moduleObj = module.toObject();
+      moduleObj.isCompleted = completedModules.includes(module._id.toString());
+      return moduleObj;
+    });
+
+    return paginationResponse(enhancedModules, total, parseInt(page), parseInt(limit), res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get All Quizzes for a Lesson
+exports.getLessonQuizzes = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const userId = req.user ? req.user.id : null;
+    const { page = 1, limit = 10 } = req.query;
+
+    const lesson = await Lesson.findOne({ 
+      _id: lessonId, 
+      isPublished: true 
+    }).populate('courseId', '_id');
+
+    if (!lesson) {
+      return errorResponse('Lesson not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user is enrolled
+    let isEnrolled = false;
+    if (userId) {
+      const enrollment = await Enrollment.findOne({ 
+        userId, 
+        courseId: lesson.courseId._id, 
+        status: 'active' 
+      });
+      isEnrolled = !!enrollment;
+    }
+
+    // Get all modules for this lesson first
+    const modules = await Module.find({ lessonId }).select('_id');
+    const moduleIds = modules.map(module => module._id);
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Quiz.countDocuments({ moduleId: { $in: moduleIds } });
+
+    const quizzes = await Quiz.find({ moduleId: { $in: moduleIds } })
+      .populate('moduleId', 'title lessonId')
+      .select(isEnrolled ? '' : 'title description moduleId duration questionCount passingScore') // Limit for non-enrolled
+      .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Add attempt information for enrolled users
+    const enhancedQuizzes = await Promise.all(
+      quizzes.map(async (quiz) => {
+        const quizObj = quiz.toObject();
+        
+        if (isEnrolled && userId) {
+          // Get user's best attempt
+          const bestAttempt = await QuizAttempt.findOne({ 
+            userId, 
+            quizId: quiz._id 
+          }).sort({ score: -1 });
+
+          const attemptCount = await QuizAttempt.countDocuments({ 
+            userId, 
+            quizId: quiz._id 
+          });
+
+          quizObj.bestScore = bestAttempt ? bestAttempt.score : null;
+          quizObj.passed = bestAttempt ? bestAttempt.passed : false;
+          quizObj.attemptCount = attemptCount;
+          quizObj.lastAttempt = bestAttempt ? bestAttempt.completedAt : null;
+          
+          // Check if quiz is completed (passed)
+          const progress = await Progress.findOne({ 
+            userId, 
+            courseId: lesson.courseId._id 
+          });
+          quizObj.isCompleted = progress ? 
+            progress.completedQuizzes.includes(quiz._id.toString()) : false;
+        } else {
+          quizObj.questionCount = quiz.questions ? quiz.questions.length : 0;
+        }
+
+        return quizObj;
+      })
+    );
+
+    return paginationResponse(enhancedQuizzes, total, parseInt(page), parseInt(limit), res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get All Quizzes for a Module
+exports.getModuleQuizzes = async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const userId = req.user ? req.user.id : null;
+    const { page = 1, limit = 10 } = req.query;
+
+    const module = await Module.findById(moduleId)
+      .populate({
+        path: 'lessonId',
+        populate: { path: 'courseId', select: '_id' }
+      });
+
+    if (!module) {
+      return errorResponse('Module not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user is enrolled
+    let isEnrolled = false;
+    if (userId) {
+      const enrollment = await Enrollment.findOne({ 
+        userId, 
+        courseId: module.lessonId.courseId._id, 
+        status: 'active' 
+      });
+      isEnrolled = !!enrollment;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Quiz.countDocuments({ moduleId });
+
+    const quizzes = await Quiz.find({ moduleId })
+      .select(isEnrolled ? '' : 'title description duration questionCount passingScore') // Limit for non-enrolled
+      .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Add attempt information for enrolled users
+    const enhancedQuizzes = await Promise.all(
+      quizzes.map(async (quiz) => {
+        const quizObj = quiz.toObject();
+        
+        if (isEnrolled && userId) {
+          // Get user's quiz attempts
+          const attempts = await QuizAttempt.find({ 
+            userId, 
+            quizId: quiz._id 
+          }).sort({ score: -1 });
+
+          const bestAttempt = attempts[0];
+          
+          quizObj.bestScore = bestAttempt ? bestAttempt.score : null;
+          quizObj.passed = bestAttempt ? bestAttempt.passed : false;
+          quizObj.attemptCount = attempts.length;
+          quizObj.lastAttempt = bestAttempt ? bestAttempt.completedAt : null;
+          
+          // Check if quiz is completed
+          const progress = await Progress.findOne({ 
+            userId, 
+            courseId: module.lessonId.courseId._id 
+          });
+          quizObj.isCompleted = progress ? 
+            progress.completedQuizzes.includes(quiz._id.toString()) : false;
+        } else {
+          quizObj.questionCount = quiz.questions ? quiz.questions.length : 0;
+        }
+
+        return quizObj;
+      })
+    );
+
+    return paginationResponse(enhancedQuizzes, total, parseInt(page), parseInt(limit), res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};

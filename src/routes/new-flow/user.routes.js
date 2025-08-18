@@ -330,4 +330,62 @@ router.get('/instructors/:instructorId',
   }
 );
 
+
+// ===================
+// LESSON ROUTES
+// ===================
+
+/**
+ * @route   GET /api/student/courses/:courseId/lessons
+ * @desc    Get all lessons for a course
+ * @access  Private (Student - enrollment checked in controller)
+ */
+router.get('/courses/:courseId/lessons',
+  authenticate,
+  param('courseId').isMongoId().withMessage('Invalid course ID'),
+  paginationValidation,
+  studentCourseController.getCourseLessons
+);
+
+/**
+ * @route   GET /api/student/lessons/:lessonId/modules
+ * @desc    Get all modules for a lesson
+ * @access  Private (Student - Must be enrolled in course)
+ */
+router.get('/lessons/:lessonId/modules',
+  authenticate,
+  param('lessonId').isMongoId().withMessage('Invalid lesson ID'),
+  paginationValidation,
+  studentCourseController.getLessonModules
+);
+
+// ===================
+// ADDITIONAL QUIZ ROUTES
+// ===================
+
+/**
+ * @route   GET /api/student/lessons/:lessonId/quizzes
+ * @desc    Get all quizzes for a lesson
+ * @access  Private (Student - Must be enrolled in course)
+ */
+router.get('/lessons/:lessonId/quizzes',
+  authenticate,
+  param('lessonId').isMongoId().withMessage('Invalid lesson ID'),
+  paginationValidation,
+  studentCourseController.getLessonQuizzes
+);
+
+/**
+ * @route   GET /api/student/modules/:moduleId/quizzes
+ * @desc    Get all quizzes for a module
+ * @access  Private (Student - Must be enrolled in course)
+ */
+router.get('/modules/:moduleId/quizzes',
+  authenticate,
+  param('moduleId').isMongoId().withMessage('Invalid module ID'),
+  paginationValidation,
+  studentCourseController.getModuleQuizzes
+);
+
+
 module.exports = router;
