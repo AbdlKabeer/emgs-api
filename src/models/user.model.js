@@ -29,7 +29,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
-
+    isOneOnOne :{
+      type: Boolean,
+      default: false
+    },
+    servicePrice:{
+      type: Number,
+      default:0
+    },
     // forget password and reset password otp
     passwordVerificationCode: {
       type: String,

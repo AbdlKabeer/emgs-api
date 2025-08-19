@@ -1140,7 +1140,7 @@ exports.getAllTutors = async (req, res) => {
     const total = await User.countDocuments(query);
 
     const tutors = await User.find(query)
-      .select('fullName email profilePicture tutorType bio averageRating preferredLanguage')
+      .select('fullName email phone profilePicture tutorType bio servicePrice averageRating preferredLanguage')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
