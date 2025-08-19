@@ -16,8 +16,8 @@ async function addEmgsTutors() {
 
     for (let i = 1; i <= 5; i++) {
       tutorsData.push({
-        fullName: `EMGS Tutor ${i}`,
-        email: `emgs.tutor${i}@example.com`,
+        fullName: `EMGS ${i} Tutor ${i}`,
+        email: `emgs${i}.tutor${i}@example.com`,
         password: 'password123',  // you can hash it or let pre-save hook handle it
         phone: `+1000000000${i}`,
         role: 'tutor',

@@ -1126,14 +1126,14 @@ exports.getAllCourses = async (req, res) => {
       isFree,
       sortBy = 'createdAt',
       sortOrder = 'desc',
-      courseType = 'tutor'
+      courseType = 'partner' // will match tutorType of createdBy
     } = req.query;
+
     const userId = req.user ? req.user.id : null;
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+
     let query = { isPublished: true };
     if (category) query.category = category;
-    if (courseType) query.courseType = courseType;
     if (isFree !== undefined) query.isFree = isFree === 'true';
     if (search) {
       query.$or = [
@@ -1141,22 +1141,30 @@ exports.getAllCourses = async (req, res) => {
         { description: { $regex: search, $options: 'i' } }
       ];
     }
-    
+
     const sortOptions = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const total = await Course.countDocuments(query);
+    // Fetch all matching courses (before pagination)
+    const allCourses = await Course.find(query)
+      .select('title description category thumbnail isFree courseType price tutorId enrolledUsers ratings averageRating createdBy lessons')
+      .populate('createdBy', 'fullName email profilePicture bio tutorType')
+      .sort(sortOptions);
 
-    const courses = await Course.find(query)
-      .select('title description category thumbnail isFree courseType price tutorId enrolledUsers ratings averageRating')
-      .populate('createdBy', 'fullName email profilePicture bio')   
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(limit);
+    // ✅ Filter courses by tutorType
+    const filteredCourses = allCourses.filter(course =>
+      course.createdBy?.tutorType === courseType
+    );
 
-    // Get bookmarks and completed lessons for authenticated user
+    const total = filteredCourses.length;
+
+    // Paginate
+    const paginatedCourses = filteredCourses.slice(skip, skip + parseInt(limit));
+
+    // Get bookmarks and completed lessons
     let bookmarks = [];
     let completedLessons = [];
+
     if (userId) {
       const [bookmarkDocs, user] = await Promise.all([
         Bookmark.find({ userId }).select('courseId'),
@@ -1169,42 +1177,42 @@ exports.getAllCourses = async (req, res) => {
 
     // Enhance courses
     const enhancedCourses = await Promise.all(
-      courses.map(async (course) => {
+      paginatedCourses.map(async (course) => {
         const courseObj = course.toObject();
 
-        // Add isBookmarked
-        courseObj.isBookmarked = bookmarks.some(bookmark =>
-          bookmark.courseId.toString() === course._id.toString()
+        courseObj.isBookmarked = bookmarks.some(
+          bookmark => bookmark.courseId.toString() === course._id.toString()
         );
 
-        // Add isEnrolled
         courseObj.isEnrolled = userId
           ? course.enrolledUsers?.some(id => id.toString() === userId.toString())
           : false;
 
         courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
 
-        // Get module count (instead of lesson count directly)
+        // Get module count
         const moduleCount = await Module.countDocuments({
           courseId: course._id,
           isPublished: true,
         });
         courseObj.moduleCount = moduleCount;
 
-        // Get total lesson count across all modules
+        // Get all modules
         const modules = await Module.find({
           courseId: course._id,
           isPublished: true,
         }).select('_id');
-        
+
         const moduleIds = modules.map(m => m._id);
+
+        // Get lesson count
         const totalLessons = await Lesson.countDocuments({
           moduleId: { $in: moduleIds },
           isPublished: true,
         });
         courseObj.lessonCount = totalLessons;
 
-        // Add progress and isCompleted
+        // Calculate progress
         if (userId) {
           const completedLessonsForCourse = await Lesson.countDocuments({
             moduleId: { $in: moduleIds },
