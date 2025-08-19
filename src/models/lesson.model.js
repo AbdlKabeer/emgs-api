@@ -30,9 +30,9 @@ const lessonSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  courseId: {
+  moduleId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
+    ref: 'Module',
     required: true
   },
   order: {
@@ -43,6 +43,29 @@ const lessonSchema = new mongoose.Schema({
     type: Number, // in minutes
     default: 0
   },
+  content: {
+    video: {
+      url: String,
+      duration: Number, // in seconds
+      thumbnail: String
+    },
+    audio: {
+      url: String,
+      duration: Number // in seconds
+    },
+    materials: [{
+      type: {
+        type: String,
+        enum: ['pdf', 'doc', 'image', 'link', 'text']
+      },
+      title: String,
+      url: String,
+      description: String
+    }],
+    textContent: {
+      type: String
+    }
+  },
   isPublished: {
     type: Boolean,
     default: false
@@ -50,7 +73,6 @@ const lessonSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
 
 const Lesson = mongoose.model('Lesson', lessonSchema);
 module.exports = Lesson;

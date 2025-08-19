@@ -1,3 +1,4 @@
+// Fixed Module Model (Parent of Lesson)
 const mongoose = require('mongoose');
 
 const moduleSchema = new mongoose.Schema({
@@ -10,37 +11,14 @@ const moduleSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  lessonId: {
+  courseId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Lesson',
+    ref: 'Course',
     required: true
   },
   order: {
     type: Number,
     required: true
-  },
-  content: {
-    video: {
-      url: String,
-      duration: Number, // in seconds
-      thumbnail: String
-    },
-    audio: {
-      url: String,
-      duration: Number // in seconds
-    },
-    materials: [{
-      type: {
-        type: String,
-        enum: ['pdf', 'doc', 'image', 'link', 'text']
-      },
-      title: String,
-      url: String,
-      description: String
-    }],
-    textContent: {
-      type: String
-    }
   },
   isPublished: {
     type: Boolean,
@@ -52,3 +30,24 @@ const moduleSchema = new mongoose.Schema({
 
 const Module = mongoose.model('Module', moduleSchema);
 module.exports = Module;
+
+
+
+// Routes (add these to your routes file)
+/*
+// In your routes file (e.g., courseRoutes.js)
+const express = require('express');
+const router = express.Router();
+const { authenticate } = require('../middleware/auth'); // Optional auth middleware
+
+// Get all courses
+router.get('/courses', authenticate, getAllCourses);
+
+// Get all modules for a course
+router.get('/courses/:courseId/modules', authenticate, getCourseModules);
+
+// Get all lessons for a module
+router.get('/modules/:moduleId/lessons', authenticate, getModuleLessons);
+
+module.exports = router;
+*/

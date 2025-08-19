@@ -12,181 +12,181 @@ const { successResponse, errorResponse, badRequestResponse, paginationResponse }
 
 
 
-exports.getAllCourses1 = async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 10,
-      category,
-      search,
-      isFree,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-      courseType = ''
-    } = req.query;
+// exports.getAllCourses1 = async (req, res) => {
+//   try {
+//     const {
+//       page = 1,
+//       limit = 10,
+//       category,
+//       search,
+//       isFree,
+//       sortBy = 'createdAt',
+//       sortOrder = 'desc',
+//       courseType = ''
+//     } = req.query;
 
-    const query = {
-      // isPublished: true,
-      // status: 'published'
-    };
+//     const query = {
+//       // isPublished: true,
+//       // status: 'published'
+//     };
 
-    const skip = (page - 1) * limit;
+//     const skip = (page - 1) * limit;
 
-    // Add filters
-    if (category) query.category = category;
-    if (courseType) query.courseType = courseType;
-    if (isFree !== undefined) query.isFree = isFree === 'true';
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
-    }
+//     // Add filters
+//     if (category) query.category = category;
+//     if (courseType) query.courseType = courseType;
+//     if (isFree !== undefined) query.isFree = isFree === 'true';
+//     if (search) {
+//       query.$or = [
+//         { title: { $regex: search, $options: 'i' } },
+//         { description: { $regex: search, $options: 'i' } }
+//       ];
+//     }
 
-    const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+//     const sortOptions = {};
+//     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
 
-    console.log(query)
+//     console.log(query)
     
-    const total = await Course.countDocuments(query);
+//     const total = await Course.countDocuments(query);
 
-    let courses = await Course.find(query)
-      .populate({
-        path: 'createdBy',
-        select: 'firstName lastName profilePicture'
-      })
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(parseInt(limit));
+//     let courses = await Course.find(query)
+//       .populate({
+//         path: 'createdBy',
+//         select: 'firstName lastName profilePicture'
+//       })
+//       .sort(sortOptions)
+//       .skip(skip)
+//       .limit(parseInt(limit));
 
-    // Add enrollment count and lesson count for each course
-    const formattedCourses = await Promise.all(
-      courses.map(async (course) => {
-        const enrollmentCount = await Enrollment.countDocuments({ courseId: course._id });
-        const lessonCount = await Lesson.countDocuments({ courseId: course._id });
-        return {
-          id: course._id,
-          ...course.toObject(),
-          enrollmentCount,
-          lessonCount,
-          averageRating: 0 // Placeholder
-        };
-      })
-    );
+//     // Add enrollment count and lesson count for each course
+//     const formattedCourses = await Promise.all(
+//       courses.map(async (course) => {
+//         const enrollmentCount = await Enrollment.countDocuments({ courseId: course._id });
+//         const lessonCount = await Lesson.countDocuments({ courseId: course._id });
+//         return {
+//           id: course._id,
+//           ...course.toObject(),
+//           enrollmentCount,
+//           lessonCount,
+//           averageRating: 0 // Placeholder
+//         };
+//       })
+//     );
 
-    return paginationResponse(formattedCourses, total, parseInt(page), parseInt(limit), res);
-  } catch (error) {
-    console.log(error)
-    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
-  }
-};
+//     return paginationResponse(formattedCourses, total, parseInt(page), parseInt(limit), res);
+//   } catch (error) {
+//     console.log(error)
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
 
-exports.getAllCourses = async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 10,
-      category,
-      search,
-      isFree,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-      courseType = 'tutor'
-    } = req.query;
-    const userId = req.user ? req.user.id : null;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+// exports.getAllCourses = async (req, res) => {
+//   try {
+//     const {
+//       page = 1,
+//       limit = 10,
+//       category,
+//       search,
+//       isFree,
+//       sortBy = 'createdAt',
+//       sortOrder = 'desc',
+//       courseType = 'tutor'
+//     } = req.query;
+//     const userId = req.user ? req.user.id : null;
+//     const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    let query = { isPublished: true };
-    if (category) query.category = category;
-    if (courseType) query.courseType = courseType;
-    if (isFree !== undefined) query.isFree = isFree === 'true';
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
-    }
+//     let query = { isPublished: true };
+//     if (category) query.category = category;
+//     if (courseType) query.courseType = courseType;
+//     if (isFree !== undefined) query.isFree = isFree === 'true';
+//     if (search) {
+//       query.$or = [
+//         { title: { $regex: search, $options: 'i' } },
+//         { description: { $regex: search, $options: 'i' } }
+//       ];
+//     }
     
-    const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+//     const sortOptions = {};
+//     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const total = await Course.countDocuments(query);
+//     const total = await Course.countDocuments(query);
 
-    const courses = await Course.find(query)
-      .select('title description category thumbnail isFree courseType price tutorId lessons enrolledUsers ratings averageRating')
-      .populate('createdBy', 'fullName email profilePicture bio')   
-      // .sort({ createdAt: -1 }) 
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(limit);
+//     const courses = await Course.find(query)
+//       .select('title description category thumbnail isFree courseType price tutorId lessons enrolledUsers ratings averageRating')
+//       .populate('createdBy', 'fullName email profilePicture bio')   
+//       // .sort({ createdAt: -1 }) 
+//       .sort(sortOptions)
+//       .skip(skip)
+//       .limit(limit);
 
-    // Get bookmarks and completed lessons for authenticated user
-    let bookmarks = [];
-    let completedLessons = [];
-    if (userId) {
-      const [bookmarkDocs, user] = await Promise.all([
-        Bookmark.find({ userId }).select('courseId'),
-        User.findById(userId).select('completedLessons'),
-      ]);
+//     // Get bookmarks and completed lessons for authenticated user
+//     let bookmarks = [];
+//     let completedLessons = [];
+//     if (userId) {
+//       const [bookmarkDocs, user] = await Promise.all([
+//         Bookmark.find({ userId }).select('courseId'),
+//         User.findById(userId).select('completedLessons'),
+//       ]);
 
-      bookmarks = bookmarkDocs;
-      completedLessons = user?.completedLessons.map(id => id.toString()) || [];
-    }
+//       bookmarks = bookmarkDocs;
+//       completedLessons = user?.completedLessons.map(id => id.toString()) || [];
+//     }
 
-    // Enhance courses
-    const enhancedCourses = await Promise.all(
-      courses.map(async (course) => {
-        const courseObj = course.toObject();
+//     // Enhance courses
+//     const enhancedCourses = await Promise.all(
+//       courses.map(async (course) => {
+//         const courseObj = course.toObject();
 
-        // Add isBookmarked
-        courseObj.isBookmarked = bookmarks.some(bookmark =>
-          bookmark.courseId.toString() === course._id.toString()
-        );
+//         // Add isBookmarked
+//         courseObj.isBookmarked = bookmarks.some(bookmark =>
+//           bookmark.courseId.toString() === course._id.toString()
+//         );
 
-        // Add isEnrolled
-        courseObj.isEnrolled = userId
-          ? course.enrolledUsers?.some(id => id.toString() === userId.toString())
-          : false;
+//         // Add isEnrolled
+//         courseObj.isEnrolled = userId
+//           ? course.enrolledUsers?.some(id => id.toString() === userId.toString())
+//           : false;
 
 
-        courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+//         courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
 
-        courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
+//         courseObj.lessonCount = course.lessons ? course.lessons.length : 0;
 
-        // Add progress and isCompleted
-        if (userId) {
-          const totalLessons = await Lesson.countDocuments({
-            courseId: course._id,
-            isPublished: true,
-          });
+//         // Add progress and isCompleted
+//         if (userId) {
+//           const totalLessons = await Lesson.countDocuments({
+//             courseId: course._id,
+//             isPublished: true,
+//           });
 
-          const completedLessonsForCourse = await Lesson.countDocuments({
-            courseId: course._id,
-            isPublished: true,
-            _id: { $in: completedLessons },
-          });
+//           const completedLessonsForCourse = await Lesson.countDocuments({
+//             courseId: course._id,
+//             isPublished: true,
+//             _id: { $in: completedLessons },
+//           });
 
-          courseObj.progress = totalLessons > 0
-            ? Math.round((completedLessonsForCourse / totalLessons) * 100)
-            : 0;
+//           courseObj.progress = totalLessons > 0
+//             ? Math.round((completedLessonsForCourse / totalLessons) * 100)
+//             : 0;
 
-          courseObj.isCompleted = totalLessons > 0 &&
-            completedLessonsForCourse === totalLessons;
-        } else {
-          courseObj.progress = 0;
-          courseObj.isCompleted = false;
-        }
+//           courseObj.isCompleted = totalLessons > 0 &&
+//             completedLessonsForCourse === totalLessons;
+//         } else {
+//           courseObj.progress = 0;
+//           courseObj.isCompleted = false;
+//         }
 
-        return courseObj;
-      })
-    );
+//         return courseObj;
+//       })
+//     );
 
-    return paginationResponse(enhancedCourses, total, page, limit, res);
-  } catch (error) {
-    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
-  }
-};
+//     return paginationResponse(enhancedCourses, total, page, limit, res);
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
 
 // Get Course Details (for non-enrolled students)
 exports.getCoursePreview = async (req, res) => {
@@ -1107,6 +1107,252 @@ exports.getModuleQuizzes = async (req, res) => {
     );
 
     return paginationResponse(enhancedQuizzes, total, parseInt(page), parseInt(limit), res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
+
+
+// Updated getAllCourses endpoint with proper Module/Lesson relationship
+exports.getAllCourses = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      category,
+      search,
+      isFree,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      courseType = 'tutor'
+    } = req.query;
+    const userId = req.user ? req.user.id : null;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    let query = { isPublished: true };
+    if (category) query.category = category;
+    if (courseType) query.courseType = courseType;
+    if (isFree !== undefined) query.isFree = isFree === 'true';
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const total = await Course.countDocuments(query);
+
+    const courses = await Course.find(query)
+      .select('title description category thumbnail isFree courseType price tutorId enrolledUsers ratings averageRating')
+      .populate('createdBy', 'fullName email profilePicture bio')   
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit);
+
+    // Get bookmarks and completed lessons for authenticated user
+    let bookmarks = [];
+    let completedLessons = [];
+    if (userId) {
+      const [bookmarkDocs, user] = await Promise.all([
+        Bookmark.find({ userId }).select('courseId'),
+        User.findById(userId).select('completedLessons'),
+      ]);
+
+      bookmarks = bookmarkDocs;
+      completedLessons = user?.completedLessons.map(id => id.toString()) || [];
+    }
+
+    // Enhance courses
+    const enhancedCourses = await Promise.all(
+      courses.map(async (course) => {
+        const courseObj = course.toObject();
+
+        // Add isBookmarked
+        courseObj.isBookmarked = bookmarks.some(bookmark =>
+          bookmark.courseId.toString() === course._id.toString()
+        );
+
+        // Add isEnrolled
+        courseObj.isEnrolled = userId
+          ? course.enrolledUsers?.some(id => id.toString() === userId.toString())
+          : false;
+
+        courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+
+        // Get module count (instead of lesson count directly)
+        const moduleCount = await Module.countDocuments({
+          courseId: course._id,
+          isPublished: true,
+        });
+        courseObj.moduleCount = moduleCount;
+
+        // Get total lesson count across all modules
+        const modules = await Module.find({
+          courseId: course._id,
+          isPublished: true,
+        }).select('_id');
+        
+        const moduleIds = modules.map(m => m._id);
+        const totalLessons = await Lesson.countDocuments({
+          moduleId: { $in: moduleIds },
+          isPublished: true,
+        });
+        courseObj.lessonCount = totalLessons;
+
+        // Add progress and isCompleted
+        if (userId) {
+          const completedLessonsForCourse = await Lesson.countDocuments({
+            moduleId: { $in: moduleIds },
+            isPublished: true,
+            _id: { $in: completedLessons },
+          });
+
+          courseObj.progress = totalLessons > 0
+            ? Math.round((completedLessonsForCourse / totalLessons) * 100)
+            : 0;
+
+          courseObj.isCompleted = totalLessons > 0 &&
+            completedLessonsForCourse === totalLessons;
+        } else {
+          courseObj.progress = 0;
+          courseObj.isCompleted = false;
+        }
+
+        return courseObj;
+      })
+    );
+
+    return paginationResponse(enhancedCourses, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get all modules for a specific course
+exports.getCourseModules = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Verify course exists and user has access
+    const course = await Course.findOne({ 
+      _id: courseId, 
+      isPublished: true 
+    });
+
+    if (!course) {
+      return errorResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user is enrolled (if course is not free)
+    const userId = req.user ? req.user.id : null;
+    if (!course.isFree && userId) {
+      const isEnrolled = course.enrolledUsers?.some(id => 
+        id.toString() === userId.toString()
+      );
+      if (!isEnrolled) {
+        return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
+      }
+    }
+
+    const total = await Module.countDocuments({
+      courseId,
+      isPublished: true
+    });
+
+    const modules = await Module.find({
+      courseId,
+      isPublished: true
+    })
+    .select('title description order createdAt')
+    .sort({ order: 1, createdAt: 1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+
+    // Enhance modules with lesson count
+    const enhancedModules = await Promise.all(
+      modules.map(async (module) => {
+        const moduleObj = module.toObject();
+        
+        const lessonCount = await Lesson.countDocuments({
+          moduleId: module._id,
+          isPublished: true
+        });
+        
+        moduleObj.lessonCount = lessonCount;
+        return moduleObj;
+      })
+    );
+
+    return paginationResponse(enhancedModules, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get all lessons for a specific module
+exports.getModuleLessons = async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const userId = req.user ? req.user.id : null;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Verify module exists and get course info
+    const module = await Module.findOne({ 
+      _id: moduleId, 
+      isPublished: true 
+    }).populate('courseId', 'isFree enrolledUsers');
+
+    if (!module) {
+      return errorResponse('Module not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user has access to the course
+    if (!module.courseId.isFree && userId) {
+      const isEnrolled = module.courseId.enrolledUsers?.some(id => 
+        id.toString() === userId.toString()
+      );
+      if (!isEnrolled) {
+        return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
+      }
+    }
+
+    // Get user's completed lessons
+    let completedLessons = [];
+    if (userId) {
+      const user = await User.findById(userId).select('completedLessons');
+      completedLessons = user?.completedLessons.map(id => id.toString()) || [];
+    }
+
+    const total = await Lesson.countDocuments({
+      moduleId,
+      isPublished: true
+    });
+
+    const lessons = await Lesson.find({
+      moduleId,
+      isPublished: true
+    })
+    .select('title description order duration content createdAt')
+    .sort({ order: 1, createdAt: 1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+
+    // Enhance lessons with completion status
+    const enhancedLessons = lessons.map(lesson => {
+      const lessonObj = lesson.toObject();
+      lessonObj.isCompleted = completedLessons.includes(lesson._id.toString());
+      return lessonObj;
+    });
+
+    return paginationResponse(enhancedLessons, total, page, limit, res);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }

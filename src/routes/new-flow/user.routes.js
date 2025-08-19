@@ -338,37 +338,15 @@ router.get('/instructors/:instructorId',
 );
 
 
-// ===================
-// LESSON ROUTES
-// ===================
 
-/**
- * @route   GET /api/student/courses/:courseId/lessons
- * @desc    Get all lessons for a course
- * @access  Private (Student - enrollment checked in controller)
- */
-router.get('/courses/:courseId/lessons',
-  authenticate,
-  param('courseId').isMongoId().withMessage('Invalid course ID'),
-  paginationValidation,
-  studentCourseController.getCourseLessons
-);
 
-/**
- * @route   GET /api/student/lessons/:lessonId/modules
- * @desc    Get all modules for a lesson
- * @access  Private (Student - Must be enrolled in course)
- */
-router.get('/lessons/:lessonId/modules',
-  authenticate,
-  param('lessonId').isMongoId().withMessage('Invalid lesson ID'),
-  paginationValidation,
-  studentCourseController.getLessonModules
-);
 
-// ===================
-// ADDITIONAL QUIZ ROUTES
-// ===================
+// Get all modules for a course
+router.get('/courses/:courseId/modules', authenticate, studentCourseController.getCourseModules);
+
+// Get all lessons for a module
+router.get('/modules/:moduleId/lessons', authenticate, studentCourseController.getModuleLessons);
+
 
 /**
  * @route   GET /api/student/lessons/:lessonId/quizzes
