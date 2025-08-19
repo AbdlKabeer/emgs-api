@@ -38,6 +38,13 @@ const courseSearchValidation = [
 // COURSE DISCOVERY ROUTES
 // ===================
 
+
+router.get('/tutors', 
+  authenticate,
+  studentCourseController.getAllTutors
+);
+
+
 /**
  * @route   GET /api/student/courses
  * @desc    Get all published courses with search and filters

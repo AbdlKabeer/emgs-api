@@ -84,12 +84,6 @@ exports.getAllCourses1 = async (req, res) => {
 
 exports.getAllCourses = async (req, res) => {
   try {
-    // const { category } = req.query;
-    // const userId = req.user ? req.user.id : null;
-    // const page = parseInt(req.query.page) || 1;
-    // const limit = parseInt(req.query.limit) || 10;
-    // const skip = (page - 1) * limit;
-
     const {
       page = 1,
       limit = 10,
@@ -98,7 +92,7 @@ exports.getAllCourses = async (req, res) => {
       isFree,
       sortBy = 'createdAt',
       sortOrder = 'desc',
-      courseType = ''
+      courseType = 'tutor'
     } = req.query;
     const userId = req.user ? req.user.id : null;
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -1113,6 +1107,45 @@ exports.getModuleQuizzes = async (req, res) => {
     );
 
     return paginationResponse(enhancedQuizzes, total, parseInt(page), parseInt(limit), res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
+
+exports.getAllTutors = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      tutorType,   // optional: 'emgs' or 'partner'
+      search       // optional: fullName search
+    } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const query = {
+      role: 'tutor',
+    };
+
+    if (tutorType) {
+      query.tutorType = tutorType;
+    }
+
+    if (search) {
+      query.fullName = { $regex: search, $options: 'i' };
+    }
+
+    const total = await User.countDocuments(query);
+
+    const tutors = await User.find(query)
+      .select('fullName email profilePicture tutorType bio averageRating preferredLanguage')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    return paginationResponse(tutors, total, page, limit, res);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
