@@ -120,8 +120,8 @@ exports.getAllCourses = async (req, res) => {
     const total = await Course.countDocuments(query);
 
     const courses = await Course.find(query)
-      .select('title description category thumbnail isFree price tutorId lessons enrolledUsers ratings averageRating')
-      .populate('createdBy', 'fullName email profilePicture bio')
+      .select('title description category thumbnail isFree courseType price tutorId lessons enrolledUsers ratings averageRating')
+      .populate('createdBy', 'fullName email profilePicture bio')   
       // .sort({ createdAt: -1 }) 
       .sort(sortOptions)
       .skip(skip)
