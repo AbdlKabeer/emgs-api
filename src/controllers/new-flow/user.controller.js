@@ -1119,7 +1119,7 @@ exports.getCourseById = async (req, res) => {
     const userId = req.user ? req.user.id : null;
 
     const course = await Course.findOne({ _id: id, isPublished: true })
-      .select('title description category thumbnail isFree courseType price tutorId enrolledUsers ratings averageRating createdBy lessons')
+      .select('title description category thumbnail isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons')
       .populate('createdBy', 'fullName email profilePicture bio tutorType');
 
     if (!course) {
