@@ -1332,7 +1332,7 @@ exports.getAllCourses = async (req, res) => {
 };
 
 // Get all modules for a specific course
-exports.getCourseModules = async (req, res) => {
+exports.getCourseModulesOld = async (req, res) => {
   try {
     const { courseId } = req.params;
     const { page = 1, limit = 20 } = req.query;
@@ -1456,6 +1456,87 @@ exports.getModuleLessons = async (req, res) => {
   }
 };
 
+exports.getCourseModules = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const userId = req.user ? req.user.id : null;
+
+    // Verify course exists
+    const course = await Course.findOne({ 
+      _id: courseId, 
+      isPublished: true 
+    });
+
+    if (!course) {
+      return errorResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user is enrolled if course is not free
+    if (!course.isFree && userId) {
+      const isEnrolled = course.enrolledUsers?.some(id => 
+        id.toString() === userId.toString()
+      );
+      if (!isEnrolled) {
+        return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
+      }
+    }
+
+    // Get user's completed lessons
+    let completedLessons = [];
+    if (userId) {
+      const user = await User.findById(userId).select('completedLessons');
+      completedLessons = user?.completedLessons.map(id => id.toString()) || [];
+    }
+
+    // Fetch and paginate modules
+    const total = await Module.countDocuments({
+      courseId,
+      isPublished: true
+    });
+
+    const modules = await Module.find({
+      courseId,
+      isPublished: true
+    })
+    .select('title description order createdAt')
+    .sort({ order: 1, createdAt: 1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+
+    // Enhance modules with lessons and lessonCount
+    const enhancedModules = await Promise.all(
+      modules.map(async (module) => {
+        const moduleObj = module.toObject();
+
+        // Get all lessons for the module
+        const lessons = await Lesson.find({
+          moduleId: module._id,
+          isPublished: true
+        })
+        .select('title description order duration content createdAt')
+        .sort({ order: 1, createdAt: 1 });
+
+        // Add completion status to each lesson
+        const enrichedLessons = lessons.map(lesson => {
+          const lessonObj = lesson.toObject();
+          lessonObj.isCompleted = completedLessons.includes(lesson._id.toString());
+          return lessonObj;
+        });
+
+        moduleObj.lessons = enrichedLessons;
+        moduleObj.lessonCount = enrichedLessons.length;
+
+        return moduleObj;
+      })
+    );
+
+    return paginationResponse(enhancedModules, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
 
 
 exports.getAllTutors = async (req, res) => {
