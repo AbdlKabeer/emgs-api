@@ -301,7 +301,7 @@ exports.getMyEnrolledCourses = async (req, res) => {
         path: 'courseId',
         populate: {
           path: 'createdBy',
-          select: 'firstName lastName'
+          select: 'firstName lastName ratings averageRating'
         }
       },
       sort: { enrolledAt: -1 }
@@ -1238,7 +1238,7 @@ exports.getAllCourses = async (req, res) => {
     // Fetch all matching courses (before pagination)
     const allCourses = await Course.find(query)
       .select('title description category thumbnail isFree courseType price tutorId enrolledUsers ratings averageRating createdBy lessons')
-      .populate('createdBy', 'fullName email profilePicture bio tutorType')
+      .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating')
       .sort(sortOptions);
 
     // ✅ Filter courses by tutorType
