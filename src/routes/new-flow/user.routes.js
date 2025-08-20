@@ -105,9 +105,12 @@ router.get('/my-courses',
  */
 router.get('/courses/:courseId/content',
   authenticate,
-  param('courseId').isMongoId().withMessage('Invalid course ID'),
   studentCourseController.getEnrolledCourseContent
 );
+
+
+router.get('/courses/:id', authenticate, studentCourseController.getCourseById);
+
 
 /**
  * @route   POST /api/student/modules/:moduleId/complete
