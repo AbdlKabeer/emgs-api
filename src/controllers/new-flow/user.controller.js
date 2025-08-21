@@ -1118,16 +1118,12 @@ exports.getCourseById = async (req, res) => {
     const { id } = req.params;
     const userId = req.user ? req.user.id : null;
 
-    const course = await Course.findOne({ _id: id, isPublished: true })
+    const course = await Course.findOne({ _id: id})
+    // const course = await Course.findOne({ _id: id, isPublished: true })
       .select('title description category thumbnail isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons')
       .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating');
 
     if (!course) {
-      return errorResponse('Course not found', 'NOT_FOUND', 404, res);
-    }
-
-    // ✅ Tutor type filtering (optional based on logic from getAllCourses)
-    if (course.createdBy?.tutorType !== 'partner') {
       return errorResponse('Course not found', 'NOT_FOUND', 404, res);
     }
 
@@ -1216,13 +1212,14 @@ exports.getAllCourses = async (req, res) => {
       isFree,
       sortBy = 'createdAt',
       sortOrder = 'desc',
-      courseType = 'partner' // will match tutorType of createdBy
+      courseType = 'tutor' // will match tutorType of createdBy
     } = req.query;
 
     const userId = req.user ? req.user.id : null;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     let query = { isPublished: true };
+    if (category) query.category = category;
     if (category) query.category = category;
     if (isFree !== undefined) query.isFree = isFree === 'true';
     if (search) {
@@ -1242,8 +1239,19 @@ exports.getAllCourses = async (req, res) => {
       .sort(sortOptions);
 
     // ✅ Filter courses by tutorType
-    const filteredCourses = allCourses.filter(course =>
-      course.createdBy?.tutorType === courseType
+    const filteredCourses = allCourses.filter(course => {
+
+
+      if(courseType == 'tutor' || courseType == 'partner'){
+        return course.createdBy?.tutorType === 'partner'
+      }else if(courseType == 'emgs'){
+        return course.createdBy?.tutorType === 'emgs'
+      }
+
+      return true
+
+    }
+      
     );
 
     const total = filteredCourses.length;
