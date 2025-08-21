@@ -197,7 +197,7 @@ exports.getCoursePreview = async (req, res) => {
       _id: courseId, 
       isPublished: true, 
       status: 'published' 
-    }).populate('createdBy', 'firstName lastName profilePicture bio');
+    }).populate('createdBy', 'firstName lastName profilePicture bio ratings averageRating');
 
     if (!course) {
       return errorResponse('Course not found', 'NOT_FOUND', 404, res);
@@ -357,7 +357,7 @@ exports.getEnrolledCourseContent = async (req, res) => {
     }
 
     const course = await Course.findById(courseId)
-      .populate('createdBy', 'firstName lastName profilePicture');
+      .populate('createdBy', 'firstName lastName profilePicture ratings averageRating');
 
     const lessons = await Lesson.find({ courseId }).sort({ order: 1 });
     const lessonIds = lessons.map(lesson => lesson._id);
@@ -1120,7 +1120,7 @@ exports.getCourseById = async (req, res) => {
 
     const course = await Course.findOne({ _id: id, isPublished: true })
       .select('title description category thumbnail isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons')
-      .populate('createdBy', 'fullName email profilePicture bio tutorType');
+      .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating');
 
     if (!course) {
       return errorResponse('Course not found', 'NOT_FOUND', 404, res);
