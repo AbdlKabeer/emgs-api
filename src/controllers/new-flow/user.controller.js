@@ -195,7 +195,7 @@ exports.getCoursePreview = async (req, res) => {
 
     const course = await Course.findOne({ 
       _id: courseId, 
-      isPublished: true, 
+      // isPublished: true, 
       status: 'published' 
     }).populate('createdBy', 'firstName lastName profilePicture bio ratings averageRating');
 
@@ -1120,7 +1120,7 @@ exports.getCourseById = async (req, res) => {
 
     const course = await Course.findOne({ _id: id})
     // const course = await Course.findOne({ _id: id, isPublished: true })
-      .select('title description category thumbnail isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons')
+      .select('title description category thumbnail preview isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons')
       .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating');
 
     if (!course) {
@@ -1234,7 +1234,7 @@ exports.getAllCourses = async (req, res) => {
 
     // Fetch all matching courses (before pagination)
     const allCourses = await Course.find(query)
-      .select('title description category thumbnail isFree courseType price tutorId enrolledUsers ratings averageRating createdBy lessons')
+      .select('title description category thumbnail isFree courseType preview price tutorId enrolledUsers ratings averageRating createdBy lessons')
       .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating')
       .sort(sortOptions);
 

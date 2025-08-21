@@ -89,6 +89,10 @@ const courseSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  preview: {
+    type: String,
+    default: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+  },
   goals: [{
     type: String
   }],
