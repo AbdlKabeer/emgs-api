@@ -114,6 +114,7 @@ const courseSchema = new mongoose.Schema({
     enum: ['emgs', 'tutor'],
     default: 'tutor'
   },
+  enrolledUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   isPublished: {
     type: Boolean,
     default: false
