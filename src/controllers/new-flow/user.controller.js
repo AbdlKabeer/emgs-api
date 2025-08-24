@@ -1464,6 +1464,56 @@ exports.getModuleLessons = async (req, res) => {
   }
 };
 
+exports.getLessonById = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const userId = req.user ? req.user.id : null;
+
+    // Find the lesson
+    const lesson = await Lesson.findOne({
+      _id: lessonId,
+      isPublished: true
+    }).populate({
+      path: 'moduleId',
+      populate: {
+        path: 'courseId',
+        select: 'isFree enrolledUsers',
+      }
+    });
+
+    if (!lesson) {
+      return errorResponse('Lesson not found', 'NOT_FOUND', 404, res);
+    }
+
+    const course = lesson.moduleId?.courseId;
+
+    // Check access
+    if (course && !course.isFree && userId) {
+      const isEnrolled = course.enrolledUsers?.some(id =>
+        id.toString() === userId.toString()
+      );
+      if (!isEnrolled) {
+        return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
+      }
+    }
+
+    // Check if user completed the lesson
+    let isCompleted = false;
+    if (userId) {
+      const user = await User.findById(userId).select('completedLessons');
+      isCompleted = user?.completedLessons.includes(lesson._id);
+    }
+
+    const lessonObj = lesson.toObject();
+    lessonObj.isCompleted = isCompleted;
+
+    return successResponse(lessonObj,res,200,'')
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
 exports.getCourseModules = async (req, res) => {
   try {
     const { courseId } = req.params;
