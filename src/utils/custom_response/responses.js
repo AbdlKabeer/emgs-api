@@ -10,7 +10,12 @@ const successResponse = (data = null, res, statusCode = 200, message="Success") 
     return res.status(statusCode).json(responseData);
 };
 
-const errorResponse = (message = 'An error occurred', group = 'BAD_REQUEST', statusCode = 400, res) => {
+const errorResponse = (message = 'An error occurred', group = 'BAD_REQUEST', statusCode = 400, res= null) => {
+    console.log(res)
+    console.log(res)
+    console.log(res)
+    console.log(res)
+    console.log(res)
     const responseData = {
         status: false,
         group,

@@ -241,6 +241,7 @@ exports.login = async (req, res) => {
     
     // Find user
     const user = await User.findOne({ email });
+    console.log(user)
     if (!user) {
       return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
     }
@@ -267,7 +268,7 @@ exports.login = async (req, res) => {
     );
 
     return successResponse({
-      token,
+      token, 
       user: {
         id: user._id,
         fullName: user.fullName,
@@ -280,6 +281,10 @@ exports.login = async (req, res) => {
       }
     }, res);
   } catch (error) {
+    console.log(error)
+    console.log(error)
+    console.log(error)
+    console.log(error)
     return internalServerErrorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
@@ -320,6 +325,11 @@ exports.forgotPassword = async (req, res) => {
       `Password reset email sent` 
     );
   } catch (error) {
+    console.log(error)
+    console.log(error)
+    console.log(error)
+    console.log(error)
+    console.log(error)
     return internalServerErrorResponse(error.message,res, 500);
   }
 };

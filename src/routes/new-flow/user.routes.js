@@ -45,6 +45,18 @@ router.get('/tutors',
 );
 
 
+router.post('/tutors/:tutorId/rate', 
+  authenticate,
+  studentCourseController.rateTutor
+);
+
+
+router.get('/tutors/:tutorId/ratings', 
+  authenticate,
+  studentCourseController.getTutorRatings
+);
+
+
 /**
  * @route   GET /api/student/courses
  * @desc    Get all published courses with search and filters

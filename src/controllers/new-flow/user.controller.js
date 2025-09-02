@@ -1199,8 +1199,6 @@ exports.getCourseById = async (req, res) => {
 };
 
 
-
-
 // Updated getAllCourses endpoint with proper Module/Lesson relationship
 exports.getAllCourses = async (req, res) => {
   try {
@@ -1633,3 +1631,97 @@ exports.getAllTutors = async (req, res) => {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+
+// Rate a tutor
+exports.rateTutor = async (req, res) => {
+  try {
+    const { tutorId } = req.params;
+    const userId = req.user.id;
+    const { rating, review } = req.body;
+    
+    // Validate rating
+    if (!rating || rating < 1 || rating > 5) {
+      return badRequestResponse('Rating must be between 1 and 5', 'BAD_REQUEST', 400, res);
+    }
+    
+    // Find the tutor
+    const tutor = await User.findOne({ _id: tutorId, role: 'tutor' });
+    if (!tutor) {
+      return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Check if user has enrolled in any of the tutor's courses
+    const hasEnrolled = await Course.exists({
+      createdBy: tutorId,
+      enrolledUsers: userId
+    });
+    
+    if (!hasEnrolled) {
+      return badRequestResponse('You must be enrolled in at least one of the tutor\'s courses to rate them', 'BAD_REQUEST', 400, res);
+    }
+    
+    // Check if user has already rated this tutor
+    const existingRatingIndex = tutor.ratings?.findIndex(r => r.userId.toString() === userId);
+    
+    if (existingRatingIndex !== -1) {
+      // Update existing rating
+      tutor.ratings[existingRatingIndex] = {
+        userId,
+        rating,
+        review: review || tutor.ratings[existingRatingIndex].review,
+        createdAt: new Date()
+      };
+    } else {
+      // Initialize ratings array if it doesn't exist
+      if (!tutor.ratings) {
+        tutor.ratings = [];
+      }
+      
+      // Add new rating
+      tutor.ratings.push({
+        userId,
+        rating,
+        review,
+        createdAt: new Date()
+      });
+    }
+    
+    // Calculate new average rating
+    tutor.averageRating = tutor.calculateAverageRating();
+    
+    await tutor.save();
+    
+    return successResponse({ 
+      averageRating: tutor.averageRating 
+    }, res, 200, 'Tutor rated successfully');
+  } catch (error) {
+    console.error('Error rating tutor:', error);
+    return internalServerErrorResponse('Server error while rating tutor', res, 500);
+  }
+};
+
+// Get tutor ratings
+exports.getTutorRatings = async (req, res) => {
+  try {
+    const { tutorId } = req.params;
+    
+    const tutor = await User.findOne({ _id: tutorId, role: 'tutor' })
+      .select('ratings averageRating')
+      .populate('ratings.userId', 'fullName profilePicture');
+    
+    if (!tutor) {
+      return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
+    }
+    
+    return successResponse({
+      averageRating: tutor.averageRating || 0,
+      totalRatings: tutor.ratings?.length || 0,
+      ratings: tutor.ratings || []
+    }, res, 200, 'Tutor ratings fetched successfully');
+  } catch (error) {
+    console.error('Error getting tutor ratings:', error);
+    return internalServerErrorResponse('Server error while fetching tutor ratings', res, 500);
+  }
+};
+

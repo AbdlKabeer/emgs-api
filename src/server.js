@@ -63,7 +63,7 @@ app.use('/api/v1/progress', progressRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/quizzes', quizRoutes);
 app.use('/api/v1/payment', paymentRoutes);
-app.use('/api/v1/faqs', faqRoutes);
+app.use('/api/v2/faqs', faqRoutes);
 app.use('/api/v1/file', imageRoutes);
 app.use('/api/v1/tutors', tutorRoutes);
 app.use('/api/v1/support', supportRoutes);
