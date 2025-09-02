@@ -1462,6 +1462,41 @@ exports.getModuleLessons = async (req, res) => {
   }
 };
 
+
+// Mark Lesson as Completed
+exports.markLessonCompleted = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const userId = req.user.id;
+
+    // Find the lesson to check if it exists
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) {
+      return badRequestResponse('Lesson not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Find the course that the lesson belongs to
+    const user = await User.findById(userId);
+
+    // // Check if user is enrolled in the course
+    // if (!user.enrolledCourses.includes(courseId)) {
+    //   return badRequestResponse('User must be enrolled in the course to mark lessons as completed', 'FORBIDDEN', 403, res);
+    // }
+
+    // Add lesson to completed lessons
+    await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { completedLessons: lessonId } } // $addToSet ensures the lesson isn't added multiple times
+    );
+
+    // Optionally, you can check if the course is completed (e.g., if all lessons are completed)
+
+    return successResponse({}, res, 200, 'Lesson marked as completed successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 exports.getLessonById = async (req, res) => {
   try {
     const { lessonId } = req.params;

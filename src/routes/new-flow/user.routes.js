@@ -366,6 +366,8 @@ router.get('/modules/:moduleId/lessons', authenticate, studentCourseController.g
 
 router.get('/lessons/:lessonId', authenticate, studentCourseController.getLessonById);
 
+router.post('/lessons/:lessonId/markLessonCompleted', authenticate, studentCourseController.markLessonCompleted);
+
 /**
  * @route   GET /api/student/lessons/:lessonId/quizzes
  * @desc    Get all quizzes for a lesson
