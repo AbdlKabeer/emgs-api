@@ -52,23 +52,23 @@ mongoose
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/account', accountRoutes);
-app.use('/api/v1/courses', courseRoutes);
-app.use('/api/v1/lessons', lessonRoutes);
-app.use('/api/v1/services', serviceRoutes);
-app.use('/api/v1/crm', crmRoutes);
-app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1/progress', progressRoutes);
-app.use('/api/v1/notifications', notificationRoutes);
-app.use('/api/v1/quizzes', quizRoutes);
-app.use('/api/v1/payment', paymentRoutes);
+app.use('/api/v2/auth', authRoutes);
+app.use('/api/v2/account', accountRoutes);
+app.use('/api/v2/courses', courseRoutes);
+app.use('/api/v2/lessons', lessonRoutes);
+app.use('/api/v2/services', serviceRoutes);
+app.use('/api/v2/crm', crmRoutes);
+app.use('/api/v2/admin', adminRoutes);
+app.use('/api/v2/progress', progressRoutes);
+app.use('/api/v2/notifications', notificationRoutes);
+app.use('/api/v2/quizzes', quizRoutes);
+app.use('/api/v2/payment', paymentRoutes);
 app.use('/api/v2/faqs', faqRoutes);
-app.use('/api/v1/file', imageRoutes);
+app.use('/api/v2/file', imageRoutes);
 app.use('/api/v1/tutors', tutorRoutes);
-app.use('/api/v1/support', supportRoutes);
-app.use('/api/v1/wallet', walletRoutes);
-app.use('/api/v1/waitlist', waitlistRoutes); // Add waitlist routes
+app.use('/api/v2/support', supportRoutes);
+app.use('/api/v2/wallet', walletRoutes);
+app.use('/api/v2/waitlist', waitlistRoutes); // Add waitlist routes
 
 
 app.use('/api/v2/student', studentRoutes);
