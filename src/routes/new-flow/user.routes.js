@@ -357,6 +357,8 @@ router.get('/instructors/:instructorId',
 
 
 // Get all modules for a course
+router.post('/courses/:courseId/markLessonCompleted', authenticate, studentCourseController.markCourseCompleted);
+
 router.get('/courses/:courseId/modules', authenticate, studentCourseController.getCourseModules);
 
 // Get all lessons for a module

@@ -1478,10 +1478,6 @@ exports.markLessonCompleted = async (req, res) => {
     // Find the course that the lesson belongs to
     const user = await User.findById(userId);
 
-    // // Check if user is enrolled in the course
-    // if (!user.enrolledCourses.includes(courseId)) {
-    //   return badRequestResponse('User must be enrolled in the course to mark lessons as completed', 'FORBIDDEN', 403, res);
-    // }
 
     // Add lesson to completed lessons
     await User.findByIdAndUpdate(
@@ -1496,6 +1492,50 @@ exports.markLessonCompleted = async (req, res) => {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+
+exports.markCourseCompleted = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+
+    // Check if course exists
+    const course = await Course.findById(courseId).populate('lessons');
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Fetch the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return badRequestResponse('User not found', 'USER_NOT_FOUND', 404, res);
+    }
+
+    // Check if all lessons in the course are marked as completed
+    const lessonIds = course.lessons.map(lesson => lesson._id.toString());
+    const completedLessons = user.completedLessons.map(id => id.toString());
+
+    const allLessonsCompleted = lessonIds.every(id => completedLessons.includes(id));
+
+    if (!allLessonsCompleted) {
+      return badRequestResponse('Not all lessons are completed yet', 'LESSONS_INCOMPLETE', 400, res);
+    }
+
+    // Add to completedCourses if not already present
+    if (!user.completedCourses.includes(courseId)) {
+      await User.findByIdAndUpdate(
+        userId,
+        { $addToSet: { completedCourses: courseId } } // Avoid duplicates
+      );
+    }
+
+    return successResponse({}, res, 200, 'Course marked as completed successfully');
+  } catch (error) {
+    console.error('Error marking course completed:', error);
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 
 exports.getLessonById = async (req, res) => {
   try {
