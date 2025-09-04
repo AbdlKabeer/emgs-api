@@ -123,6 +123,27 @@ const courseSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  ratings: [
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    score: {
+      type: Number,
+      required: true
+    },
+    comment: {
+      type: String,
+      default: ''
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }
+],
   rating: {
     average: {
       type: Number,
