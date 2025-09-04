@@ -361,6 +361,10 @@ router.post('/courses/:courseId/markLessonCompleted', authenticate, studentCours
 
 router.get('/courses/:courseId/modules', authenticate, studentCourseController.getCourseModules);
 
+
+router.post('/courses/:courseId/rate', authenticate, studentCourseController.rateCourse);
+router.get('/courses/:courseId/ratings',authenticate, studentCourseController.getCourseRatings);
+
 // Get all lessons for a module
 router.get('/modules/:moduleId/lessons', authenticate, studentCourseController.getModuleLessons);
 

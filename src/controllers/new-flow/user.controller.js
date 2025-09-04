@@ -1800,3 +1800,79 @@ exports.getTutorRatings = async (req, res) => {
   }
 };
 
+
+exports.rateCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+    const { rating, review } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return badRequestResponse('Rating must be between 1 and 5', 'BAD_REQUEST', 400, res);
+    }
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if user is enrolled
+    const isEnrolled = course.enrolledUsers.some(user => user.toString() === userId);
+    if (!isEnrolled) {
+      return badRequestResponse('You must be enrolled in this course to rate it', 'BAD_REQUEST', 400, res);
+    }
+
+    // Check if user has already rated
+    const existingRatingIndex = course.ratings?.findIndex(r => r.userId.toString() === userId);
+
+    if (existingRatingIndex !== -1) {
+      // Update existing rating
+      course.ratings[existingRatingIndex] = {
+        userId,
+        rating,
+        review: review || course.ratings[existingRatingIndex].review,
+        createdAt: new Date()
+      };
+    } else {
+      course.ratings.push({ userId, rating, review });
+    }
+
+    // Recalculate average rating
+    course.calculateAverageRating();
+    await course.save();
+
+    return successResponse({
+      averageRating: course.rating.average,
+      totalRatings: course.rating.count
+    }, res, 200, 'Course rated successfully');
+  } catch (error) {
+    console.error('Error rating course:', error);
+    return internalServerErrorResponse('Server error while rating course', res, 500);
+  }
+};
+
+
+
+exports.getCourseRatings = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findById(courseId)
+      .select('ratings rating')
+      .populate('ratings.userId', 'fullName profilePicture');
+
+    if (!course) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    return successResponse({
+      averageRating: course.rating?.average || 0,
+      totalRatings: course.rating?.count || 0,
+      ratings: course.ratings || []
+    }, res, 200, 'Course ratings fetched successfully');
+  } catch (error) {
+    console.error('Error fetching course ratings:', error);
+    return internalServerErrorResponse('Server error while fetching course ratings', res, 500);
+  }
+};
+
