@@ -7,51 +7,67 @@ const { successResponse, badRequestResponse, internalServerErrorResponse } = req
 const { sendWhatsAppMessage } = require('../services/whatsapp.service');
 const { createDefaultServices } = require('../utils/dafaultServices');
 
-// Get all services
-// exports.getAllServices = async (req, res) => {
-//   try {
-//     const { category } = req.query;
-    
-//     let query = { isActive: true };
-    
-//     // Filter by category if provided
-//     if (category) {
-//       query.category = category;
-//     }
-    
-//     const services = await Service.find(query)
-//       .sort({ category: 1 });
-    
-//     return successResponse(services,res,200,'Success');
-//   } catch (error) {
-//     return internalServerErrorResponse(error.message)
-//   }
-// };
+
 exports.getAllServices = async (req, res) => {
   try {
-
-    // Fetch all active services and group them by category
     const servicesByCategory = await Service.aggregate([
-      { $match: { isActive: true } }, // Only active services
+      { $match: { isActive: true } },
+
+      // Join with the 'users' collection
       {
-        $group: {
-          _id: "$category",  // Group by the 'category' field
-          services: { $push: "$$ROOT" },  // Push all the fields of the service into an array
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user'
         }
       },
-      { $sort: { _id: 1 } } // Sort the groups by category (_id)
+
+      // Unwind to convert user array to object
+      { $unwind: '$user' },
+
+      // Optional: only include specific fields
+      {
+        $project: {
+          name: 1,
+          description: 1,
+          category: 1,
+          whatsappContact: 1,
+          price: 1,
+          isActive: 1,
+          autoResponderMessage: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          
+          // Only specific user fields
+          user: {
+            _id: 1,
+            fullName: 1,
+            profilePicture: 1
+          }
+        }
+      },
+
+      // Group by category
+      {
+        $group: {
+          _id: '$category',
+          services: { $push: '$$ROOT' }
+        }
+      },
+
+      // Sort by category
+      { $sort: { _id: 1 } }
     ]);
 
-    // Send the success response with grouped services
     return successResponse(servicesByCategory, res, 200, 'Success');
   } catch (error) {
-    // Log the error for debugging purposes
     console.error('Error fetching and grouping services:', error);
-
-    // Send the error response
     return internalServerErrorResponse(error.message, res);
   }
 };
+
+
 
 
 

@@ -28,6 +28,11 @@ const serviceSchema = new mongoose.Schema(
       type: String, 
       default: "Thank you for reaching out. We'll get back to you shortly!" 
     },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
   },
   { timestamps: true }
 );
