@@ -54,7 +54,7 @@ exports.createConversation = async (req, res) => {
 exports.getUserConversations = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { page, limit, type } = req.query;
+    const { page = 1, limit = 20, type } = req.query;
 
     const query = {
       participants: userId,
@@ -65,21 +65,23 @@ exports.getUserConversations = async (req, res) => {
       query.type = type;
     }
 
-    const options = {
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 20,
-      sort: { lastActivity: -1 },
-      populate: [
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Conversation.countDocuments(query);
+
+    const conversations = await Conversation.find(query)
+      .sort({ lastActivity: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate([
         { path: 'participants', select: 'name email avatar' },
         { path: 'lastMessage', select: 'content messageType createdAt sender' },
         { path: 'courseId', select: 'title' }
-      ]
-    };
+      ]);
 
-    const conversations = await Conversation.paginate(query, options);
-    return paginationResponse(res, conversations, 'conversations');
+    return paginationResponse(conversations, total, parseInt(page), parseInt(limit), res);
   } catch (error) {
-    return errorResponse(res, error.message, 500);
+    console.log(error);
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
 

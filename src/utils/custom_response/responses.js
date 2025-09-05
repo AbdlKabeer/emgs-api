@@ -11,11 +11,7 @@ const successResponse = (data = null, res, statusCode = 200, message="Success") 
 };
 
 const errorResponse = (message = 'An error occurred', group = 'BAD_REQUEST', statusCode = 400, res= null) => {
-    console.log(res)
-    console.log(res)
-    console.log(res)
-    console.log(res)
-    console.log(res)
+
     const responseData = {
         status: false,
         group,
