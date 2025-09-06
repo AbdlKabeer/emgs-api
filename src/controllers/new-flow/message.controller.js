@@ -1,7 +1,7 @@
 const Conversation = require('../../models/conversation.model');
 const Message = require('../../models/message.model');
 const User = require('../../models/user.model');
-const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../../utils/custom_response/responses');
+const { successResponse, errorResponse, badRequestResponse, paginationResponse, internalServerErrorResponse } = require('../../utils/custom_response/responses');
 
 
 exports.sendMessage = async (req, res) => {
@@ -18,7 +18,7 @@ exports.sendMessage = async (req, res) => {
     });
 
     if (!conversation) {
-      return badRequestResponse(res, 'Conversation not found or access denied', 404);
+      return badRequestResponse('Conversation not found or access denied',null, 404,res);
     }
 
     const message = new Message({
@@ -42,46 +42,58 @@ exports.sendMessage = async (req, res) => {
       await message.populate('replyTo', 'content sender');
     }
 
-    return successResponse(res, message, 'Message sent successfully');
+    return successResponse(message,res,200, 'Message sent successfully');
   } catch (error) {
-    return errorResponse(res, error.message, 500);
+    console.log(error)
+    return internalServerErrorResponse( error.message,res, 500);
   }
 };
 
 exports.getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { page, limit } = req.query;
+    const { page = 1, limit = 50 } = req.query;
     const userId = req.user.id;
 
-    // Verify user is participant
+    // ✅ Check if user is a participant
     const conversation = await Conversation.findOne({
       _id: conversationId,
       participants: userId
     });
 
     if (!conversation) {
-      return badRequestResponse(res, 'Conversation not found or access denied', 404);
+      return badRequestResponse( 'Conversation not found or access denied',null, 404,res);
     }
 
-    const options = {
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 50,
-      sort: { createdAt: -1 },
-      populate: [
+    const parsedPage = parseInt(page);
+    const parsedLimit = parseInt(limit);
+    const skip = (parsedPage - 1) * parsedLimit;
+
+    // ✅ Count total messages
+    const total = await Message.countDocuments({
+      conversation: conversationId,
+      isDeleted: false
+    });
+
+    // ✅ Fetch messages with pagination
+    const messages = await Message.find({
+      conversation: conversationId,
+      isDeleted: false
+    })
+      .sort({ createdAt: -1 }) // Newest first
+      .skip(skip)
+      .limit(parsedLimit)
+      .populate([
         { path: 'sender', select: 'name avatar' },
         { path: 'replyTo', select: 'content sender' }
-      ]
-    };
+      ]);
 
-    const messages = await Message.paginate(
-      { conversation: conversationId, isDeleted: false },
-      options
-    );
+    // ✅ Respond using same paginationResponse format
+    return paginationResponse(messages, total, parsedPage, parsedLimit, res);
 
-    return paginationResponse(res, messages, 'messages');
   } catch (error) {
-    return errorResponse(res, error.message, 500);
+    console.error(error);
+    return internalServerErrorResponse(res, error.message, 500);
   }
 };
 

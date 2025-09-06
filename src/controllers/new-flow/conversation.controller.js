@@ -1,24 +1,27 @@
 const Conversation = require('../../models/conversation.model');
 const Message = require('../../models/message.model');
 const User = require('../../models/user.model');
-const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../../utils/custom_response/responses');
+const { successResponse, errorResponse, badRequestResponse,internalServerErrorResponse, paginationResponse } = require('../../utils/custom_response/responses');
 
 exports.createConversation = async (req, res) => {
   try {
     const { participants, type, title, description, courseId } = req.body;
     const userId = req.user.id; // Assuming user is authenticated
 
+
+    console.log(req.body)
+
     // Validate participants
     if (!participants || participants.length === 0) {
-      return badRequestResponse(res, 'At least one participant is required', 400);
+      return badRequestResponse( 'At least one participant is required',null, 400,res);
     }
 
     // Add current user to participants if not included
     const allParticipants = [...new Set([userId, ...participants])];
-
+    console.log(allParticipants)
     // For direct messages, limit to 2 participants
     if (type === 'direct' && allParticipants.length > 2) {
-      return badRequestResponse(res, 'Direct messages can only have 2 participants', 400);
+      return badRequestResponse('Direct messages can only have 2 participants',null, 400,res);
     }
 
     // Check if direct conversation already exists
@@ -29,7 +32,7 @@ exports.createConversation = async (req, res) => {
       });
       
       if (existingConversation) {
-        return successResponse(res, existingConversation, 'Conversation already exists');
+        return successResponse( existingConversation,res,200, 'Conversation already exists');
       }
     }
 
@@ -42,12 +45,21 @@ exports.createConversation = async (req, res) => {
       createdBy: userId
     });
 
+
+    console.log(conversation)
+    console.log(conversation)
+    console.log(conversation)
+
     await conversation.save();
     await conversation.populate('participants', 'name email avatar');
 
-    return successResponse(res, conversation, 'Conversation created successfully');
+    return successResponse( conversation,res,200, 'Conversation created successfully');
   } catch (error) {
-    return errorResponse(res, error.message, 500);
+    console.log(error)
+    console.log(error)
+    console.log(error)
+    console.log(error)
+    return internalServerErrorResponse(error.message, res, 500);
   }
 };
 
@@ -81,7 +93,7 @@ exports.getUserConversations = async (req, res) => {
     return paginationResponse(conversations, total, parseInt(page), parseInt(limit), res);
   } catch (error) {
     console.log(error);
-    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+    return internalServerErrorResponse(error.message,res, 500);
   }
 };
 

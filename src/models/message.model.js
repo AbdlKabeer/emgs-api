@@ -87,3 +87,5 @@ messageSchema.index({ sender: 1 });
 messageSchema.index({ 'readBy.user': 1 });
 
 const Message = mongoose.model('Message', messageSchema);
+
+module.exports = Message;
