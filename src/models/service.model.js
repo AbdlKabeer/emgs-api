@@ -24,6 +24,7 @@ const serviceSchema = new mongoose.Schema(
     whatsappContact: { type: String, required: true },
     price: { type: Number },
     isActive: { type: Boolean, default: true },
+    enrolledUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     autoResponderMessage: { 
       type: String, 
       default: "Thank you for reaching out. We'll get back to you shortly!" 
