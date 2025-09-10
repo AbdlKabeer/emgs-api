@@ -2,7 +2,7 @@
 const { body, validationResult } = require('express-validator');
 
 const createModuleValidator = [
-  body('lessonId').isMongoId().withMessage('Valid lessonId is required'),
+  body('courseId').isMongoId().withMessage('Valid courseId is required'),
   body('title').notEmpty().withMessage('Title is required'),
   body('description').notEmpty().withMessage('Description is required'),
   body('order').optional().isInt({ min: 1 }).withMessage('Order must be a positive integer'),

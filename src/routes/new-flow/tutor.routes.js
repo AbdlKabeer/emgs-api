@@ -11,6 +11,7 @@ const { createQuizValidator,addQuestionValidator } = require('../../validators/n
 
 
 
+router.get('/courses',authenticate, courseController.getAllCourses);
 
 // Create a new course
 router.post('/courses', authenticate, createCourseValidator, courseController.createCourse);
@@ -22,7 +23,7 @@ router.put('/courses/:courseId', authenticate, updateCourseValidator, courseCont
 router.post('/:courseId/submit', authenticate, courseController.submitCourseForReview);
 
 // Get course details with lessons, modules, and quizzes
-router.get('/:courseId', authenticate, courseController.getCourseDetails);
+router.get('/courses/:courseId', authenticate, courseController.getCourseDetails);
 
 router.post('/lessons', authenticate, createLessonValidator, courseController.createLesson);
 

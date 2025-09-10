@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+// const mongoose = require('mongoose');
 // const Quiz = require('./quiz.model');
 
 // const courseSchema = new mongoose.Schema(
@@ -56,6 +56,7 @@ const mongoose = require('mongoose');
 // const Course = mongoose.model('Course', courseSchema);
 // module.exports = Course;
 
+const mongoose = require('mongoose');
 
 const courseSchema = new mongoose.Schema({
   title: {
@@ -79,7 +80,7 @@ const courseSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return this.isFree || v > 0;
       },
       message: 'Price must be greater than 0 for paid courses'
@@ -93,12 +94,8 @@ const courseSchema = new mongoose.Schema({
     type: String,
     default: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
   },
-  goals: [{
-    type: String
-  }],
-  notes: [{
-    type: String
-  }],
+  goals: [{ type: String }],
+  notes: [{ type: String }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -124,26 +121,26 @@ const courseSchema = new mongoose.Schema({
     default: 0
   },
   ratings: [
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    score: {
-      type: Number,
-      required: true
-    },
-    comment: {
-      type: String,
-      default: ''
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      score: {
+        type: Number,
+        required: true
+      },
+      comment: {
+        type: String,
+        default: ''
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
     }
-  }
-],
+  ],
   rating: {
     average: {
       type: Number,
@@ -157,6 +154,17 @@ const courseSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// 🔥 Virtual populate for modules
+courseSchema.virtual('modules', {
+  ref: 'Module',
+  localField: '_id',
+  foreignField: 'courseId'
+});
+
+// allow virtuals in JSON responses
+courseSchema.set('toObject', { virtuals: true });
+courseSchema.set('toJSON', { virtuals: true });
 
 const Course = mongoose.model('Course', courseSchema);
 module.exports = Course;

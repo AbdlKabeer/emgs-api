@@ -28,8 +28,20 @@ const moduleSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// 🔥 Virtual populate for lessons
+moduleSchema.virtual('lessons', {
+  ref: 'Lesson',            // the model to populate
+  localField: '_id',        // find lessons where `moduleId` = this module's `_id`
+  foreignField: 'moduleId'  // field in Lesson schema
+});
+
+// enable virtuals in JSON / object output
+moduleSchema.set('toObject', { virtuals: true });
+moduleSchema.set('toJSON', { virtuals: true });
+
 const Module = mongoose.model('Module', moduleSchema);
 module.exports = Module;
+
 
 
 
