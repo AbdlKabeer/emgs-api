@@ -20,7 +20,7 @@ const router = express.Router();
  *         description: Internal server error
  */
 router.get('/', serviceController.getAllServices);
-router.get('/flst', serviceController.getAllServicesFlat);
+router.get('/flat', serviceController.getAllServicesFlat);
 
 /**
  * @swagger
