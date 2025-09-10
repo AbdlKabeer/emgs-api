@@ -105,7 +105,7 @@ exports.getConversation = async (req, res) => {
     const conversation = await Conversation.findOne({
       _id: id,
       participants: userId
-    }).populate('participants', 'fullName email profilePicture')
+    }).populate('participants', 'fullName email profilePicture role')
       .populate('lastMessage')
       .populate('courseId', 'title');
 
