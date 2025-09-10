@@ -67,6 +67,52 @@ exports.getAllServices = async (req, res) => {
   }
 };
 
+exports.getAllServicesFlat = async (req, res) => {
+  try {
+    const services = await Service.aggregate([
+      { $match: { isActive: true } },
+
+      // Join with user info
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: '$user' },
+
+      // Optional projection
+      {
+        $project: {
+          name: 1,
+          description: 1,
+          category: 1,
+          whatsappContact: 1,
+          price: 1,
+          isActive: 1,
+          autoResponderMessage: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          user: {
+            _id: 1,
+            fullName: 1,
+            profilePicture: 1
+          }
+        }
+      },
+
+      // Optional: sort alphabetically
+      { $sort: { name: 1 } }
+    ]);
+
+    return successResponse(services, res, 200, 'Success');
+  } catch (error) {
+    console.error('Error fetching flat services:', error);
+    return internalServerErrorResponse(error.message, res);
+  }
+};
 
 
 
