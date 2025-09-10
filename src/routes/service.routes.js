@@ -19,8 +19,8 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.get('/', serviceController.getAllServices);
-router.get('/flat', serviceController.getAllServicesFlat);
+router.get('/', authenticate, serviceController.getAllServices);
+router.get('/flat',authenticate, serviceController.getAllServicesFlat);
 
 /**
  * @swagger

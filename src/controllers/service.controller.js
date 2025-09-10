@@ -8,12 +8,78 @@ const { sendWhatsAppMessage } = require('../services/whatsapp.service');
 const { createDefaultServices } = require('../utils/dafaultServices');
 
 
+// exports.getAllServices = async (req, res) => {
+//   try {
+//     const servicesByCategory = await Service.aggregate([
+//       { $match: { isActive: true } },
+
+//       // Join with the 'users' collection
+//       {
+//         $lookup: {
+//           from: 'users',
+//           localField: 'user',
+//           foreignField: '_id',
+//           as: 'user'
+//         }
+//       },
+
+//       // Unwind to convert user array to object
+//       { $unwind: '$user' },
+
+//       // Optional: only include specific fields
+//       {
+//         $project: {
+//           name: 1,
+//           description: 1,
+//           category: 1,
+//           whatsappContact: 1,
+//           price: 1,
+//           isActive: 1,
+//           autoResponderMessage: 1,
+//           createdAt: 1,
+//           updatedAt: 1,
+          
+//           // Only specific user fields
+//           user: {
+//             _id: 1,
+//             fullName: 1,
+//             profilePicture: 1
+//           }
+//         }
+//       },
+
+//       // Group by category
+//       {
+//         $group: {
+//           _id: '$category',
+//           services: { $push: '$$ROOT' }
+//         }
+//       },
+
+//       // Sort by category
+//       { $sort: { _id: 1 } }
+//     ]);
+
+//     return successResponse(servicesByCategory, res, 200, 'Success');
+//   } catch (error) {
+//     console.error('Error fetching and grouping services:', error);
+//     return internalServerErrorResponse(error.message, res);
+//   }
+// };
+
 exports.getAllServices = async (req, res) => {
   try {
+    const userId = req.user?.id; // or req.user.id depending on your middleware
+    let enrolledServices = [];
+
+    if (userId) {
+      const user = await User.findById(userId).select('enrolledServices');
+      enrolledServices = user?.enrolledServices.map(id => id.toString()) || [];
+    }
+
     const servicesByCategory = await Service.aggregate([
       { $match: { isActive: true } },
 
-      // Join with the 'users' collection
       {
         $lookup: {
           from: 'users',
@@ -22,11 +88,8 @@ exports.getAllServices = async (req, res) => {
           as: 'user'
         }
       },
-
-      // Unwind to convert user array to object
       { $unwind: '$user' },
 
-      // Optional: only include specific fields
       {
         $project: {
           name: 1,
@@ -38,8 +101,6 @@ exports.getAllServices = async (req, res) => {
           autoResponderMessage: 1,
           createdAt: 1,
           updatedAt: 1,
-          
-          // Only specific user fields
           user: {
             _id: 1,
             fullName: 1,
@@ -48,24 +109,31 @@ exports.getAllServices = async (req, res) => {
         }
       },
 
-      // Group by category
       {
         $group: {
           _id: '$category',
           services: { $push: '$$ROOT' }
         }
       },
-
-      // Sort by category
       { $sort: { _id: 1 } }
     ]);
 
-    return successResponse(servicesByCategory, res, 200, 'Success');
+    // 🔥 Add isEnrolled flag
+    const enhancedServicesByCategory = servicesByCategory.map(category => ({
+      ...category,
+      services: category.services.map(service => ({
+        ...service,
+        isEnrolled: enrolledServices.includes(service._id.toString())
+      }))
+    }));
+
+    return successResponse(enhancedServicesByCategory, res, 200, 'Success');
   } catch (error) {
     console.error('Error fetching and grouping services:', error);
     return internalServerErrorResponse(error.message, res);
   }
 };
+
 
 exports.getAllServicesFlat = async (req, res) => {
   try {
