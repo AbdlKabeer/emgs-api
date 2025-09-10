@@ -105,7 +105,7 @@ exports.getConversation = async (req, res) => {
     const conversation = await Conversation.findOne({
       _id: id,
       participants: userId
-    }).populate('participants', 'name email avatar')
+    }).populate('participants', 'fullName email profilePicture')
       .populate('lastMessage')
       .populate('courseId', 'title');
 
@@ -113,7 +113,7 @@ exports.getConversation = async (req, res) => {
       return badRequestResponse(res, 'Conversation not found', 404);
     }
 
-    return successResponse(res, conversation, 'Conversation retrieved successfully');
+    return successResponse( conversation,res,200, 'Conversation retrieved successfully');
   } catch (error) {
     return errorResponse(res, error.message, 500);
   }
