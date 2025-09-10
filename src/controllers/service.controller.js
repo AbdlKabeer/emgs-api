@@ -94,6 +94,7 @@ exports.getAllServices = async (req, res) => {
         $project: {
           name: 1,
           description: 1,
+          features: 1, // ✅ Added features field
           category: 1,
           whatsappContact: 1,
           price: 1,

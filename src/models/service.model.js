@@ -21,6 +21,7 @@ const serviceSchema = new mongoose.Schema(
       ],
       required: true 
     },
+    features: [{ type: String }],
     whatsappContact: { type: String, required: true },
     price: { type: Number },
     isActive: { type: Boolean, default: true },
