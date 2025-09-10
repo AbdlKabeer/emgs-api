@@ -74,7 +74,7 @@ exports.getUserConversations = async (req, res) => {
     };
 
     if (type) {
-      query.type = type;
+      query.type = type; 
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -85,7 +85,7 @@ exports.getUserConversations = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .populate([
-        { path: 'participants', select: 'name email avatar' },
+        { path: 'participants', select: 'fullName email profilePicture' },
         { path: 'lastMessage', select: 'content messageType createdAt sender' },
         { path: 'courseId', select: 'title' }
       ]);
