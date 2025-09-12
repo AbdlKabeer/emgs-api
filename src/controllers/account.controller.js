@@ -40,6 +40,7 @@ exports.getUserProfile = async (req, res) => {
         isVerified: user.isVerified,
         referralCode:user.referralCode,
         bio: user.bio,
+        isAppliedForOneOnOne:user.isAppliedForOneOnOne,
         enrolledCourses: user.enrolledCourses,
         completedLessons: user.completedLessons,
         completedCoursesCount: user.completedLessons.length
