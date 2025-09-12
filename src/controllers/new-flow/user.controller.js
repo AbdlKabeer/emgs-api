@@ -2016,20 +2016,12 @@ exports.getLessonById = async (req, res) => {
     lessonObj.isCompleted = completedLessonIds.has(lesson._id.toString());
 
     // Attach minimal previous/next lesson info
-    lessonObj.previousLesson = previousLesson
-      ? {
-          _id: previousLesson._id,
-          title: previousLesson.title,
-          isCompleted: completedLessonIds.has(previousLesson._id.toString())
-        }
+    lessonObj.previousLessonId = previousLesson
+      ? previousLesson._id
       : null;
 
-    lessonObj.nextLesson = nextLesson
-      ? {
-          _id: nextLesson._id,
-          title: nextLesson.title,
-          isCompleted: completedLessonIds.has(nextLesson._id.toString())
-        }
+    lessonObj.nextLessonId = nextLesson
+      ? nextLesson._id
       : null;
 
     return successResponse(lessonObj, res, 200, '');
