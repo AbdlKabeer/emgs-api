@@ -68,6 +68,12 @@ router.get('/courses',
   studentCourseController.getAllCourses
 );
 
+router.get('/courses/completed', 
+  authenticate,
+  courseSearchValidation,
+  studentCourseController.getCompletedCourses
+);
+
 /**
  * @route   GET /api/v2/student/courses/:courseId/preview
  * @desc    Get course preview (without full content)

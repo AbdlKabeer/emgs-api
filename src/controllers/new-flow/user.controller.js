@@ -782,16 +782,6 @@ exports.getBookmarkedCourses = async (req, res) => {
     const filteredCourses = bookmarkedCourses.filter(Boolean);
 
     return paginationResponse(filteredCourses, bookmarks.totalDocs, bookmarks.page, bookmarks.limit, res);
-
-    // return paginationResponse({
-    //   docs: filteredCourses,
-    //   totalDocs: bookmarks.totalDocs,
-    //   limit: bookmarks.limit,
-    //   page: bookmarks.page,
-    //   totalPages: bookmarks.totalPages,
-    //   hasNextPage: bookmarks.hasNextPage,
-    //   hasPrevPage: bookmarks.hasPrevPage
-    // }, res, 200);
   } catch (error) {
     return internalServerErrorResponse(error.message,res, 500);
   }
@@ -1398,6 +1388,121 @@ exports.getAllCourses = async (req, res) => {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+
+exports.getCompletedCourses = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      page = 1,
+      limit = 10,
+      category,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      courseType = 'tutor',
+    } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get user completed courses IDs
+    const user = await User.findById(userId).select('completedCourses completedLessons');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Base query: only completed courses by user
+    let query = { _id: { $in: user.completedCourses }, isPublished: true };
+
+    if (category) query.category = category;
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Fetch all matching completed courses (before pagination)
+    const allCompletedCourses = await Course.find(query)
+      .select('title description category thumbnail isFree courseType preview price tutorId enrolledUsers ratings averageRating createdBy lessons')
+      .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating')
+      .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 });
+
+    // Filter by tutorType
+    const filteredCourses = allCompletedCourses.filter(course => {
+      if (courseType === 'tutor' || courseType === 'partner') {
+        return course.createdBy?.tutorType === 'partner';
+      } else if (courseType === 'emgs') {
+        return course.createdBy?.tutorType === 'emgs';
+      }
+      return true;
+    });
+
+    const total = filteredCourses.length;
+
+    // Paginate
+    const paginatedCourses = filteredCourses.slice(skip, skip + parseInt(limit));
+
+    // Enhance courses with progress info
+    const enhancedCourses = await Promise.all(
+      paginatedCourses.map(async (course) => {
+        const courseObj = course.toObject();
+
+        courseObj.isBookmarked = false; // Could add bookmarks if needed
+
+        courseObj.isEnrolled = course.enrolledUsers?.some(id => id.toString() === userId.toString()) || false;
+
+        courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+
+        // Get module count
+        const moduleCount = await Module.countDocuments({
+          courseId: course._id,
+          isPublished: true,
+        });
+        courseObj.moduleCount = moduleCount;
+
+        // Get all modules
+        const modules = await Module.find({
+          courseId: course._id,
+          isPublished: true,
+        }).select('_id');
+
+        const moduleIds = modules.map(m => m._id);
+
+        // Get lesson count
+        const totalLessons = await Lesson.countDocuments({
+          moduleId: { $in: moduleIds },
+          isPublished: true,
+        });
+        courseObj.lessonCount = totalLessons;
+
+        // Calculate progress based on user's completedLessons
+        const completedLessons = user.completedLessons.map(id => id.toString());
+
+        const completedLessonsForCourse = await Lesson.countDocuments({
+          moduleId: { $in: moduleIds },
+          isPublished: true,
+          _id: { $in: completedLessons },
+        });
+
+        courseObj.progress = totalLessons > 0
+          ? Math.round((completedLessonsForCourse / totalLessons) * 100)
+          : 0;
+
+        courseObj.isCompleted = totalLessons > 0 &&
+          completedLessonsForCourse === totalLessons;
+
+        return courseObj;
+      })
+    );
+
+    return paginationResponse(enhancedCourses, total, page, limit, res);
+
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res, 500);
+  }
+};
+
 
 // Get all modules for a specific course
 exports.getCourseModulesOld = async (req, res) => {
@@ -2061,7 +2166,7 @@ exports.getCourseRatings = async (req, res) => {
       ratings: course.ratings || []
     }, res, 200, 'Course ratings fetched successfully');
   } catch (error) {
-    console.error('Error fetching course ratings:', error);
+    console.error('Error fetching course ratings:', error); 
     return internalServerErrorResponse('Server error while fetching course ratings', res, 500);
   }
 };
