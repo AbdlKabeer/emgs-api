@@ -1165,14 +1165,101 @@ exports.getModuleQuizzes = async (req, res) => {
 };
 
 
+// exports.getCourseById = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const userId = req.user ? req.user.id : null;
+
+//     const course = await Course.findOne({ _id: id})
+//     // const course = await Course.findOne({ _id: id, isPublished: true })
+//       .select('title description category thumbnail preview isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons')
+//       .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating');
+
+//     if (!course) {
+//       return errorResponse('Course not found', 'NOT_FOUND', 404, res);
+//     }
+
+//     const courseObj = course.toObject();
+
+//     // Get bookmarks and completed lessons
+//     let bookmarks = [];
+//     let completedLessons = [];
+
+//     if (userId) {
+//       const [bookmarkDocs, user] = await Promise.all([
+//         Bookmark.find({ userId }).select('courseId'),
+//         User.findById(userId).select('completedLessons'),
+//       ]);
+
+//       bookmarks = bookmarkDocs;
+//       completedLessons = user?.completedLessons.map(id => id.toString()) || [];
+//     }
+
+//     // Enrichment
+//     courseObj.isBookmarked = bookmarks.some(
+//       bookmark => bookmark.courseId.toString() === course._id.toString()
+//     );
+
+//     courseObj.isEnrolled = userId
+//       ? course.enrolledUsers?.some(id => id.toString() === userId.toString())
+//       : false;
+
+//     courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+
+//     // Modules and lessons
+//     const modules = await Module.find({
+//       courseId: course._id,
+//       isPublished: true,
+//     }).select('_id');
+
+//     const moduleIds = modules.map(m => m._id);
+
+//     const totalLessons = await Lesson.countDocuments({
+//       moduleId: { $in: moduleIds },
+//       isPublished: true,
+//     });
+
+//     courseObj.moduleCount = modules.length;
+//     courseObj.lessonCount = totalLessons;
+
+//     if (userId) {
+//       const completedLessonsForCourse = await Lesson.countDocuments({
+//         moduleId: { $in: moduleIds },
+//         isPublished: true,
+//         _id: { $in: completedLessons },
+//       });
+
+//       courseObj.progress = totalLessons > 0
+//         ? Math.round((completedLessonsForCourse / totalLessons) * 100)
+//         : 0;
+
+//       courseObj.isCompleted = totalLessons > 0 &&
+//         completedLessonsForCourse === totalLessons;
+//     } else {
+//       courseObj.progress = 0;
+//       courseObj.isCompleted = false;
+//     }
+
+//     return successResponse(courseObj,res,200,"")
+//     // return res.status(200).json({
+//     //   success: true,
+//     //   data: courseObj,
+//     // });
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
+
+
+// Updated getAllCourses endpoint with proper Module/Lesson relationship
+
 exports.getCourseById = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user ? req.user.id : null;
 
-    const course = await Course.findOne({ _id: id})
-    // const course = await Course.findOne({ _id: id, isPublished: true })
-      .select('title description category thumbnail preview isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons')
+    const course = await Course.findOne({ _id: id })
+      .select('title description category thumbnail preview isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons rating')
       .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating');
 
     if (!course) {
@@ -1180,6 +1267,10 @@ exports.getCourseById = async (req, res) => {
     }
 
     const courseObj = course.toObject();
+
+    // ⭐ Add rating summary
+    courseObj.averageRating = course.rating?.average || 0;
+    courseObj.totalRatings = course.rating?.count || 0;
 
     // Get bookmarks and completed lessons
     let bookmarks = [];
@@ -1240,18 +1331,14 @@ exports.getCourseById = async (req, res) => {
       courseObj.isCompleted = false;
     }
 
-    return successResponse(courseObj,res,200,"")
-    // return res.status(200).json({
-    //   success: true,
-    //   data: courseObj,
-    // });
+    return successResponse(courseObj, res, 200, '');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
 
 
-// Updated getAllCourses endpoint with proper Module/Lesson relationship
+
 exports.getAllCourses = async (req, res) => {
   try {
     const {
