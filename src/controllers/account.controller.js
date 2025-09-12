@@ -322,3 +322,41 @@ exports.chagePasswordConfirm = async (req, res) => {
     return internalServerErrorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+
+// Tutor applies for one-on-one tutoring
+exports.applyForOneOnOne = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    if (user.role !== 'tutor') {
+      return badRequestResponse('Only tutors can apply for one-on-one sessions', 'FORBIDDEN', 403, res);
+    }
+
+    if (user.isAppliedForOneOnOne) {
+      return badRequestResponse('You have already applied for one-on-one tutoring', 'CONFLICT', 409, res);
+    }
+
+    user.isAppliedForOneOnOne = true;
+
+    await user.save();
+
+    return successResponse(
+      {
+        isAppliedForOneOnOne: user.isAppliedForOneOnOne
+      },
+      res,
+      200,
+      'Application for one-on-one tutoring submitted successfully'
+    );
+  } catch (error) {
+    console.error(error);
+    return successResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};

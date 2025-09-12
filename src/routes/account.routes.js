@@ -178,4 +178,6 @@ router.post('/change-password', authenticate, accountController.changePassword);
 
 router.post('/change-password-confirm', authenticate, accountController.chagePasswordConfirm);
 
+router.post('/tutor/apply-one-on-one', authenticate, accountController.applyForOneOnOne);
+
 module.exports = router;
