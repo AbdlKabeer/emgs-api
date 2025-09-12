@@ -714,7 +714,7 @@ exports.getBookmarkedCourses = async (req, res) => {
         path: 'courseId',
         populate: {
           path: 'createdBy',
-          select: 'firstName lastName'
+          select: 'firstName lastName fullName email profilePicture bio tutorType ratings averageRating'
         }
       },
       sort: { createdAt: -1 }
@@ -722,19 +722,81 @@ exports.getBookmarkedCourses = async (req, res) => {
 
     const bookmarks = await Bookmark.paginate({ userId }, options);
 
-    return paginationResponse({
-      docs: bookmarks.docs,
-      totalDocs: bookmarks.totalDocs,
-      limit: bookmarks.limit,
-      page: bookmarks.page,
-      totalPages: bookmarks.totalPages,
-      hasNextPage: bookmarks.hasNextPage,
-      hasPrevPage: bookmarks.hasPrevPage
-    }, res, 200);
+    const bookmarkedCourses = await Promise.all(
+      bookmarks.docs.map(async (bookmark) => {
+        const course = bookmark.courseId;
+
+        if (!course || !course._id) return null; // Skip if course is deleted or not populated
+
+        const courseObj = course.toObject();
+        courseObj.isBookmarked = true;
+
+        // Get enrolled count
+        courseObj.enrolledStudentsCount = course.enrolledUsers?.length || 0;
+
+        // Module count
+        const moduleCount = await Module.countDocuments({
+          courseId: course._id,
+          isPublished: true,
+        });
+        courseObj.moduleCount = moduleCount;
+
+        // Lesson count
+        const modules = await Module.find({
+          courseId: course._id,
+          isPublished: true,
+        }).select('_id');
+
+        const moduleIds = modules.map(m => m._id);
+
+        const totalLessons = await Lesson.countDocuments({
+          moduleId: { $in: moduleIds },
+          isPublished: true,
+        });
+        courseObj.lessonCount = totalLessons;
+
+        // Get user completed lessons
+        const user = await User.findById(userId).select('completedLessons');
+        const completedLessons = user?.completedLessons.map(id => id.toString()) || [];
+
+        const completedLessonsForCourse = await Lesson.countDocuments({
+          moduleId: { $in: moduleIds },
+          isPublished: true,
+          _id: { $in: completedLessons },
+        });
+
+        courseObj.progress = totalLessons > 0
+          ? Math.round((completedLessonsForCourse / totalLessons) * 100)
+          : 0;
+
+        courseObj.isCompleted = totalLessons > 0 &&
+          completedLessonsForCourse === totalLessons;
+
+        courseObj.isEnrolled = course.enrolledUsers?.some(id => id.toString() === userId.toString());
+
+        return courseObj;
+      })
+    );
+
+    // Filter out nulls (in case of deleted courses)
+    const filteredCourses = bookmarkedCourses.filter(Boolean);
+
+    return paginationResponse(filteredCourses, bookmarks.totalDocs, bookmarks.page, bookmarks.limit, res);
+
+    // return paginationResponse({
+    //   docs: filteredCourses,
+    //   totalDocs: bookmarks.totalDocs,
+    //   limit: bookmarks.limit,
+    //   page: bookmarks.page,
+    //   totalPages: bookmarks.totalPages,
+    //   hasNextPage: bookmarks.hasNextPage,
+    //   hasPrevPage: bookmarks.hasPrevPage
+    // }, res, 200);
   } catch (error) {
-    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+    return internalServerErrorResponse(error.message,res, 500);
   }
 };
+
 
 // Get Student Dashboard Data
 exports.getDashboard = async (req, res) => {
