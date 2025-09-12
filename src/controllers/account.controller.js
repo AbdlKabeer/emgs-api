@@ -78,6 +78,7 @@ exports.updateUserProfile = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
+        isAppliedForOneOnOne:user.isAppliedForOneOnOne,
         preferredLanguage: user.preferredLanguage,
         notificationsEnabled: user.notificationsEnabled
       }
