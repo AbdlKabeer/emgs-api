@@ -44,7 +44,8 @@ exports.getUserProfile = async (req, res) => {
         isOneOnOne:user.isOneOnOne,
         enrolledCourses: user.enrolledCourses,
         completedLessons: user.completedLessons,
-        completedCoursesCount: user.completedLessons.length
+        completedCoursesCount: user.completedLessons.length,
+        inProgressCoursesCount: user.enrolledCourses.length - user.completedLessons.length
       }
     }, res);
   } catch (error) {
