@@ -1636,29 +1636,61 @@ exports.markLessonCompleted = async (req, res) => {
     const { lessonId } = req.params;
     const userId = req.user.id;
 
-    // Find the lesson to check if it exists
+    // 1. Get the lesson
     const lesson = await Lesson.findById(lessonId);
     if (!lesson) {
       return badRequestResponse('Lesson not found', 'NOT_FOUND', 404, res);
     }
 
-    // Find the course that the lesson belongs to
-    const user = await User.findById(userId);
+    // 2. Get the module
+    const module = await Module.findById(lesson.moduleId);
+    if (!module) {
+      return badRequestResponse('Module not found for this lesson', 'MODULE_NOT_FOUND', 404, res);
+    }
 
+    // 3. Get the course
+    const courseId = module.courseId;
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return badRequestResponse('Course not found for this lesson', 'COURSE_NOT_FOUND', 404, res);
+    }
 
-    // Add lesson to completed lessons
+    // 4. Update completed lessons for user
     await User.findByIdAndUpdate(
       userId,
-      { $addToSet: { completedLessons: lessonId } } // $addToSet ensures the lesson isn't added multiple times
+      { $addToSet: { completedLessons: lessonId } } // only adds if not already present
     );
 
-    // Optionally, you can check if the course is completed (e.g., if all lessons are completed)
+    // 5. Get all modules for the course
+    const allModules = await Module.find({ courseId: course._id, isPublished: true }).select('_id');
+    const moduleIds = allModules.map(mod => mod._id);
+
+    // 6. Get all lessons for the course
+    const allLessons = await Lesson.find({
+      moduleId: { $in: moduleIds },
+      isPublished: true
+    }).select('_id');
+    const allLessonIds = allLessons.map(lesson => lesson._id.toString());
+
+    // 7. Get user’s completed lessons and courses
+    const user = await User.findById(userId).select('completedLessons completedCourses');
+    const completedLessons = user.completedLessons.map(id => id.toString());
+
+    // 8. Check if user has completed all lessons in this course
+    const hasCompletedAll = allLessonIds.every(id => completedLessons.includes(id));
+
+    if (hasCompletedAll && !user.completedCourses.includes(courseId)) {
+      user.completedCourses.push(courseId);
+      await user.save();
+    }
 
     return successResponse({}, res, 200, 'Lesson marked as completed successfully');
   } catch (error) {
+    console.error('Error marking lesson completed:', error);
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
 
 
 // exports.markCourseCompleted = async (req, res) => {
@@ -1794,7 +1826,7 @@ exports.markCourseCompleted = async (req, res) => {
       ...user.completedLessons.map(id => id.toString()),
       ...lessonIds
     ]);
-    
+
     user.completedLessons = Array.from(updatedCompletedLessons);
 
     // 7. Add course to completedCourses if not already there
