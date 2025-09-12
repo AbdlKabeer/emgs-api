@@ -166,5 +166,15 @@ courseSchema.virtual('modules', {
 courseSchema.set('toObject', { virtuals: true });
 courseSchema.set('toJSON', { virtuals: true });
 
+courseSchema.methods.calculateAverageRating = function () {
+  const totalRatings = this.ratings.length;
+  const totalScore = this.ratings.reduce((sum, r) => sum + r.score, 0);
+  const average = totalRatings === 0 ? 0 : totalScore / totalRatings;
+
+  this.rating.average = parseFloat(average.toFixed(1));
+  this.rating.count = totalRatings;
+};
+
+
 const Course = mongoose.model('Course', courseSchema);
 module.exports = Course;

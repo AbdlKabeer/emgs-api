@@ -7,7 +7,7 @@ const QuizAttempt = require('../../models/quizAttempt.model');
 const Bookmark = require('../../models/bookmark.model');
 const User = require('../../models/user.model');
 const Quiz = require('../../models/quiz.model');
-const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../../utils/custom_response/responses');
+const { successResponse, errorResponse, badRequestResponse, paginationResponse, internalServerErrorResponse } = require('../../utils/custom_response/responses');
 
 
 
@@ -1846,9 +1846,9 @@ exports.rateTutor = async (req, res) => {
       enrolledUsers: userId
     });
     
-    if (!hasEnrolled) {
-      return badRequestResponse('You must be enrolled in at least one of the tutor\'s courses to rate them', 'BAD_REQUEST', 400, res);
-    }
+    // if (!hasEnrolled) {
+    //   return badRequestResponse('You must be enrolled in at least one of the tutor\'s courses to rate them', 'BAD_REQUEST', 400, res);
+    // }
     
     // Check if user has already rated this tutor
     const existingRatingIndex = tutor.ratings?.findIndex(r => r.userId.toString() === userId);
@@ -1921,49 +1921,63 @@ exports.rateCourse = async (req, res) => {
     const userId = req.user.id;
     const { rating, review } = req.body;
 
+    // 1. Validate rating
     if (!rating || rating < 1 || rating > 5) {
       return badRequestResponse('Rating must be between 1 and 5', 'BAD_REQUEST', 400, res);
     }
 
+    // 2. Fetch course
     const course = await Course.findById(courseId);
     if (!course) {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
     }
 
-    // Check if user is enrolled
-    const isEnrolled = course.enrolledUsers.some(user => user.toString() === userId);
-    if (!isEnrolled) {
-      return badRequestResponse('You must be enrolled in this course to rate it', 'BAD_REQUEST', 400, res);
-    }
-
-    // Check if user has already rated
-    const existingRatingIndex = course.ratings?.findIndex(r => r.userId.toString() === userId);
+    // 3. Check if user has already rated
+    const existingRatingIndex = course.ratings.findIndex(
+      (r) => r.userId.toString() === userId
+    );
 
     if (existingRatingIndex !== -1) {
       // Update existing rating
-      course.ratings[existingRatingIndex] = {
-        userId,
-        rating,
-        review: review || course.ratings[existingRatingIndex].review,
-        createdAt: new Date()
-      };
+      course.ratings[existingRatingIndex].score = rating;
+      course.ratings[existingRatingIndex].comment = review || '';
+      course.ratings[existingRatingIndex].createdAt = new Date();
     } else {
-      course.ratings.push({ userId, rating, review });
+      // Add new rating
+      course.ratings.push({
+        userId,
+        score: rating,
+        comment: review || ''
+      });
     }
 
-    // Recalculate average rating
-    course.calculateAverageRating();
+    // 4. Recalculate average rating
+    const totalRatings = course.ratings.length;
+    const totalScore = course.ratings.reduce((sum, r) => sum + r.score, 0);
+    const averageRating = parseFloat((totalScore / totalRatings).toFixed(1));
+
+    course.rating = {
+      average: averageRating,
+      count: totalRatings
+    };
+
     await course.save();
 
-    return successResponse({
-      averageRating: course.rating.average,
-      totalRatings: course.rating.count
-    }, res, 200, 'Course rated successfully');
+    return successResponse(
+      {
+        averageRating: course.rating.average,
+        totalRatings: course.rating.count
+      },
+      res,
+      200,
+      'Course rated successfully'
+    );
   } catch (error) {
     console.error('Error rating course:', error);
     return internalServerErrorResponse('Server error while rating course', res, 500);
   }
 };
+
 
 
 
