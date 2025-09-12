@@ -1766,41 +1766,54 @@ exports.markCourseCompleted = async (req, res) => {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
     }
 
-    // 2. Get all modules for the course
-    const modules = await Module.find({ courseId }).select('_id');
-    const moduleIds = modules.map(mod => mod._id);
-
-    // 3. Get all lessons under those modules
-    const lessons = await Lesson.find({ moduleId: { $in: moduleIds } }).select('_id');
-    const lessonIds = lessons.map(lesson => lesson._id.toString());
-
-    // 4. Get the user
-    const user = await User.findById(userId).select('completedLessons completedCourses');
+    // 2. Get the user
+    const user = await User.findById(userId).select('completedLessons completedCourses enrolledCourses');
     if (!user) {
       return badRequestResponse('User not found', 'USER_NOT_FOUND', 404, res);
     }
 
-    // 5. Add all course lessons to completedLessons
+    // ✅ 3. Validate enrollment
+    const isEnrolled = user.enrolledCourses.some(
+      enrolledCourseId => enrolledCourseId.toString() === courseId
+    );
+
+    if (!isEnrolled) {
+      return badRequestResponse('You must be enrolled in this course to mark it as completed.', 'NOT_ENROLLED', 403, res);
+    }
+
+    // 4. Get all modules for the course
+    const modules = await Module.find({ courseId }).select('_id');
+    const moduleIds = modules.map(mod => mod._id);
+
+    // 5. Get all lessons under those modules
+    const lessons = await Lesson.find({ moduleId: { $in: moduleIds } }).select('_id');
+    const lessonIds = lessons.map(lesson => lesson._id.toString());
+
+    // 6. Add all course lessons to completedLessons (no duplicates)
     const updatedCompletedLessons = new Set([
       ...user.completedLessons.map(id => id.toString()),
       ...lessonIds
     ]);
-
     user.completedLessons = Array.from(updatedCompletedLessons);
 
-    // 6. Add course to completedCourses if not already added
-    if (!user.completedCourses.includes(courseId)) {
+    // 7. Add course to completedCourses if not already there
+    const alreadyCompleted = user.completedCourses.some(
+      completedCourseId => completedCourseId.toString() === courseId
+    );
+    if (!alreadyCompleted) {
       user.completedCourses.push(courseId);
     }
 
     await user.save();
 
     return successResponse({}, res, 200, 'Course and lessons marked as completed successfully');
+
   } catch (error) {
     console.error('Error marking course completed:', error);
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
 
 exports.getLessonById = async (req, res) => {
   try {
