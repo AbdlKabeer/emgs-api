@@ -1794,6 +1794,7 @@ exports.markCourseCompleted = async (req, res) => {
       ...user.completedLessons.map(id => id.toString()),
       ...lessonIds
     ]);
+    
     user.completedLessons = Array.from(updatedCompletedLessons);
 
     // 7. Add course to completedCourses if not already there
