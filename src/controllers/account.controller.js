@@ -41,6 +41,7 @@ exports.getUserProfile = async (req, res) => {
         referralCode:user.referralCode,
         bio: user.bio,
         isAppliedForOneOnOne:user.isAppliedForOneOnOne,
+        isOneOnOne:user.isOneOnOne,
         enrolledCourses: user.enrolledCourses,
         completedLessons: user.completedLessons,
         completedCoursesCount: user.completedLessons.length
