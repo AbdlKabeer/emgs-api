@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    isAppliedForOneOnOne :{
+      type: Boolean,
+      default: false
+    },
     servicePrice:{
       type: Number,
       default:0
