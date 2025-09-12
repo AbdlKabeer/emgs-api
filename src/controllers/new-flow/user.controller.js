@@ -1869,7 +1869,8 @@ exports.getLessonById = async (req, res) => {
       return errorResponse('Lesson not found', 'NOT_FOUND', 404, res);
     }
 
-    const course = lesson.moduleId?.courseId;
+    const module = lesson.moduleId;
+    const course = module?.courseId;
 
     // 2. Check access
     if (course && !course.isFree && userId) {
@@ -1881,34 +1882,72 @@ exports.getLessonById = async (req, res) => {
       }
     }
 
-    // 3. Check if user completed the lesson
-    let isCompleted = false;
+    // 3. Fetch completed lessons of user (once)
+    const completedLessonIds = new Set();
     if (userId) {
       const user = await User.findById(userId).select('completedLessons');
-      isCompleted = user?.completedLessons.includes(lesson._id);
+      user?.completedLessons?.forEach(id => completedLessonIds.add(id.toString()));
     }
 
-    // 4. Find all lessons in the same module to determine prev/next
-    const lessonsInModule = await Lesson.find({
-      moduleId: lesson.moduleId._id,
+    // 4. Get all modules in course (ordered)
+    const allModules = await Module.find({ courseId: course._id, isPublished: true })
+      .sort({ order: 1, createdAt: 1 })
+      .select('_id order');
+
+    const moduleIdOrderMap = allModules.reduce((acc, mod, index) => {
+      acc[mod._id.toString()] = index;
+      return acc;
+    }, {});
+
+    const moduleIds = allModules.map(m => m._id);
+
+    // 5. Get all lessons in course
+    const allLessons = await Lesson.find({
+      moduleId: { $in: moduleIds },
       isPublished: true
-    })
-      .select('_id order createdAt')
-      .sort({ order: 1, createdAt: 1 });
+    }).sort({ createdAt: 1, order: 1 });
 
-    const currentIndex = lessonsInModule.findIndex(l => l._id.toString() === lessonId);
+    // 6. Sort lessons by module order → lesson order
+    const globallySortedLessons = allLessons.sort((a, b) => {
+      const moduleOrderA = moduleIdOrderMap[a.moduleId.toString()] ?? 999;
+      const moduleOrderB = moduleIdOrderMap[b.moduleId.toString()] ?? 999;
 
-    const previousLesson = currentIndex > 0 ? lessonsInModule[currentIndex - 1] : null;
-    const nextLesson = currentIndex < lessonsInModule.length - 1 ? lessonsInModule[currentIndex + 1] : null;
+      if (moduleOrderA !== moduleOrderB) return moduleOrderA - moduleOrderB;
+      return (a.order || 0) - (b.order || 0);
+    });
 
-    // 5. Build response object
+    // 7. Find current index
+    const currentIndex = globallySortedLessons.findIndex(
+      l => l._id.toString() === lessonId
+    );
+
+    const previousLesson = currentIndex > 0 ? globallySortedLessons[currentIndex - 1] : null;
+    const nextLesson = currentIndex < globallySortedLessons.length - 1 ? globallySortedLessons[currentIndex + 1] : null;
+
+    // 8. Build lesson response
     const lessonObj = lesson.toObject();
-    lessonObj.isCompleted = isCompleted;
-    lessonObj.previousLessonId = previousLesson ? previousLesson._id : null;
-    lessonObj.nextLessonId = nextLesson ? nextLesson._id : null;
+    lessonObj.isCompleted = completedLessonIds.has(lesson._id.toString());
+
+    // Attach minimal previous/next lesson info
+    lessonObj.previousLesson = previousLesson
+      ? {
+          _id: previousLesson._id,
+          title: previousLesson.title,
+          isCompleted: completedLessonIds.has(previousLesson._id.toString())
+        }
+      : null;
+
+    lessonObj.nextLesson = nextLesson
+      ? {
+          _id: nextLesson._id,
+          title: nextLesson.title,
+          isCompleted: completedLessonIds.has(nextLesson._id.toString())
+        }
+      : null;
 
     return successResponse(lessonObj, res, 200, '');
   } catch (error) {
+    console.error('Error getting lesson by ID:', error);
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
