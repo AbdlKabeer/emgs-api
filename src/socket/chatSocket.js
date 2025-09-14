@@ -33,6 +33,8 @@ const chatSocket = (io) => {
     socket.on('send-message', async (data) => {
       try {
         const { conversationId, content, messageType, replyTo } = data;
+        console.log("================")
+        console.log("NEW MESSAGE DATA ",data)
         const userId = socket.userId;
 
         // Verify user is participant
