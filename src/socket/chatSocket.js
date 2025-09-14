@@ -32,9 +32,10 @@ const chatSocket = (io) => {
     // Handle sending messages.   
     socket.on('send-message', async (data) => {
       try {
-        const { conversationId, content, messageType, replyTo } = data;
+        const { conversationId, messagePayload } = data;
+        const { content , messageType, replyTo} = messagePayload
         console.log("================")
-        console.log("NEW MESSAGE DATA ",data)
+        console.log("NEW MESSAGE DATA ",messagePayload)
         const userId = socket.userId;
 
         // Verify user is participant
