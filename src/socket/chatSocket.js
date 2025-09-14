@@ -3,7 +3,9 @@ const Conversation = require('../models/conversation.model');
 
 const chatSocket = (io) => {
   io.on('connection', (socket) => {
-    console.log('User connected:', socket.userId);
+    const userId = socket.handshake.query.userId;
+    socket.userId = userId;
+    console.log('User connect ', userId)
 
     // Join user to their conversations
     socket.on('join-conversations', async (userId) => {
