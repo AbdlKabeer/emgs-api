@@ -7,6 +7,12 @@ const chatSocket = (io) => {
     socket.userId = userId;
     console.log('User connect ', userId)
 
+
+    if (userId) {
+      // Broadcast to all other sockets that this user is online
+      socket.broadcast.emit('user-online', { userId });
+    }
+
     // Join user to their conversations
     socket.on('join-conversations', async (userId) => {
       try {
