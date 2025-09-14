@@ -21,7 +21,7 @@ const chatSocket = (io) => {
       }
     });
 
-    // Handle sending messages
+    // Handle sending messages.   
     socket.on('send-message', async (data) => {
       try {
         const { conversationId, content, messageType, replyTo } = data;

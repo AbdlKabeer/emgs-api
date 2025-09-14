@@ -3,58 +3,6 @@ const Message = require('../../models/message.model');
 const Service = require('../../models/service.model');
 const { successResponse, errorResponse, badRequestResponse,internalServerErrorResponse, paginationResponse } = require('../../utils/custom_response/responses');
 
-// exports.createConversation = async (req, res) => {
-//   try {
-//     const { participants, type, title, description, courseId, serviceId } = req.body;
-//     const userId = req.user.id; // Assuming user is authenticated
-
-//     // Validate participants
-//     if (!participants || participants.length === 0) {
-//       return badRequestResponse( 'At least one participant is required',null, 400,res);
-//     }
-
-//     // Add current user to participants if not included
-//     const allParticipants = [...new Set([userId, ...participants])];
-//     console.log(allParticipants)
-//     // For direct messages, limit to 2 participants
-//     if (type === 'direct' && allParticipants.length > 2) {
-//       return badRequestResponse('Direct messages can only have 2 participants',null, 400,res);
-//     }
-
-//     // Check if direct conversation already exists
-//     if (type === 'direct') {
-//       const existingConversation = await Conversation.findOne({
-//         type: 'direct',
-//         participants: { $all: allParticipants, $size: 2 }
-//       });
-      
-//       if (existingConversation) {
-//         return successResponse( existingConversation,res,200, 'Conversation already exists');
-//       }
-//     }
-
-//     const conversation = new Conversation({
-//       participants: allParticipants,
-//       type,
-//       title,
-//       description,
-//       courseId,
-//       serviceId,
-//       createdBy: userId
-//     });
-
-
-//     await conversation.save();
-//     await conversation.populate('participants', 'name email avatar');
-
-//     return successResponse( conversation,res,200, 'Conversation created successfully');
-//   } catch (error) {
-
-//     return internalServerErrorResponse(error.message, res, 500);
-//   }
-// };
-
-
 const resetConversations = async () => {
   try {
     await Message.deleteMany({});
@@ -108,7 +56,7 @@ exports.createConversation = async (req, res) => {
     });
 
     await conversation.save();
-    await conversation.populate('participants', 'name email avatar');
+    await conversation.populate('participants', 'fullName email profilePicture');
 
     // If serviceId is provided, send auto-response message (if no messages exist yet)
     if (serviceId) {
@@ -137,8 +85,6 @@ exports.createConversation = async (req, res) => {
     return internalServerErrorResponse(error.message, res, 500);
   }
 };
-
-
 
 exports.getUserConversations = async (req, res) => {
   try {
