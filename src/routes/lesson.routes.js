@@ -52,7 +52,7 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.post('/', [authenticate, isTutor],createLessonValidator, lessonController.createLesson);
+router.post('/', [authenticate, isTutor],lessonController.createLesson);
 
 
 /**

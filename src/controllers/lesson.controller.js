@@ -1,4 +1,5 @@
 const Lesson = require('../models/lesson.model');
+const Module = require('../models/module.model');
 const Course = require('../models/course.model');
 const Progress = require('../models/progress.model');
 const { 
@@ -77,42 +78,65 @@ exports.getLessonById = async (req, res) => {
 // Create new lesson (admin only)
 exports.createLesson = async (req, res) => {
   try {
-    const { title, description, courseId, videoUrl,audioUrl, duration, order, resources , isPublished} = req.body;
-    
-    // Check if course exists
-    const course = await Course.findById(courseId);
-    if (!course) {
-      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    const { 
+      title, 
+      description, 
+      moduleId, 
+      videoUrl, 
+      audioUrl, 
+      duration, 
+      order, 
+      resources, 
+      isPublished 
+    } = req.body;
+
+    // ✅ Check if module exists
+    const module = await Module.findById(moduleId).populate('courseId'); // assuming Module has courseId
+    if (!module) {
+      return badRequestResponse('Module not found', 'NOT_FOUND', 404, res);
     }
-    
+
+    // ✅ Build lesson with proper content structure
     const lesson = new Lesson({
       title,
       description,
-      courseId,
-      videoUrl,
-      audioUrl,
-      duration,
+      moduleId,
       order,
-      resources,
-      isPublished: isPublished
+      duration,
+      content: {
+        video: {
+          url: videoUrl,
+          duration: null,       // You can calculate this from video metadata if needed
+          thumbnail: null       // Optional, can be generated later
+        },
+        audio: {
+          url: audioUrl,
+          duration: null        // Optional
+        },
+        materials: resources || []
+      },
+      isPublished: isPublished || false
     });
-    
+
     await lesson.save();
-    
-    // Add lesson to course
-    await Course.findByIdAndUpdate(
-      courseId,
-      { $push: { lessons: lesson._id } }
-    );
-    
+
+    // ✅ Optionally associate lesson to course (via module.courseId)
+    if (module.courseId) {
+      await Course.findByIdAndUpdate(
+        module.courseId,
+        { $push: { lessons: lesson._id } }
+      );
+    }
+
     return successResponse({
-      message: 'Lesson created successfully',
       lessonId: lesson._id
-    }, res, 201);
+    }, res, 201,'Lesson created successfully',);
+
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
   }
 };
+
 
 // Update lesson (admin only)
 exports.updateLesson = async (req, res) => {
