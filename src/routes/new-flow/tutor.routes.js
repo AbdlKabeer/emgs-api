@@ -35,7 +35,7 @@ router.post('/modules', authenticate, createModuleValidator, courseController.cr
 // Update an existing module
 router.put('/modules/:moduleId', authenticate, updateModuleValidator, courseController.updateModule);
 
-router.post('/quizzes', authenticate, createQuizValidator, courseController.createQuiz);
+router.post('/quizzes', authenticate, createQuizValidator, courseController.createQuizAdded);
 
 // Add a question to a quiz
 router.post('/quizzes/:quizId/questions', authenticate, addQuestionValidator, courseController.addQuizQuestion);

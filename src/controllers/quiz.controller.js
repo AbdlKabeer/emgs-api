@@ -2,6 +2,7 @@ const Course = require('../models/course.model');
 const Quiz = require('../models/quiz.model');
 const QuizProgress = require('../models/quiz-progress.model');
 const Question = require('../models/question.model');
+const Module = require('../models/module.model');
 const { 
   successResponse, 
   paginationResponse,
@@ -14,7 +15,7 @@ const {
 // Controller Functions
 exports.createQuizAdded = async (req, res) => {
   try {
-    const { title, description, questions, courseId } = req.body;
+    const { title, description, questions, moduleId } = req.body;
     const userId = req.user.id;
 
     // Validate questions format
@@ -23,8 +24,8 @@ exports.createQuizAdded = async (req, res) => {
     }
 
     // Find course
-    const course = await Course.findById(courseId);
-    if (!course) {
+    const module = await Module.findById(moduleId);
+    if (!module) {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
     }
 

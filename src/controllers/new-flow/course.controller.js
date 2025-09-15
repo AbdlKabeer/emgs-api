@@ -3,6 +3,8 @@ const Course = require('../../models/course.model');
 const Lesson = require('../../models/lesson.model');
 const Module = require('../../models/module.model');
 const Quiz = require('../../models/quiz.model');
+const QuizProgress = require('../../models/quiz-progress.model');
+const Question = require('../../models/question.model');
 const Bookmark = require('../../models/bookmark.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../../utils/custom_response/responses');
 
@@ -512,6 +514,190 @@ exports.createQuiz = async (req, res) => {
     }, res, 201);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+exports.createQuizAdded = async (req, res) => {
+  try {
+    const { title, description, questions, moduleId } = req.body;
+    const userId = req.user.id;
+
+    // Validate questions format
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return badRequestResponse('Quiz must have at least one question', 'VALIDATION_ERROR', 400, res);
+    }
+
+    // Find course
+    const module = await Module.findById(moduleId);
+    if (!module) {
+      return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+
+    // First, create the quiz without questions
+    const quiz = new Quiz({
+      title,
+      description,
+      moduleId,
+      createdBy: userId,
+      questions: [] // Will be populated with question IDs
+    });
+    
+    await quiz.save();
+    
+    // Now create each question and link to the quiz
+    const questionDocs = [];
+    
+    for (let i = 0; i < questions.length; i++) {
+      const questionData = questions[i];
+      
+      // Validate question based on type
+      if (!questionData.question || !questionData.questionType) {
+        // Delete the quiz we just created since we have an error
+        await Quiz.findByIdAndDelete(quiz._id);
+        // Delete any questions we've already created
+        if (questionDocs.length > 0) {
+          const questionIds = questionDocs.map(q => q._id);
+          await Question.deleteMany({ _id: { $in: questionIds } });
+        }
+        return badRequestResponse('Each question must have content and a question type', 'VALIDATION_ERROR', 400, res);
+      }
+
+      // Detailed validation based on question type
+      switch (questionData.questionType) {
+        case 'multipleChoice':
+          // Multiple choice validation (multiple correct answers allowed)
+          if (!questionData.options || !Array.isArray(questionData.options) || questionData.options.length < 2) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Multiple choice questions must have at least two options', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Check if at least one option is marked as correct
+          const hasCorrectOptionMultiple = questionData.options.some(option => option.isCorrect);
+          if (!hasCorrectOptionMultiple) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Multiple choice questions must have at least one correct option', 'VALIDATION_ERROR', 400, res);
+          }
+          break;
+        
+        case 'singleChoice':
+          // Single choice validation (only one correct answer)
+          if (!questionData.options || !Array.isArray(questionData.options) || questionData.options.length < 2) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Single choice questions must have at least two options', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Count correct options
+          const correctOptionsCount = questionData.options.filter(option => option.isCorrect).length;
+          if (correctOptionsCount !== 1) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Single choice questions must have exactly one correct option', 'VALIDATION_ERROR', 400, res);
+          }
+          break;
+          
+        case 'boolean':
+          // Boolean validation
+          if (questionData.booleanAnswer === undefined) {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Boolean questions must have a true or false answer', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // Ensure options are set for boolean questions (True/False)
+          questionData.options = [
+            { option: 'True', isCorrect: questionData.booleanAnswer === true },
+            { option: 'False', isCorrect: questionData.booleanAnswer === false }
+          ];
+          break;
+          
+        case 'fillInBlank':
+          // Fill in the blank validation
+          if (!questionData.correctAnswer || typeof questionData.correctAnswer !== 'string') {
+            await Quiz.findByIdAndDelete(quiz._id);
+            if (questionDocs.length > 0) {
+              const questionIds = questionDocs.map(q => q._id);
+              await Question.deleteMany({ _id: { $in: questionIds } });
+            }
+            return badRequestResponse('Fill in the blank questions must have a correct answer string', 'VALIDATION_ERROR', 400, res);
+          }
+          
+          // For fillInBlank, options might be empty or could contain potential answers
+          if (!questionData.options) {
+            questionData.options = [];
+          }
+          break;
+          
+        default:
+          await Quiz.findByIdAndDelete(quiz._id);
+          if (questionDocs.length > 0) {
+            const questionIds = questionDocs.map(q => q._id);
+            await Question.deleteMany({ _id: { $in: questionIds } });
+          }
+          return badRequestResponse('Invalid question type. Must be multipleChoice, singleChoice, boolean, or fillInBlank', 'VALIDATION_ERROR', 400, res);
+      }
+
+      // Create the Question document
+      const question = new Question({
+        quizId: quiz._id,
+        question: questionData.question,
+        questionType: questionData.questionType,
+        options: questionData.options || [],
+        correctAnswer: questionData.correctAnswer,
+        booleanAnswer: questionData.booleanAnswer,
+        order: i + 1
+      });
+      
+      const savedQuestion = await question.save();
+      questionDocs.push(savedQuestion);
+    }
+    
+    // Update the quiz with the question IDs
+    quiz.questions = questionDocs.map(q => q._id);
+    await quiz.save();
+    // Fetch the complete quiz with populated questions
+    const populatedQuiz = await Quiz.findById(quiz._id)
+    .populate({
+      path: 'questions',
+      select: 'question questionType options order correctAnswer booleanAnswer',
+      // This transform function removes isCorrect from options when sending to client
+      transform: doc => {
+        if (doc.options && doc.options.length > 0) {
+          // Create a deep copy of the document to avoid modifying the database object
+          const docCopy = JSON.parse(JSON.stringify(doc));
+          docCopy.options = docCopy.options.map(option => ({
+            _id: option._id,
+            option: option.option
+            // isCorrect is intentionally omitted
+          }));
+          return docCopy;
+        }
+        return doc;
+      }
+    })
+    .populate('createdBy', 'name email');
+
+    return successResponse(populatedQuiz, res, 201, 'Quiz created successfully');
+    } catch (error) {
+    console.log(error);
+    return internalServerErrorResponse(error.message, res);
   }
 };
 
