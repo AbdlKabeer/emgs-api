@@ -45,6 +45,7 @@ exports.getUserProfile = async (req, res) => {
         enrolledCourses: user.enrolledCourses,
         completedLessons: user.completedLessons,
         completedCoursesCount: user.completedCourses.length,
+        referralCode:user.referralCode,
         inProgressCoursesCount: user.enrolledCourses.length - user.completedCourses.length
       }
     }, res);
