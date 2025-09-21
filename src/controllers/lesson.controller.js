@@ -128,9 +128,7 @@ exports.createLesson = async (req, res) => {
       );
     }
 
-    return successResponse({
-      lessonId: lesson._id
-    }, res, 201,'Lesson created successfully',);
+    return successResponse(lesson, res, 201,'Lesson created successfully',);
 
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
