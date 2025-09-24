@@ -57,6 +57,8 @@ router.get('/tutors/:tutorId/ratings',
 );
 
 
+router.post('/tutors/:tutorId/one-on-one/complete-session', authenticate, studentCourseController.completeOneOnOneSession);
+
 /**
  * @route   GET /api/student/courses
  * @desc    Get all published courses with search and filters

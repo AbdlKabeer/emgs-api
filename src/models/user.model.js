@@ -77,6 +77,23 @@ const userSchema = new mongoose.Schema(
     averageRating: { type: Number, default: 0 },
     isEmgsTutor: { type: Boolean, default: false },
 
+    oneOnOneSubscriptions: [
+      {
+        tutorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        isActive: { type: Boolean, default: true },
+        expiry: { type: Date, default: null },
+      }
+    ],
+
+    completedOneOnOneSessions: [
+      {
+        tutorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        completedAt: { type: Date, default: Date.now },
+        notes: { type: String, default: '' } // Optional
+      }
+    ]
+
+
   },
   { timestamps: true }
 );

@@ -2115,6 +2115,47 @@ exports.getCourseModules = async (req, res) => {
 };
 
 
+// exports.getAllTutors = async (req, res) => {
+//   try {
+//     const {
+//       page = 1,
+//       limit = 10,
+//       tutorType,   // optional: 'emgs' or 'partner'
+//       search       // optional: fullName search
+//     } = req.query;
+
+//     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+//     const query = {
+//       role: 'tutor',
+//     };
+
+//     if (tutorType) {
+//       query.tutorType = tutorType;
+//     }
+
+//     if (search) {
+//       query.fullName = { $regex: search, $options: 'i' };
+//     }
+
+//     const total = await User.countDocuments(query);
+
+//     const tutors = await User.find(query)
+//       .select('fullName email phone profilePicture tutorType bio servicePrice averageRating preferredLanguage')
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(parseInt(limit));
+
+//     return paginationResponse(tutors, total, page, limit, res);
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
+
+
+// Rate a tutor
+
+
 exports.getAllTutors = async (req, res) => {
   try {
     const {
@@ -2123,6 +2164,8 @@ exports.getAllTutors = async (req, res) => {
       tutorType,   // optional: 'emgs' or 'partner'
       search       // optional: fullName search
     } = req.query;
+
+    const userId = req.user.id; // current user id
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -2140,20 +2183,86 @@ exports.getAllTutors = async (req, res) => {
 
     const total = await User.countDocuments(query);
 
+    // Fetch tutors
     const tutors = await User.find(query)
       .select('fullName email phone profilePicture tutorType bio servicePrice averageRating preferredLanguage')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean(); // lean() for plain JS objects so we can add properties
 
-    return paginationResponse(tutors, total, page, limit, res);
+    // Fetch current user's oneOnOneSubscriptions once
+    const currentUser = await User.findById(userId).select('oneOnOneSubscriptions').lean();
+
+    // Map to easily check if subscribed
+    const subscribedTutorIds = new Set(
+      (currentUser?.oneOnOneSubscriptions || [])
+        .filter(sub => sub.isActive && (!sub.expiry || new Date(sub.expiry) > new Date()))
+        .map(sub => sub.tutorId.toString())
+    );
+
+    // Add isSubscribed flag to each tutor
+    const tutorsWithSubscriptionFlag = tutors.map(tutor => ({
+      ...tutor,
+      isSubscribed: subscribedTutorIds.has(tutor._id.toString())
+    }));
+
+    return paginationResponse(tutorsWithSubscriptionFlag, total, page, limit, res);
+
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
 
 
-// Rate a tutor
+exports.completeOneOnOneSession = async (req, res) => {
+  try {
+    const userId = req.user.id; 
+    const tutorId = req.params.tutorId;
+    const {  notes } = req.body;
+
+    if (!tutorId) {
+      return badRequestResponse("Tutor ID is required", "MISSING_TUTOR_ID", 400, res);
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return badRequestResponse("User not found", "NOT_FOUND", 404, res);
+    }
+
+    // Find active subscription with this tutor
+    const subscriptionIndex = user.oneOnOneSubscriptions.findIndex(sub =>
+      sub.tutorId.toString() === tutorId &&
+      sub.isActive &&
+      (!sub.expiry || new Date(sub.expiry) > new Date())
+    );
+
+    if (subscriptionIndex === -1) {
+      return badRequestResponse("No active one-on-one subscription with this tutor", "NOT_SUBSCRIBED", 400, res);
+    }
+
+    // Mark subscription as inactive (used up)
+    user.oneOnOneSubscriptions[subscriptionIndex].isActive = false;
+
+    // Log session completion
+    user.completedOneOnOneSessions = user.completedOneOnOneSessions || [];
+    user.completedOneOnOneSessions.push({
+      tutorId,
+      completedAt: new Date(),
+      notes: notes || ''
+    });
+
+    await user.save();
+
+    return successResponse(null, res, 200, "Session marked as completed. Subscription is now inactive.");
+  } catch (error) {
+    return errorResponse(error.message, "INTERNAL_SERVER_ERROR", 500, res);
+  }
+};
+
+
+
 exports.rateTutor = async (req, res) => {
   try {
     const { tutorId } = req.params;
@@ -2245,7 +2354,6 @@ exports.getTutorRatings = async (req, res) => {
   }
 };
 
-
 exports.rateCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -2308,9 +2416,6 @@ exports.rateCourse = async (req, res) => {
     return internalServerErrorResponse('Server error while rating course', res, 500);
   }
 };
-
-
-
 
 exports.getCourseRatings = async (req, res) => {
   try {
