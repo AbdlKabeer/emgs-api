@@ -190,7 +190,7 @@ router.post('/', [authenticate, isTutor], courseController.createCourse);
  *       500:
  *         description: Internal server error
  */
-router.post('/with-content', [ ], courseController.createCourseWithContent);
+router.post('/with-content', [authenticate, isTutor], courseController.createCourseWithContent);
 
 /**
  * @swagger

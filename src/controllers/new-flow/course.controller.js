@@ -780,14 +780,6 @@ exports.createCourseWithContent = async (req, res) => {
     if (!modules || !Array.isArray(modules) || modules.length === 0) {
       return errorResponse('At least one module is required', 'VALIDATION_ERROR', 400, res);
     }
-
-    // get user with email demo.tutor@gmail.com
-    const tutor = await User.findOne({ email: 'demo.tutor@gmail.com' });
-
-    if (!tutor) {
-      return errorResponse('Tutor not found', 'NOT_FOUND', 404, res);
-    }
-
     // Create the course first
     const course = new Course({
       title,
@@ -798,7 +790,7 @@ exports.createCourseWithContent = async (req, res) => {
       thumbnail,
       goals: goals || [],
       notes: notes || [],
-      createdBy: tutor?._id || tutor.id,
+      createdBy: userId,
       status: 'draft',
       isPublished: false
     });
