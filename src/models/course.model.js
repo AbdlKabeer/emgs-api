@@ -66,7 +66,7 @@ const courseSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true
+    required: false
   },
   category: {
     type: String,
@@ -78,7 +78,7 @@ const courseSchema = new mongoose.Schema({
   },
   price: {
     type: Number,
-    default: 0,
+    default: 0, 
     validate: {
       validator: function (v) {
         return this.isFree || v > 0;

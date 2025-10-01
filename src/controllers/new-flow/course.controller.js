@@ -771,7 +771,7 @@ exports.createCourseWithContent = async (req, res) => {
     } = req.body;
     
     // Validation
-    if (!title || !description || !category) {
+    if (!title || !description ) {
       return errorResponse('Title, description, and category are required', 'VALIDATION_ERROR', 400, res);
     }
 
