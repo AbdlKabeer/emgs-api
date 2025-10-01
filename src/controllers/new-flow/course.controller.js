@@ -18,7 +18,9 @@ exports.getAllCourses = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    let query = { isPublished: true };
+    
+    let query = { createdBy: userId };
+    // let query = { isPublished: true, createdBy: userId };
     if (category) query.category = category;
 
     const total = await Course.countDocuments(query);
