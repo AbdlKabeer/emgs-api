@@ -105,6 +105,10 @@ const lessonSchema = new mongoose.Schema({
       type: String
     }
   },
+  html_content: {
+    type: String,
+    default: ''
+  },
   isPublished: {
     type: Boolean,
     default: false

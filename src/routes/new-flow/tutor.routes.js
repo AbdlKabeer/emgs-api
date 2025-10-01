@@ -23,7 +23,7 @@ router.put('/courses/:courseId', authenticate, updateCourseValidator, courseCont
 router.post('/:courseId/submit', authenticate, courseController.submitCourseForReview);
 
 // Get course details with lessons, modules, and quizzes
-router.get('/courses/:courseId', authenticate, courseController.getCourseDetails);
+router.get('/courses/:courseId', [], courseController.getCourseDetails);
 
 router.post('/lessons', authenticate, createLessonValidator, courseController.createLesson);
 

@@ -131,6 +131,7 @@ const walletRoutes = require('./routes/wallet.routes');
 const waitlistRoutes = require('./routes/waitlist.routes');
 const chatRoutes = require('./routes/new-flow/chat.routes');
 const studentRoutes = require('./routes/new-flow/user.routes');
+const newFlowCourseRoutes = require('./routes/new-flow/course.routes');
 // const swaggerUi = require('swagger-ui-express');
 // const swaggerSpec = require('./config/swagger');
 
@@ -173,6 +174,7 @@ app.use('/api/v2/waitlist', waitlistRoutes);
 app.use('/api/v2/student', studentRoutes);
 app.use('/api/v2/tutors', newTutorRoutes);
 app.use('/api/v2/chat', chatRoutes);
+app.use('/api/v2/new-flow/courses', newFlowCourseRoutes);
 // app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerSpec)); // Swagger disabled
 
 // 404 Fallback
