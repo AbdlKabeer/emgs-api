@@ -374,7 +374,7 @@ exports.updateCourse = async (req, res) => {
   try {
     // Build update object from req.body, excluding undefined or null values
     const updateData = {};
-    const allowedFields = ['title', 'description', 'category', 'isFree', 'price', 'isPublished','goals'];
+    const allowedFields = ['title', 'description', 'category', 'isFree', 'price', 'isPublished','goals','thumbnail'];
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
