@@ -342,33 +342,62 @@ exports.createCourse = async (req, res) => {
 };
 
 // Update course (admin only)
+// exports.updateCourse = async (req, res) => {
+//   try {
+//     const { title, description, category, isFree, price, isPublished  } = req.body;
+    
+//     const course = await Course.findByIdAndUpdate(
+//       req.params.id,
+//       {
+//         title,
+//         description,
+//         category,
+//         isFree,
+//         price,
+//         isPublished
+//       },
+//       { new: true }
+//     );
+    
+//     if (!course) {
+//       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+//     }
+    
+//     return successResponse({ course
+//     }, res,200,'Course updated successfully');
+//   } catch (error) {
+//     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+//   }
+// };
+
 exports.updateCourse = async (req, res) => {
   try {
-    const { title, description, category, isFree, price, isPublished } = req.body;
-    
+    // Build update object from req.body, excluding undefined or null values
+    const updateData = {};
+    const allowedFields = ['title', 'description', 'category', 'isFree', 'price', 'isPublished','goals'];
+
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    }
+
     const course = await Course.findByIdAndUpdate(
       req.params.id,
-      {
-        title,
-        description,
-        category,
-        isFree,
-        price,
-        isPublished
-      },
+      updateData,
       { new: true }
     );
-    
+
     if (!course) {
       return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
     }
-    
-    return successResponse({ course
-    }, res,200,'Course updated successfully');
+
+    return successResponse({ course }, res, 200, 'Course updated successfully');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
 
 
 exports.publishCourse = async (req, res) => {
