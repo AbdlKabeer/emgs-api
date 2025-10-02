@@ -370,6 +370,9 @@ exports.createCourse = async (req, res) => {
 //   }
 // };
 
+
+
+
 exports.updateCourse = async (req, res) => {
   try {
     // Build update object from req.body, excluding undefined or null values

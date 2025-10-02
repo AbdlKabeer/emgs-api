@@ -186,6 +186,7 @@ router.patch('/:id/thumbnail', [authenticate, isTutor], courseController.updateC
 router.put('/:id', [authenticate, isTutor], courseController.updateCourse);
 
 
+
 router.put('/:id/goals', [authenticate, isTutor], courseController.addCourseGoals);
 
 
