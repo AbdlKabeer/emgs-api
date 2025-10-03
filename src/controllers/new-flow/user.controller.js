@@ -2072,7 +2072,10 @@ exports.getCourseModules = async (req, res) => {
 
     const moduleIds = modules.map(module => module._id);
 
-    const quizzes = await Quiz.find({ moduleId: { $in: moduleIds } });
+    const quizzes = await Quiz.find({ 
+      moduleId: { $in: moduleIds },
+      questions: { $exists: true, $ne: [] }  // <-- only include quizzes with questions
+    });
 
     // Get user progress
     const progress = await Progress.findOne({ userId, courseId }) || {
