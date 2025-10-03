@@ -87,7 +87,8 @@ exports.createLesson = async (req, res) => {
       duration, 
       order, 
       resources, 
-      isPublished 
+      isPublished ,
+      html_content
     } = req.body;
 
     // ✅ Check if module exists
@@ -113,7 +114,8 @@ exports.createLesson = async (req, res) => {
           url: audioUrl,
           duration: null        // Optional
         },
-        materials: resources || []
+        materials: resources || [],
+        html_content: html_content || ''
       },
       isPublished: isPublished || false
     });
