@@ -769,6 +769,10 @@ exports.createCourseWithContent = async (req, res) => {
       notes,
       modules 
     } = req.body;
+
+    // get the completed value from query param
+    const isSaveProgress = req.query.completed === 'false';
+
     
     // Validation
     if (!title || !description ) {
@@ -793,7 +797,7 @@ exports.createCourseWithContent = async (req, res) => {
       goals: goals || [],
       notes: notes || [],
       createdBy: userId,
-      status: 'draft',
+      status: isSaveProgress ? 'draft': 'review',
       isPublished: false
     });
     
