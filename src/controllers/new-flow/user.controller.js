@@ -2070,12 +2070,10 @@ exports.getCourseModules = async (req, res) => {
     // Fetch and paginate modules
     const total = await Module.countDocuments({
       courseId,
-      // isPublished: true
     });
 
     const modules = await Module.find({
       courseId,
-      isPublished: true
     })
     .select('title description order createdAt')
     .sort({ order: 1, createdAt: 1 })
@@ -2090,7 +2088,6 @@ exports.getCourseModules = async (req, res) => {
         // Get all lessons for the module
         const lessons = await Lesson.find({
           moduleId: module._id,
-          isPublished: true
         })
         .select('title description order duration content createdAt')
         .sort({ order: 1, createdAt: 1 });
