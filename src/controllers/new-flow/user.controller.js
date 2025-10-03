@@ -1992,7 +1992,7 @@ exports.getLessonById = async (req, res) => {
     // 5. Get all lessons in course
     const allLessons = await Lesson.find({
       moduleId: { $in: moduleIds },
-      isPublished: true
+      // isPublished: true
     }).sort({ createdAt: 1, order: 1 });
 
     // 6. Sort lessons by module order → lesson order
