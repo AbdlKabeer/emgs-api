@@ -2054,9 +2054,9 @@ exports.getCourseModules = async (req, res) => {
       const isEnrolled = course.enrolledUsers?.some(id => 
         id.toString() === userId.toString()
       );
-      if (!isEnrolled) {
-        return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
-      }
+      // if (!isEnrolled) {
+      //   return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
+      // }
     }
 
     // Get user's completed lessons
