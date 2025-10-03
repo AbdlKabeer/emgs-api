@@ -104,19 +104,8 @@ exports.createLesson = async (req, res) => {
       moduleId,
       order,
       duration,
-      content: {
-        video: {
-          url: videoUrl,
-          duration: null,       // You can calculate this from video metadata if needed
-          thumbnail: null       // Optional, can be generated later
-        },
-        audio: {
-          url: audioUrl,
-          duration: null        // Optional
-        },
-        materials: resources || [],
-        html_content: html_content || ''
-      },
+      content: {},
+      html_content: html_content || '',
       isPublished: isPublished || false
     });
 
