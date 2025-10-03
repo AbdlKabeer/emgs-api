@@ -1944,7 +1944,7 @@ exports.getLessonById = async (req, res) => {
     // 1. Find the lesson
     const lesson = await Lesson.findOne({
       _id: lessonId,
-      isPublished: true
+      // isPublished: true
     }).populate({
       path: 'moduleId',
       populate: {
