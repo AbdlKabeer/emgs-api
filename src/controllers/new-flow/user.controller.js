@@ -2051,14 +2051,14 @@ exports.getCourseModules = async (req, res) => {
     }
 
     // Check if user is enrolled if course is not free
-    if (!course.isFree && userId) {
-      const isEnrolled = course.enrolledUsers?.some(id => 
-        id.toString() === userId.toString()
-      );
-      // if (!isEnrolled) {
-      //   return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
-      // }
-    }
+    // if (!course.isFree && userId) {
+    //   const isEnrolled = course.enrolledUsers?.some(id => 
+    //     id.toString() === userId.toString()
+    //   );
+    //   // if (!isEnrolled) {
+    //   //   return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
+    //   // }
+    // }
 
     // Get user's completed lessons
     let completedLessons = [];
@@ -2070,7 +2070,7 @@ exports.getCourseModules = async (req, res) => {
     // Fetch and paginate modules
     const total = await Module.countDocuments({
       courseId,
-      isPublished: true
+      // isPublished: true
     });
 
     const modules = await Module.find({
