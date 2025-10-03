@@ -2050,16 +2050,6 @@ exports.getCourseModules = async (req, res) => {
       return errorResponse('Course not found', 'NOT_FOUND', 404, res);
     }
 
-    // Check if user is enrolled if course is not free
-    // if (!course.isFree && userId) {
-    //   const isEnrolled = course.enrolledUsers?.some(id => 
-    //     id.toString() === userId.toString()
-    //   );
-    //   // if (!isEnrolled) {
-    //   //   return errorResponse('Access denied. Please enroll in the course.', 'FORBIDDEN', 403, res);
-    //   // }
-    // }
-
     // Get user's completed lessons
     let completedLessons = [];
     if (userId) {
@@ -2080,6 +2070,23 @@ exports.getCourseModules = async (req, res) => {
     .skip(skip)
     .limit(parseInt(limit));
 
+    const moduleIds = modules.map(module => module._id);
+
+    const quizzes = await Quiz.find({ moduleId: { $in: moduleIds } });
+
+    // Get user progress
+    const progress = await Progress.findOne({ userId, courseId }) || {
+      completedModules: [],
+      completedQuizzes: [],
+      progressPercentage: 0
+    };
+
+
+
+    if (userId) {
+      const userProgress = await Progress.findOne({ userId, courseId }).select('completedQuizzes');
+      progress.completedQuizzes = userProgress?.completedQuizzes.map(id => id.toString()) || [];
+    }
     // Enhance modules with lessons and lessonCount
     const enhancedModules = await Promise.all(
       modules.map(async (module) => {
@@ -2093,14 +2100,25 @@ exports.getCourseModules = async (req, res) => {
         .sort({ order: 1, createdAt: 1 });
 
         // Add completion status to each lesson
+        
         const enrichedLessons = lessons.map(lesson => {
           const lessonObj = lesson.toObject();
           lessonObj.isCompleted = completedLessons.includes(lesson._id.toString());
           return lessonObj;
         });
 
+        // Add completion status to each quiz
+        const moduleQuizzes = quizzes.filter(quiz => 
+          quiz.moduleId.toString() === module._id.toString()
+        ).map(quiz => ({
+          ...quiz.toObject(),
+          isCompleted: progress.completedQuizzes.includes(quiz._id.toString())
+        }));
+
         moduleObj.lessons = enrichedLessons;
         moduleObj.lessonCount = enrichedLessons.length;
+        moduleObj.quizzes = moduleQuizzes;
+
 
         return moduleObj;
       })
