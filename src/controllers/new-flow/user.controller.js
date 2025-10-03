@@ -2043,7 +2043,7 @@ exports.getCourseModules = async (req, res) => {
     // Verify course exists
     const course = await Course.findOne({ 
       _id: courseId, 
-      isPublished: true 
+      // isPublished: true 
     });
 
     if (!course) {
@@ -2099,7 +2099,7 @@ exports.getCourseModules = async (req, res) => {
         const lessons = await Lesson.find({
           moduleId: module._id,
         })
-        .select('title description order duration content createdAt')
+        .select('title description order duration content html_content createdAt')
         .sort({ order: 1, createdAt: 1 });
 
         // Add completion status to each lesson
