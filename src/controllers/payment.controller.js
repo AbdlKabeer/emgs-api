@@ -328,9 +328,9 @@ exports.initiateCardPayment = async (req, res) => {
         return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
       }
 
-      if (!course.isPublished) {
-        return badRequestResponse('Cannot enroll for an unpublished course', 'BAD_REQUEST', 400, res);
-      }
+      // if (!course.isPublished) {
+      //   return badRequestResponse('Cannot enroll for an unpublished course', 'BAD_REQUEST', 400, res);
+      // }
 
       let payment = new Payment({
         userId,
