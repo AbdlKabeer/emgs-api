@@ -416,6 +416,34 @@ exports.initiateCardPayment = async (req, res) => {
         return badRequestResponse("Card tokenization can't be completed at the moment", 'INIT_FAILED', 400, res);
       }
     }
+    else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
+      // Find the tutor
+      const tutor = await User.findById(itemId);
+      if (!tutor || tutor.role !== 'tutor') {
+        return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
+      }
+      
+      // Price can be set from tutor's servicePrice or fixed amount
+      const amount = tutor.servicePrice || 5000; // example default
+      
+      let payment = new Payment({
+        userId,
+        itemId, // tutor id here
+        itemType,
+        amount,
+        status:"pending",
+      });
+      
+      await payment.save();
+      return successResponse({
+        transactionRef: payment._id,
+        metadata: {
+          transactionRef: payment._id,
+          itemId,
+          itemType
+        }
+      }, res, 200, 'Payment initiated successfully for one-on-one tutoring' );
+    }
   } catch (error) {
     console.error('Error initializing card payment:', error);
     return internalServerErrorResponse('Failed to initiate payment', res);
