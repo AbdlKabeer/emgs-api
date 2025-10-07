@@ -1259,7 +1259,7 @@ exports.getCourseById = async (req, res) => {
     const userId = req.user ? req.user.id : null;
 
     const course = await Course.findOne({ _id: id })
-      .select('title description category thumbnail preview isFree courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons rating')
+      .select('title description category thumbnail preview isFree aboutCourse courseType price goals tutorId enrolledUsers ratings averageRating createdBy lessons rating')
       .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating');
 
     if (!course) {
