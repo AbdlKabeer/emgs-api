@@ -12,7 +12,7 @@ const paymentSchema = new mongoose.Schema(
     },
     paymentMethod: { type: String },
     paymentGatewayId: { type: String }, // Transaction ID from payment gateway
-    itemType: { type: String, enum: ['course', 'service'], required: true },
+    itemType: { type: String, enum: ['course', 'service','oneOnOne','one-on-one'], required: true },
     itemId: { type: mongoose.Schema.Types.ObjectId, required: true }, // Reference to course or service
     invoiceNumber: { type: String },
     receiptUrl: { type: String },
