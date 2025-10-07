@@ -1372,7 +1372,7 @@ exports.getAllCourses = async (req, res) => {
 
     // Fetch all matching courses (before pagination)
     const allCourses = await Course.find(query)
-      .select('title description category thumbnail isFree courseType preview price tutorId enrolledUsers ratings averageRating createdBy lessons')
+      .select('title description category thumbnail isFree aboutCourse courseType preview price tutorId enrolledUsers ratings averageRating createdBy lessons')
       .populate('createdBy', 'fullName email profilePicture bio tutorType ratings averageRating')
       .sort(sortOptions);
 

@@ -26,7 +26,7 @@ exports.getAllCourses = async (req, res) => {
     const total = await Course.countDocuments(query);
 
     const courses = await Course.find(query)
-      .select('title description category thumbnail isFree price tutorId enrolledUsers ratings averageRating createdBy')
+      .select('title description category thumbnail isFree price aboutCourse tutorId enrolledUsers ratings averageRating createdBy')
       .populate('createdBy', 'fullName email profilePicture bio')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -767,7 +767,8 @@ exports.createCourseWithContent = async (req, res) => {
       thumbnail, 
       goals, 
       notes,
-      modules 
+      modules ,
+      aboutCourse
     } = req.body;
 
     // get the completed value from query param
@@ -798,7 +799,8 @@ exports.createCourseWithContent = async (req, res) => {
       notes: notes || [],
       createdBy: userId,
       status: isSaveProgress ? 'draft': 'review',
-      isPublished: false
+      isPublished: false,
+      aboutCourse
     });
     
     await course.save();
