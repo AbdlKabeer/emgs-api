@@ -44,6 +44,11 @@ router.get('/tutors',
   studentCourseController.getAllTutors
 );
 
+router.get('/tutors/:tutorId', 
+  authenticate,
+  studentCourseController.getSingleTutor
+);
+
 
 router.post('/tutors/:tutorId/rate', 
   authenticate,
