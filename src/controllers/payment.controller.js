@@ -433,16 +433,39 @@ exports.initiateCardPayment = async (req, res) => {
         amount,
         status:"pending",
       });
-      
+
+
       await payment.save();
-      return successResponse({
+
+      const metadata = {
         transactionRef: payment._id,
-        metadata: {
-          transactionRef: payment._id,
-          itemId,
-          itemType
-        }
-      }, res, 200, 'Payment initiated successfully for one-on-one tutoring' );
+        itemId,
+        itemType
+      };
+
+      const payload = {
+        amount: amount,
+        email: req.user.email,
+        callback_url: callbackUrl,
+        cancel_url: callbackUrl,
+        currency: 'NGN',
+        channels: ['card'],
+        metadata: metadata
+      };
+      
+      
+      const response = await axios.post(`https://api.paystack.co/transaction/initialize`, payload, {
+        headers: paystackHeaders()
+      });
+
+      if (response.data.status) {
+        const data = response.data.data;
+        console.log(data);
+
+        return successResponse(data, res, 200, 'Payment initiated successfully for one-on-one tutoring');
+      } else {
+        return badRequestResponse("Card tokenization can't be completed at the moment", 'INIT_FAILED', 400, res);
+      }
     }
   } catch (error) {
     console.error('Error initializing card payment:', error);
