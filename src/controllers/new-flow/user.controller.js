@@ -2184,13 +2184,11 @@ exports.getAllTutors = async (req, res) => {
       search       // optional: fullName search
     } = req.query;
 
-    const userId = req.user.id; // current user id
+    const userId = req.user.id;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const query = {
-      role: 'tutor',
-    };
+    const query = { role: 'tutor' };
 
     if (tutorType) {
       query.tutorType = tutorType;
@@ -2202,36 +2200,44 @@ exports.getAllTutors = async (req, res) => {
 
     const total = await User.countDocuments(query);
 
-    // Fetch tutors
     const tutors = await User.find(query)
       .select('fullName email phone profilePicture tutorType bio servicePrice averageRating preferredLanguage')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .lean(); // lean() for plain JS objects so we can add properties
+      .lean();
 
-    // Fetch current user's oneOnOneSubscriptions once
-    const currentUser = await User.findById(userId).select('oneOnOneSubscriptions').lean();
+    // Fetch current user's subscriptions AND completed sessions
+    const currentUser = await User.findById(userId)
+      .select('oneOnOneSubscriptions completedOneOnOneSessions')
+      .lean();
 
-    // Map to easily check if subscribed
+    const activeSubscriptions = currentUser?.oneOnOneSubscriptions || [];
+    const completedSessions = currentUser?.completedOneOnOneSessions || [];
+
     const subscribedTutorIds = new Set(
-      (currentUser?.oneOnOneSubscriptions || [])
+      activeSubscriptions
         .filter(sub => sub.isActive && (!sub.expiry || new Date(sub.expiry) > new Date()))
         .map(sub => sub.tutorId.toString())
     );
 
-    // Add isSubscribed flag to each tutor
-    const tutorsWithSubscriptionFlag = tutors.map(tutor => ({
+    const completedSessionTutorIds = new Set(
+      completedSessions.map(session => session.tutorId.toString())
+    );
+
+    const tutorsWithFlags = tutors.map(tutor => ({
       ...tutor,
-      isSubscribed: subscribedTutorIds.has(tutor._id.toString())
+      isSubscribed: subscribedTutorIds.has(tutor._id.toString()),
+      sessionMarkCompleted: completedSessionTutorIds.has(tutor._id.toString())
     }));
 
-    return paginationResponse(tutorsWithSubscriptionFlag, total, page, limit, res);
+    return paginationResponse(tutorsWithFlags, total, page, limit, res);
 
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
 
 
 exports.completeOneOnOneSession = async (req, res) => {
