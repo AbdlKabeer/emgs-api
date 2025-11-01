@@ -310,11 +310,11 @@ exports.initiateCardPayment = async (req, res) => {
     const { itemType, itemId, callbackUrl } = req.body;
     const userId = req.user.id;
 
-    let progress = await Payment.findOne({ userId, itemId, itemType, status: 'completed' });
+    // let progress = await Payment.findOne({ userId, itemId, itemType, status: 'completed' });
 
-    if (progress) {
-      return badRequestResponse('Payment already initiated', res);
-    }
+    // if (progress) {
+    //   return badRequestResponse('Payment already initiated', res);
+    // }
 
     // Helper to get Paystack headers
     const paystackHeaders = () => ({
@@ -457,6 +457,8 @@ exports.initiateCardPayment = async (req, res) => {
       const response = await axios.post(`https://api.paystack.co/transaction/initialize`, payload, {
         headers: paystackHeaders()
       });
+
+      console.log(response)
 
       if (response.data.status) {
         const data = response.data.data;
