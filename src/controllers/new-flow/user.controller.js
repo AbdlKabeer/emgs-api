@@ -1758,6 +1758,7 @@ exports.getCourseModules = async (req, res) => {
         ).map(quiz => ({
           ...quiz.toObject(),
           isCompleted: progress.completedQuizzes.includes(quiz._id.toString())
+          
         }));
 
         moduleObj.lessons = enrichedLessons;
