@@ -1715,7 +1715,9 @@ exports.getCourseModules = async (req, res) => {
 
     const moduleIds = modules.map(module => module._id);
 
-    const quizzes = await Quiz.find({ moduleId: { $in: moduleIds } }).lean();
+    const quizzes = await Quiz.find({ 
+      moduleId: { $in: moduleIds }
+    });
 
     // Get user progress
     const progress = await Progress.findOne({ userId, courseId }) || {
