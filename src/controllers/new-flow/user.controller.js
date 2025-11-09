@@ -1053,7 +1053,7 @@ exports.getCourseById = async (req, res) => {
     if (userId) {
       const completedLessonsForCourse = await Lesson.countDocuments({
         moduleId: { $in: moduleIds },
-        isPublished: true,
+        // isPublished: true,
         _id: { $in: completedLessons },
       });
 
@@ -1536,17 +1536,17 @@ exports.markCourseCompleted = async (req, res) => {
     }
 
     // ✅ 3. Validate enrollment using Enrollment model (source of truth)
-    // const enrollment = await Enrollment.findOne({ userId, courseId, status: 'active' });
-    // if (!enrollment) {
-    //   return badRequestResponse('You must be enrolled in this course to mark it as completed.', 'NOT_ENROLLED', 403, res);
-    // }
+    const enrollment = await Enrollment.findOne({ userId, courseId, status: 'active' });
+    if (!enrollment) {
+      return badRequestResponse('You must be enrolled in this course to mark it as completed.', 'NOT_ENROLLED', 403, res);
+    }
 
     // 4. Get all published modules for the course
-    const modules = await Module.find({ courseId, isPublished: true }).select('_id');
+    const modules = await Module.find({ courseId }).select('_id');
     const moduleIds = modules.map(mod => mod._id);
 
     // 5. Get all published lessons under those modules
-    const lessons = await Lesson.find({ moduleId: { $in: moduleIds }, isPublished: true }).select('_id');
+    const lessons = await Lesson.find({ moduleId: { $in: moduleIds }}).select('_id');
     const lessonIds = lessons.map(lesson => lesson._id.toString());
 
     // 6. Add all course lessons to completedLessons (no duplicates)
