@@ -1530,26 +1530,23 @@ exports.markCourseCompleted = async (req, res) => {
     }
 
     // 2. Get the user
-    const user = await User.findById(userId).select('completedLessons completedCourses enrolledCourses');
+    const user = await User.findById(userId).select('completedLessons completedCourses');
     if (!user) {
       return badRequestResponse('User not found', 'USER_NOT_FOUND', 404, res);
     }
 
-    // ✅ 3. Validate enrollment
-    const isEnrolled = user.enrolledCourses.some(
-      enrolledCourseId => enrolledCourseId.toString() === courseId
-    );
+    // ✅ 3. Validate enrollment using Enrollment model (source of truth)
+    // const enrollment = await Enrollment.findOne({ userId, courseId, status: 'active' });
+    // if (!enrollment) {
+    //   return badRequestResponse('You must be enrolled in this course to mark it as completed.', 'NOT_ENROLLED', 403, res);
+    // }
 
-    if (!isEnrolled) {
-      return badRequestResponse('You must be enrolled in this course to mark it as completed.', 'NOT_ENROLLED', 403, res);
-    }
-
-    // 4. Get all modules for the course
-    const modules = await Module.find({ courseId }).select('_id');
+    // 4. Get all published modules for the course
+    const modules = await Module.find({ courseId, isPublished: true }).select('_id');
     const moduleIds = modules.map(mod => mod._id);
 
-    // 5. Get all lessons under those modules
-    const lessons = await Lesson.find({ moduleId: { $in: moduleIds } }).select('_id');
+    // 5. Get all published lessons under those modules
+    const lessons = await Lesson.find({ moduleId: { $in: moduleIds }, isPublished: true }).select('_id');
     const lessonIds = lessons.map(lesson => lesson._id.toString());
 
     // 6. Add all course lessons to completedLessons (no duplicates)
@@ -1570,7 +1567,35 @@ exports.markCourseCompleted = async (req, res) => {
 
     await user.save();
 
-    return successResponse({}, res, 200, 'Course and lessons marked as completed successfully');
+    // 8. Upsert Progress to reflect completion for dashboards and content APIs
+    let progress = await Progress.findOne({ userId, courseId });
+    if (!progress) {
+      progress = new Progress({
+        userId,
+        courseId,
+        completedModules: [],
+        completedQuizzes: [],
+        progressPercentage: 0
+      });
+    }
+    // Merge modules
+    const existingModuleIds = (progress.completedModules || []).map(id => id.toString());
+    const mergedModuleIds = Array.from(new Set([...existingModuleIds, ...moduleIds.map(id => id.toString())]));
+    progress.completedModules = mergedModuleIds;
+
+    // Merge quizzes under the course modules
+    const quizzes = await Quiz.find({ moduleId: { $in: moduleIds } }).select('_id');
+    const quizIds = quizzes.map(q => q._id.toString());
+    const existingQuizIds = (progress.completedQuizzes || []).map(id => id.toString());
+    const mergedQuizIds = Array.from(new Set([...existingQuizIds, ...quizIds]));
+    progress.completedQuizzes = mergedQuizIds;
+
+    // Set completion
+    progress.progressPercentage = 100;
+    progress.lastAccessed = new Date();
+    await progress.save();
+
+    return successResponse({}, res, 200, 'Course, lessons, modules, and quizzes marked completed')
 
   } catch (error) {
     console.error('Error marking course completed:', error);

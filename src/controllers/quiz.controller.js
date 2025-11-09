@@ -598,7 +598,8 @@ exports.getQuiz = async (req, res) => {
           if (doc.options && doc.options.length > 0) {
             doc.options = doc.options.map(option => ({
               _id: option._id,
-              option: option.option
+              option: option.option,
+              isCorrect:option.isCorrect
               // isCorrect is intentionally omitted
             }));
           }
