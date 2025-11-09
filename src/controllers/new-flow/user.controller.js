@@ -1037,14 +1037,12 @@ exports.getCourseById = async (req, res) => {
     // Modules and lessons
     const modules = await Module.find({
       courseId: course._id,
-      isPublished: true,
     }).select('_id');
 
     const moduleIds = modules.map(m => m._id);
 
     const totalLessons = await Lesson.countDocuments({
       moduleId: { $in: moduleIds },
-      isPublished: true,
     });
 
     courseObj.moduleCount = modules.length;
@@ -1053,7 +1051,6 @@ exports.getCourseById = async (req, res) => {
     if (userId) {
       const completedLessonsForCourse = await Lesson.countDocuments({
         moduleId: { $in: moduleIds },
-        // isPublished: true,
         _id: { $in: completedLessons },
       });
 
@@ -1533,12 +1530,6 @@ exports.markCourseCompleted = async (req, res) => {
     const user = await User.findById(userId).select('completedLessons completedCourses');
     if (!user) {
       return badRequestResponse('User not found', 'USER_NOT_FOUND', 404, res);
-    }
-
-    // ✅ 3. Validate enrollment using Enrollment model (source of truth)
-    const enrollment = await Enrollment.findOne({ userId, courseId, status: 'active' });
-    if (!enrollment) {
-      return badRequestResponse('You must be enrolled in this course to mark it as completed.', 'NOT_ENROLLED', 403, res);
     }
 
     // 4. Get all published modules for the course
