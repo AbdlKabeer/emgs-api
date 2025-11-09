@@ -1429,12 +1429,12 @@ exports.getModuleLessons = async (req, res) => {
 
     const total = await Lesson.countDocuments({
       moduleId,
-      isPublished: true
+      // isPublished: true
     });
 
     const lessons = await Lesson.find({
       moduleId,
-      isPublished: true
+      // isPublished: true
     })
     .select('title description order duration content createdAt')
     .sort({ order: 1, createdAt: 1 })
