@@ -860,7 +860,6 @@ exports.createCourseWithContent = async (req, res) => {
               await quiz.save();
               
               // Create questions for this quiz
-              const createdQuestions = [];
               const questionDocs = [];
               
               if (quizData.questions && Array.isArray(quizData.questions)) {
@@ -994,14 +993,11 @@ exports.createCourseWithContent = async (req, res) => {
                 await quiz.save();
               }
               
-              // Update quiz with question references
-              quiz.questions = createdQuestions;
-              await quiz.save();
-              
+              // Record quiz creation summary
               createdQuizzes.push({
                 id: quiz._id,
                 title: quiz.title,
-                questionsCount: createdQuestions.length
+                questionsCount: questionDocs.length
               });
             }
           }
