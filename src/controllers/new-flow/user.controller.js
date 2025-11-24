@@ -371,66 +371,168 @@ exports.takeQuiz = async (req, res) => {
 exports.submitQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { answers } = req.body;
+    const { answers } = req.body; // can be array of answer objects or map keyed by questionId
     const userId = req.user.id;
 
     const quiz = await Quiz.findById(quizId)
       .populate({
         path: 'moduleId',
-        populate: {
-          path: 'lessonId',
-          populate: { path: 'courseId' }
-        }
+        populate: { path: 'courseId', select: '_id' }
+      })
+      .populate({
+        path: 'questions',
+        options: { sort: { order: 1 } }
       });
 
     if (!quiz) {
       return errorResponse('Quiz not found', 'NOT_FOUND', 404, res);
     }
 
-    const courseId = quiz.moduleId.lessonId.courseId._id;
+    const courseId = quiz?.moduleId?.courseId?._id || quiz?.moduleId?.courseId;
 
     // Verify enrollment
-    const enrollment = await Enrollment.findOne({ 
-      userId, 
-      courseId, 
-      status: 'active' 
-    });
-
+    const enrollment = await Enrollment.findOne({ userId, courseId, status: 'active' });
     if (!enrollment) {
       return errorResponse('Not enrolled in this course', 'NOT_ENROLLED', 403, res);
     }
 
-    // Calculate score
-    let correctAnswers = 0;
-    let totalPoints = 0;
-    let earnedPoints = 0;
+    // Normalize answers to a map keyed by questionId for flexible payloads
+    const toId = v => (typeof v === 'string' ? v : v?.toString?.());
+    let answerMap = {};
+    if (Array.isArray(answers)) {
+      for (const a of answers) {
+        const qid = toId(a.questionId ?? a.qid);
+        if (!qid) continue;
+        answerMap[qid] = a;
+      }
+    } else if (answers && typeof answers === 'object') {
+      answerMap = answers;
+    }
 
-    const results = quiz.questions.map(question => {
-      const userAnswer = answers[question._id.toString()];
-      const isCorrect = userAnswer === question.correctAnswer;
-      
-      totalPoints += question.points;
-      if (isCorrect) {
-        correctAnswers++;
-        earnedPoints += question.points;
+    let correctAnswers = 0;
+    const processed = [];
+
+    for (let index = 0; index < quiz.questions.length; index++) {
+      const question = quiz.questions[index];
+      const qid = question._id.toString();
+      const qType = question.questionType;
+      const raw = answerMap[qid];
+
+      let isCorrect = false;
+      let userAnswerOut = undefined;
+      let correctAnswerOut = undefined;
+
+      switch (qType) {
+        case 'singleChoice': {
+          // Accept selectedOptionIndex, selectedOptionId, or selectedOptionText
+          let idx = undefined;
+          if (raw && typeof raw.selectedOptionIndex === 'number') {
+            idx = raw.selectedOptionIndex;
+          } else if (raw && raw.selectedOptionId) {
+            const optId = toId(raw.selectedOptionId);
+            idx = question.options.findIndex(o => toId(o._id) === optId);
+          } else if (raw && typeof raw.selectedOptionText === 'string') {
+            idx = question.options.findIndex(o => o.option === raw.selectedOptionText);
+          } else if (typeof raw === 'number') {
+            idx = raw;
+          } else if (typeof raw === 'string') {
+            // could be option text
+            idx = question.options.findIndex(o => o.option === raw);
+          }
+          if (typeof idx === 'number' && idx >= 0 && idx < question.options.length) {
+            const opt = question.options[idx];
+            isCorrect = !!opt.isCorrect;
+            userAnswerOut = opt.option;
+            const correctOpt = question.options.find(o => o.isCorrect);
+            correctAnswerOut = correctOpt ? correctOpt.option : undefined;
+          }
+          break;
+        }
+        case 'multipleChoice': {
+          // Accept selectedOptionIndices or selectedOptionIds or selectedOptionTexts
+          let selectedIdx = [];
+          if (raw && Array.isArray(raw.selectedOptionIndices)) {
+            selectedIdx = raw.selectedOptionIndices;
+          } else if (raw && Array.isArray(raw.selectedOptionIds)) {
+            selectedIdx = raw.selectedOptionIds.map(id => {
+              const optId = toId(id);
+              return question.options.findIndex(o => toId(o._id) === optId);
+            }).filter(i => i >= 0);
+          } else if (raw && Array.isArray(raw.selectedOptionTexts)) {
+            selectedIdx = raw.selectedOptionTexts.map(t => 
+              question.options.findIndex(o => o.option === t)
+            ).filter(i => i >= 0);
+          } else if (Array.isArray(raw)) {
+            selectedIdx = raw; // assume indices
+          }
+          const correctIdx = question.options
+            .map((o, i) => (o.isCorrect ? i : -1))
+            .filter(i => i !== -1);
+          const allCorrectSelected = correctIdx.every(i => selectedIdx.includes(i));
+          const noIncorrectSelected = selectedIdx.every(i => question.options[i]?.isCorrect);
+          isCorrect = allCorrectSelected && noIncorrectSelected;
+          userAnswerOut = selectedIdx.map(i => question.options[i]?.option).filter(Boolean);
+          correctAnswerOut = correctIdx.map(i => question.options[i]?.option);
+          break;
+        }
+        case 'boolean': {
+          // Accept booleanAnswer, answer(boolean), selectedOptionIndex(0/1), or 'True'/'False' string
+          let userBool = undefined;
+          if (raw && typeof raw.booleanAnswer === 'boolean') {
+            userBool = raw.booleanAnswer;
+          } else if (raw && typeof raw.answer === 'boolean') {
+            userBool = raw.answer;
+          } else if (raw && typeof raw.selectedOptionIndex === 'number') {
+            userBool = raw.selectedOptionIndex === 0 ? true : false;
+          } else if (typeof raw === 'boolean') {
+            userBool = raw;
+          } else if (typeof raw === 'string') {
+            const s = raw.trim().toLowerCase();
+            if (s === 'true') userBool = true;
+            else if (s === 'false') userBool = false;
+          } else if (typeof raw === 'number') {
+            userBool = raw === 1;
+          }
+          if (typeof userBool === 'boolean') {
+            isCorrect = userBool === question.booleanAnswer;
+            userAnswerOut = userBool ? 'True' : 'False';
+            correctAnswerOut = question.booleanAnswer ? 'True' : 'False';
+          }
+          break;
+        }
+        case 'fillInBlank': {
+          let text = undefined;
+          if (raw && typeof raw.textAnswer === 'string') text = raw.textAnswer;
+          else if (raw && typeof raw.answer === 'string') text = raw.answer;
+          else if (typeof raw === 'string') text = raw;
+          if (typeof text === 'string') {
+            const user = text.trim().toLowerCase();
+            const correct = (question.correctAnswer || '').trim().toLowerCase();
+            isCorrect = user === correct;
+            userAnswerOut = text;
+            correctAnswerOut = question.correctAnswer;
+          }
+          break;
+        }
+        default:
+          break;
       }
 
-      return {
+      if (isCorrect) correctAnswers++;
+      processed.push({
         questionId: question._id,
         question: question.question,
-        userAnswer,
-        correctAnswer: question.correctAnswer,
-        isCorrect,
-        explanation: question.explanation,
-        points: question.points,
-        earnedPoints: isCorrect ? question.points : 0
-      };
-    });
+        questionType: qType,
+        userAnswer: userAnswerOut,
+        correctAnswer: correctAnswerOut,
+        isCorrect
+      });
+    }
 
-    const scorePercentage = Math.round((earnedPoints / totalPoints) * 100);
+    const totalQuestions = quiz.questions.length;
+    const scorePercentage = Math.round((correctAnswers / totalQuestions) * 100);
     const passed = scorePercentage >= (quiz.passingScore || 70);
 
-    // Save quiz attempt
     const quizAttempt = new QuizAttempt({
       userId,
       quizId,
@@ -438,15 +540,13 @@ exports.submitQuiz = async (req, res) => {
       score: scorePercentage,
       passed,
       completedAt: new Date(),
-      results
+      results: processed
     });
-
     await quizAttempt.save();
 
     // Update progress if passed
     if (passed) {
       let progress = await Progress.findOne({ userId, courseId });
-      
       if (!progress) {
         progress = new Progress({
           userId,
@@ -456,7 +556,6 @@ exports.submitQuiz = async (req, res) => {
           progressPercentage: 0
         });
       }
-
       if (!progress.completedQuizzes.includes(quizId)) {
         progress.completedQuizzes.push(quizId);
         progress.lastAccessed = new Date();
@@ -470,11 +569,9 @@ exports.submitQuiz = async (req, res) => {
         score: scorePercentage,
         passed,
         correctAnswers,
-        totalQuestions: quiz.questions.length,
-        earnedPoints,
-        totalPoints,
+        totalQuestions,
         passingScore: quiz.passingScore || 70,
-        questions: results
+        questions: processed
       }
     }, res, 200);
   } catch (error) {
