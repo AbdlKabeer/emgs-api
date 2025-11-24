@@ -7,7 +7,10 @@ const { createCourseValidator,updateCourseValidator } = require('../../validator
 const { createLessonValidator,updateLessonValidator } = require('../../validators/new-flow/lesson.validator'); 
 const { createModuleValidator,updateModuleValidator } = require('../../validators/new-flow/module.validator'); 
 const { createQuizValidator,addQuestionValidator } = require('../../validators/new-flow/quiz.validator'); 
-
+const tutorController = require('../../controllers/tutor.controller');
+const {
+    registerValidator,
+  } = require('../../validators/tutor.validator');
 
 
 
@@ -39,5 +42,9 @@ router.post('/quizzes', authenticate, createQuizValidator, courseController.crea
 
 // Add a question to a quiz
 router.post('/quizzes/:quizId/questions', authenticate, addQuestionValidator, courseController.addQuizQuestion);
+
+
+// Register a new tutor
+router.post('/register',registerValidator, tutorController.registerTutor);
 
 module.exports = router;
