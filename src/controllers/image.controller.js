@@ -4,15 +4,44 @@ const cloudinary = require('cloudinary').v2;
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { successResponse, errorResponse, badRequestResponse } = require('../utils/custom_response/responses');
 const sharp = require('sharp');
+const { Readable } = require('stream');
 
 // File validation constants
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB for images
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_IMAGE_SIZE = 100 * 1024 * 1024; // 100MB for images
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB for videos
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo'];
 const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
 const ALLOWED_DOCUMENT_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+// Upload timeout (5 minutes for large files)
+const UPLOAD_TIMEOUT = 5 * 60 * 1000;
+
+// Helper function to get file validation config
+const getFileValidationConfig = (mimetype) => {
+  if (mimetype.startsWith('image/')) {
+    return {
+      maxSize: MAX_IMAGE_SIZE,
+      allowedTypes: ALLOWED_IMAGE_TYPES
+    };
+  } else if (mimetype.startsWith('video/')) {
+    return {
+      maxSize: MAX_VIDEO_SIZE,
+      allowedTypes: ALLOWED_VIDEO_TYPES
+    };
+  } else if (mimetype.startsWith('audio/')) {
+    return {
+      maxSize: MAX_FILE_SIZE,
+      allowedTypes: ALLOWED_AUDIO_TYPES
+    };
+  } else {
+    return {
+      maxSize: MAX_FILE_SIZE,
+      allowedTypes: ALLOWED_DOCUMENT_TYPES
+    };
+  }
+};
 
 // Helper function to validate file
 const validateFile = (file, allowedTypes, maxSize) => {
@@ -33,8 +62,9 @@ const validateFile = (file, allowedTypes, maxSize) => {
 
 // Helper function to compress image
 const compressImage = async (buffer, mimetype) => {
+  let sharpInstance = null;
   try {
-    const sharpInstance = sharp(buffer);
+    sharpInstance = sharp(buffer);
     const metadata = await sharpInstance.metadata();
 
     // Resize if image is too large
@@ -59,7 +89,92 @@ const compressImage = async (buffer, mimetype) => {
   } catch (error) {
     console.error('Error compressing image:', error);
     return buffer; // Return original on error
+  } finally {
+    // Cleanup sharp instance
+    if (sharpInstance) {
+      sharpInstance.destroy();
+    }
   }
+};
+
+// Helper function to create upload stream with timeout
+const uploadWithTimeout = (uploadPromise, timeout = UPLOAD_TIMEOUT) => {
+  return Promise.race([
+    uploadPromise,
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Upload timeout exceeded')), timeout)
+    )
+  ]);
+};
+
+// Helper function to upload to Cloudinary via stream
+const uploadToCloudinaryStream = (buffer, uploadOptions) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      uploadOptions,
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      }
+    );
+    
+    // Handle stream errors
+    uploadStream.on('error', (error) => {
+      reject(error);
+    });
+    
+    uploadStream.end(buffer);
+  });
+};
+
+// Helper function to get Cloudinary upload options
+const getCloudinaryUploadOptions = (file) => {
+  const uploadOptions = {
+    folder: file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/') 
+      ? 'course-content' 
+      : 'course-thumbnails',
+    quality: 'auto:good',
+    fetch_format: 'auto'
+  };
+
+  if (file.mimetype.startsWith('video/')) {
+    uploadOptions.resource_type = 'video';
+    uploadOptions.chunk_size = 6000000;
+    // Enable adaptive streaming for better delivery
+    uploadOptions.eager = [
+      { streaming_profile: 'hd', format: 'm3u8' }
+    ];
+    uploadOptions.eager_async = true;
+  } else if (file.mimetype.startsWith('image/')) {
+    uploadOptions.resource_type = 'image';
+    // Add responsive breakpoints for CDN optimization
+    uploadOptions.responsive_breakpoints = [
+      {
+        create_derived: true,
+        bytes_step: 20000,
+        min_width: 200,
+        max_width: 1920,
+        max_images: 5
+      }
+    ];
+    uploadOptions.transformation = [
+      { quality: 'auto:good' },
+      { fetch_format: 'auto' }
+    ];
+  } else if (file.mimetype.startsWith('audio/')) {
+    uploadOptions.resource_type = 'video';
+  } else {
+    uploadOptions.resource_type = 'raw';
+    const fileExtension = file.originalname.split('.').pop();
+    if (fileExtension) {
+      uploadOptions.public_id = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExtension}`;
+    }
+  }
+
+  return uploadOptions;
 };
 
 
@@ -109,97 +224,81 @@ cloudinary.config({
 });
   
 exports.uploadImageCloudinary = async (req, res) => {
+  let fileBuffer = null;
+  let compressedBuffer = null;
+  
   try {
     if (!req.file) {
       return badRequestResponse('No file uploaded', 'BAD_REQUEST', 400, res);
     }
 
-    // Validate file based on type
-    let validation;
-    let maxSize = MAX_FILE_SIZE;
-    let allowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_AUDIO_TYPES, ...ALLOWED_DOCUMENT_TYPES];
-
-    if (req.file.mimetype.startsWith('image/')) {
-      maxSize = MAX_IMAGE_SIZE;
-      allowedTypes = ALLOWED_IMAGE_TYPES;
-    } else if (req.file.mimetype.startsWith('video/')) {
-      maxSize = MAX_VIDEO_SIZE;
-      allowedTypes = ALLOWED_VIDEO_TYPES;
-    }
-
-    validation = validateFile(req.file, allowedTypes, maxSize);
+    // Get validation config based on file type
+    const validationConfig = getFileValidationConfig(req.file.mimetype);
+    const validation = validateFile(req.file, validationConfig.allowedTypes, validationConfig.maxSize);
+    
     if (!validation.valid) {
       return badRequestResponse(validation.error, 'BAD_REQUEST', 400, res);
     }
 
-    // Set up the upload options
-    const uploadOptions = {
-      folder: req.file.mimetype.startsWith('video/') ? 'course-content' : 'course-thumbnails',
-      quality: 'auto:good', // Automatic quality optimization
-      fetch_format: 'auto' // Automatic format optimization
-    };
-
-    // Determine the appropriate resource type
-    if (req.file.mimetype.startsWith('video/')) {
-      uploadOptions.resource_type = 'video';
-      uploadOptions.chunk_size = 6000000; // 6MB chunks for large videos
-    } else if (req.file.mimetype.startsWith('image/')) {
-      uploadOptions.resource_type = 'image';
-      uploadOptions.transformation = [
-        { quality: 'auto:good' },
-        { fetch_format: 'auto' }
-      ];
-    } else if (req.file.mimetype.startsWith('audio/')) {
-      uploadOptions.resource_type = 'video';
-    } else {
-      uploadOptions.resource_type = 'raw';
-      const fileExtension = req.file.originalname.split('.').pop();
-      if (fileExtension) {
-        uploadOptions.public_id = `${Date.now()}.${fileExtension}`;
-      }
-    }
+    // Get upload options
+    const uploadOptions = getCloudinaryUploadOptions(req.file);
 
     // Compress image before upload if it's an image
-    let fileBuffer = req.file.buffer;
+    fileBuffer = req.file.buffer;
     if (req.file.mimetype.startsWith('image/')) {
-      fileBuffer = await compressImage(req.file.buffer, req.file.mimetype);
+      compressedBuffer = await compressImage(fileBuffer, req.file.mimetype);
+      fileBuffer = compressedBuffer;
     }
 
-    // Use stream for large files (more memory efficient)
-    let uploadResponse;
-    if (req.file.size > 5 * 1024 * 1024) { // 5MB threshold
-      uploadResponse = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          uploadOptions,
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        uploadStream.end(fileBuffer);
-      });
-    } else {
-      // For smaller files, use base64
-      const fileStr = Buffer.from(fileBuffer).toString('base64');
-      const uploadStr = `data:${req.file.mimetype};base64,${fileStr}`;
-      uploadResponse = await cloudinary.uploader.upload(uploadStr, uploadOptions);
-    }
+    // Use stream for all uploads (more memory efficient)
+    const uploadPromise = uploadToCloudinaryStream(fileBuffer, uploadOptions);
+    const uploadResponse = await uploadWithTimeout(uploadPromise);
 
-    return successResponse({
+    // Prepare response with CDN-optimized URLs
+    const response = {
       url: uploadResponse.secure_url,
       public_id: uploadResponse.public_id,
       format: uploadResponse.format,
       size: uploadResponse.bytes,
       width: uploadResponse.width,
       height: uploadResponse.height
-    }, res, 200, 'File uploaded successfully');
+    };
+
+    // Add responsive breakpoints for images
+    if (uploadResponse.responsive_breakpoints && uploadResponse.responsive_breakpoints.length > 0) {
+      response.responsive_breakpoints = uploadResponse.responsive_breakpoints[0].breakpoints;
+    }
+
+    // Add streaming URL for videos
+    if (uploadResponse.eager && uploadResponse.eager.length > 0) {
+      response.streaming_url = uploadResponse.eager[0].secure_url;
+    }
+
+    return successResponse(response, res, 200, 'File uploaded successfully');
   } catch (error) {
     console.error('Error during file upload to Cloudinary:', error);
+    
+    // Handle specific error types
+    if (error.message === 'Upload timeout exceeded') {
+      return errorResponse('Upload timeout - file too large or slow connection', 'UPLOAD_TIMEOUT', 408, res);
+    }
+    
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  } finally {
+    // Cleanup buffers to prevent memory leaks
+    fileBuffer = null;
+    compressedBuffer = null;
+    if (req.file && req.file.buffer) {
+      req.file.buffer = null;
+    }
   }
 };
 
 exports.uploadMultipleImagesCloudinary = async (req, res) => {
+  const uploadResults = [];
+  const errors = [];
+  const bufferCleanup = [];
+  
   try {
     const files = req.files;
 
@@ -207,10 +306,8 @@ exports.uploadMultipleImagesCloudinary = async (req, res) => {
       return badRequestResponse('No files uploaded', 'BAD_REQUEST', 400, res);
     }
 
-    // Limit concurrent uploads to prevent memory issues
-    const MAX_CONCURRENT_UPLOADS = 3;
-    const uploadResults = [];
-    const errors = [];
+    // Use environment variable or default to 3
+    const MAX_CONCURRENT_UPLOADS = parseInt(process.env.MAX_CONCURRENT_UPLOADS) || 3;
 
     // Process files in batches
     for (let i = 0; i < files.length; i += MAX_CONCURRENT_UPLOADS) {
@@ -218,76 +315,34 @@ exports.uploadMultipleImagesCloudinary = async (req, res) => {
       
       const batchResults = await Promise.allSettled(
         batch.map(async (file) => {
+          let fileBuffer = null;
+          let compressedBuffer = null;
+          
           try {
-            // Validate file
-            let maxSize = MAX_FILE_SIZE;
-            let allowedTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_AUDIO_TYPES, ...ALLOWED_DOCUMENT_TYPES];
-
-            if (file.mimetype.startsWith('image/')) {
-              maxSize = MAX_IMAGE_SIZE;
-              allowedTypes = ALLOWED_IMAGE_TYPES;
-            } else if (file.mimetype.startsWith('video/')) {
-              maxSize = MAX_VIDEO_SIZE;
-              allowedTypes = ALLOWED_VIDEO_TYPES;
-            }
-
-            const validation = validateFile(file, allowedTypes, maxSize);
+            // Get validation config based on file type
+            const validationConfig = getFileValidationConfig(file.mimetype);
+            const validation = validateFile(file, validationConfig.allowedTypes, validationConfig.maxSize);
+            
             if (!validation.valid) {
-              throw new Error(`${file.originalname}: ${validation.error}`);
+              throw new Error(validation.error);
             }
 
-            // Set appropriate resource type based on mimetype
-            let resourceType = 'raw';
-            if (file.mimetype.startsWith('video/')) {
-              resourceType = 'video';
-            } else if (file.mimetype.startsWith('image/')) {
-              resourceType = 'image';
-            } else if (file.mimetype.startsWith('audio/')) {
-              resourceType = 'video';
-            }
-
-            const uploadOptions = {
-              folder: file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/') 
-                ? 'course-content' 
-                : 'course-thumbnails',
-              resource_type: resourceType,
-              quality: 'auto:good',
-              fetch_format: 'auto'
-            };
-
-            if (resourceType === 'raw') {
-              const fileExtension = file.originalname.split('.').pop();
-              if (fileExtension) {
-                uploadOptions.public_id = `${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExtension}`;
-              }
-            }
+            // Get upload options
+            const uploadOptions = getCloudinaryUploadOptions(file);
 
             // Compress images before upload
-            let fileBuffer = file.buffer;
+            fileBuffer = file.buffer;
             if (file.mimetype.startsWith('image/')) {
-              fileBuffer = await compressImage(file.buffer, file.mimetype);
+              compressedBuffer = await compressImage(fileBuffer, file.mimetype);
+              fileBuffer = compressedBuffer;
             }
 
-            // Use streaming for large files
-            let result;
-            if (file.size > 5 * 1024 * 1024) {
-              result = await new Promise((resolve, reject) => {
-                const uploadStream = cloudinary.uploader.upload_stream(
-                  uploadOptions,
-                  (error, uploadResult) => {
-                    if (error) reject(error);
-                    else resolve(uploadResult);
-                  }
-                );
-                uploadStream.end(fileBuffer);
-              });
-            } else {
-              const fileStr = Buffer.from(fileBuffer).toString('base64');
-              const uploadStr = `data:${file.mimetype};base64,${fileStr}`;
-              result = await cloudinary.uploader.upload(uploadStr, uploadOptions);
-            }
+            // Use streaming for all uploads with timeout
+            const uploadPromise = uploadToCloudinaryStream(fileBuffer, uploadOptions);
+            const result = await uploadWithTimeout(uploadPromise);
 
-            return {
+            // Prepare response
+            const response = {
               originalName: file.originalname,
               url: result.secure_url,
               public_id: result.public_id,
@@ -296,8 +351,27 @@ exports.uploadMultipleImagesCloudinary = async (req, res) => {
               width: result.width,
               height: result.height
             };
+
+            // Add responsive breakpoints for images
+            if (result.responsive_breakpoints && result.responsive_breakpoints.length > 0) {
+              response.responsive_breakpoints = result.responsive_breakpoints[0].breakpoints;
+            }
+
+            // Add streaming URL for videos
+            if (result.eager && result.eager.length > 0) {
+              response.streaming_url = result.eager[0].secure_url;
+            }
+
+            return response;
           } catch (error) {
             throw new Error(`${file.originalname}: ${error.message}`);
+          } finally {
+            // Cleanup buffers for this file
+            fileBuffer = null;
+            compressedBuffer = null;
+            if (file.buffer) {
+              bufferCleanup.push(file);
+            }
           }
         })
       );
@@ -313,6 +387,14 @@ exports.uploadMultipleImagesCloudinary = async (req, res) => {
           });
         }
       });
+
+      // Clear buffers after each batch to free memory
+      bufferCleanup.forEach(file => {
+        if (file.buffer) {
+          file.buffer = null;
+        }
+      });
+      bufferCleanup.length = 0;
     }
 
     // Return results with both successes and failures
@@ -337,5 +419,20 @@ exports.uploadMultipleImagesCloudinary = async (req, res) => {
   } catch (error) {
     console.error('Error during multiple file upload:', error);
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  } finally {
+    // Final cleanup of all remaining buffers
+    bufferCleanup.forEach(file => {
+      if (file.buffer) {
+        file.buffer = null;
+      }
+    });
+    
+    if (req.files) {
+      req.files.forEach(file => {
+        if (file.buffer) {
+          file.buffer = null;
+        }
+      });
+    }
   }
 };

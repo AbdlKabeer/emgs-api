@@ -1,20 +1,13 @@
 const multer = require('multer');
 const path = require('path');
 
-// Configure storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/profile-pictures/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, req.user.id + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Use memory storage for better control - we'll handle cleanup in controllers
+// For very large files, consider switching to disk storage
+const storage = multer.memoryStorage();
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  // Accept image files only
+  // Accept image files only for profile pictures
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
@@ -22,12 +15,13 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configure multer
+// Configure multer with limits and better error handling
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 1024 * 1024 * 5 // 5MB file size limit
+    fileSize: 100 * 1024 * 1024, // 100MB file size limit (matches controller limits)
+    files: 10 // Maximum 10 files at once
   }
 });
 
