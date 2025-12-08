@@ -143,10 +143,9 @@ const getCloudinaryUploadOptions = (file) => {
   if (file.mimetype.startsWith('video/')) {
     uploadOptions.resource_type = 'video';
     uploadOptions.chunk_size = 6000000;
-    // For large videos, skip eager transformations to avoid sync processing errors
-    // Transformations can be applied on-the-fly via URL or in background jobs
-    uploadOptions.eager_async = true; // Always use async processing
-    uploadOptions.eager_notification_url = process.env.CLOUDINARY_WEBHOOK_URL; // Optional webhook
+    // Don't use eager transformations at all for large videos
+    // This prevents the "too large to process synchronously" error
+    // Clients can apply transformations on-the-fly via URL parameters
   } else if (file.mimetype.startsWith('image/')) {
     uploadOptions.resource_type = 'image';
     // Add responsive breakpoints for CDN optimization
@@ -165,7 +164,6 @@ const getCloudinaryUploadOptions = (file) => {
     ];
   } else if (file.mimetype.startsWith('audio/')) {
     uploadOptions.resource_type = 'video';
-    uploadOptions.eager_async = true; // Use async for audio too
   } else {
     uploadOptions.resource_type = 'raw';
     const fileExtension = file.originalname.split('.').pop();
@@ -269,15 +267,6 @@ exports.uploadImageCloudinary = async (req, res) => {
       response.responsive_breakpoints = uploadResponse.responsive_breakpoints[0].breakpoints;
     }
 
-    // For videos, transformations will be applied async - provide transformation URLs
-    if (req.file.mimetype.startsWith('video/')) {
-      // Client can request different formats on-the-fly using Cloudinary URL transformations
-      response.transformation_info = {
-        hls_url: uploadResponse.secure_url.replace(/\.[^.]+$/, '.m3u8'),
-        note: 'Transformations are processed asynchronously. URLs will be available shortly.'
-      };
-    }
-
     return successResponse(response, res, 200, 'File uploaded successfully');
   } catch (error) {
     console.error('Error during file upload to Cloudinary:', error);
@@ -359,14 +348,6 @@ exports.uploadMultipleImagesCloudinary = async (req, res) => {
             // Add responsive breakpoints for images
             if (result.responsive_breakpoints && result.responsive_breakpoints.length > 0) {
               response.responsive_breakpoints = result.responsive_breakpoints[0].breakpoints;
-            }
-
-            // For videos, provide transformation info
-            if (file.mimetype.startsWith('video/')) {
-              response.transformation_info = {
-                hls_url: result.secure_url.replace(/\.[^.]+$/, '.m3u8'),
-                note: 'Transformations are processed asynchronously'
-              };
             }
 
             return response;
