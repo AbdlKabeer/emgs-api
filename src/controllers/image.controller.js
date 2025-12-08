@@ -241,11 +241,13 @@ exports.uploadImageCloudinary = async (req, res) => {
     // Get upload options
     const uploadOptions = getCloudinaryUploadOptions(req.file);
 
-    // Compress image before upload if it's an image
+    // Compress image before upload if it's an image or handle audio
     fileBuffer = req.file.buffer;
     if (req.file.mimetype.startsWith('image/')) {
       compressedBuffer = await compressImage(fileBuffer, req.file.mimetype);
       fileBuffer = compressedBuffer;
+    } else if (req.file.mimetype.startsWith('audio/')) {
+      // No compression for audio, but you can add audio-specific processing here if needed
     }
 
     // Use stream for all uploads (more memory efficient)
@@ -328,6 +330,8 @@ exports.uploadMultipleImagesCloudinary = async (req, res) => {
             if (file.mimetype.startsWith('image/')) {
               compressedBuffer = await compressImage(fileBuffer, file.mimetype);
               fileBuffer = compressedBuffer;
+            } else if (file.mimetype.startsWith('audio/')) {
+              // No compression for audio, but you can add audio-specific processing here if needed
             }
 
             // Use streaming for all uploads with timeout
