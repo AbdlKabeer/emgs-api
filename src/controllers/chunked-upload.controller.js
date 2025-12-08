@@ -15,7 +15,7 @@ const CHUNKS_DIR = path.join(__dirname, '../../temp/chunks');
 const UPLOAD_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 
 // File validation constants
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 100MB
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 // Add allowed audio types
