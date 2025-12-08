@@ -18,6 +18,8 @@ const UPLOAD_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+// Add allowed audio types
+const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'];
 
 // Ensure chunks directory exists
 const ensureChunksDirExists = async () => {
@@ -45,7 +47,7 @@ exports.initChunkedUpload = async (req, res) => {
     }
 
     // Validate file type
-    const allowedTypes = [...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES];
+    const allowedTypes = [...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES, ...ALLOWED_AUDIO_TYPES];
     if (!allowedTypes.includes(mimetype)) {
       return badRequestResponse(
         `Invalid file type. Allowed types: ${allowedTypes.join(', ')}`,
