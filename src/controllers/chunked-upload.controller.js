@@ -242,9 +242,14 @@ exports.completeChunkedUpload = async (req, res) => {
     }
 
     // Upload merged file to Cloudinary
+    // Adjust resource_type based on mimetype
     const uploadOptions = {
-      folder: uploadSession.mimetype.startsWith('video/') ? 'course-content' : 'course-thumbnails',
-      resource_type: uploadSession.mimetype.startsWith('video/') ? 'video' : 'image',
+      folder: uploadSession.mimetype.startsWith('video/') || uploadSession.mimetype.startsWith('audio/')
+        ? 'course-content'
+        : 'course-thumbnails',
+      resource_type: uploadSession.mimetype.startsWith('video/') || uploadSession.mimetype.startsWith('audio/')
+        ? 'video'
+        : 'image',
       public_id: `${Date.now()}_${path.parse(uploadSession.filename).name}`,
       chunk_size: 6000000
     };
