@@ -76,6 +76,8 @@ app.use('/api/v2/student', studentRoutes);
 app.use('/api/v2/tutors', newTutorRoutes);
 app.use('/api/v2/chat', chatRoutes);
 app.use('/api/v2/new-flow/courses', newFlowCourseRoutes);
+app.use('/api/v1/tutors', tutorRoutes);
+app.use('/api/v2/tutors', tutorRoutes); // fallback catch
 // app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerSpec)); // Swagger disabled
 
 // 404 Fallback
