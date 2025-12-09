@@ -20,13 +20,7 @@ const courseSchema = new mongoose.Schema({
   },
   price: {
     type: Number,
-    default: 0, 
-    validate: {
-      validator: function (v) {
-        return this.isFree || v > 0;
-      },
-      message: 'Price must be greater than 0 for paid courses'
-    }
+    default: 0
   },
   thumbnail: {
     type: String,

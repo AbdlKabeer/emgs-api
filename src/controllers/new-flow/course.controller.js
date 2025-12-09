@@ -780,9 +780,6 @@ exports.createCourseWithContent = async (req, res) => {
       return errorResponse('Title, description, and category are required', 'VALIDATION_ERROR', 400, res);
     }
 
-    // if (!isFree && (!price || price <= 0)) {
-    //   return errorResponse('Price must be greater than 0 for paid courses', 'VALIDATION_ERROR', 400, res);
-    // }
 
     if (!modules || !Array.isArray(modules) || modules.length === 0) {
       return errorResponse('At least one module is required', 'VALIDATION_ERROR', 400, res);
