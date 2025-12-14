@@ -57,8 +57,16 @@ exports.getUserProfile = async (req, res) => {
 // Update user profile
 exports.updateUserProfile = async (req, res) => {
   try {
-    const { fullName, phone, preferredLanguage, notificationsEnabled , bio } = req.body;
+    const { fullName, phone, preferredLanguage, notificationsEnabled , bio , email} = req.body;
     
+
+    // validate that email does not already exist for another user
+    if(email){
+      const existingUser = await User.findOne({ email, _id: { $ne: req.user.id } });
+      if (existingUser) {
+        return badRequestResponse('Email already in use by another account', 'EMAIL_IN_USE', 400, res);
+      }
+    }
     // Find user and update
     const user = await User.findByIdAndUpdate(
       req.user.id, 
@@ -67,7 +75,8 @@ exports.updateUserProfile = async (req, res) => {
         phone,
         preferredLanguage,
         bio,
-        notificationsEnabled
+        notificationsEnabled,
+        email: email ? email : req.user.email
       }, 
       { new: true }
     ).select('-password -__v');
