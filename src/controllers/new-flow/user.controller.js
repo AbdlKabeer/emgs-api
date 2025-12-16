@@ -2047,6 +2047,8 @@ exports.completeOneOnOneSession = async (req, res) => {
     // award the tutor their money for the session
     let tutor = await User.findById(tutorId);
     if (tutor) {
+      tutor.servicePrice = 25000
+      tutor.save()
       const sessionPrice = tutor.servicePrice || 0;
       
       let wallet = await Wallet.findOne({ userId: tutorId });
@@ -2065,7 +2067,7 @@ exports.completeOneOnOneSession = async (req, res) => {
       // Log transaction
       const transaction = new Transaction({
         userId: tutorId,
-        type: 'credit',
+        type: 'earnings',
         amount: sessionPrice,
         description: `Earnings from one-on-one session with ${user.fullName}`,
         date: new Date()
