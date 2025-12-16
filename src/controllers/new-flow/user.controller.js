@@ -2040,6 +2040,15 @@ exports.completeOneOnOneSession = async (req, res) => {
       notes: notes || ''
     });
 
+
+    // award the tutor their money for the session
+    const tutor = await User.findById(tutorId);
+    if (tutor) {
+      const sessionPrice = user.oneOnOneSubscriptions[subscriptionIndex].price || 0;
+      tutor.earnings = (tutor.earnings || 0) + sessionPrice;
+      await tutor.save();
+    }
+    
     await user.save();
 
     return successResponse(null, res, 200, "Session marked as completed. Subscription is now inactive.");
