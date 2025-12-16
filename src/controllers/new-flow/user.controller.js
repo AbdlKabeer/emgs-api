@@ -2044,12 +2044,24 @@ exports.completeOneOnOneSession = async (req, res) => {
 
 
     // award the tutor their money for the session
+    // award the tutor their money for the session
     let tutor = await User.findById(tutorId);
     if (tutor) {
-      const sessionPrice = tutor.servicePrice || 0
-      let wallet = await Wallet.findOne({ userId:tutorId });
+      const sessionPrice = tutor.servicePrice || 0;
+      
+      let wallet = await Wallet.findOne({ userId: tutorId });
+      
+      // Create wallet if it doesn't exist
+      if (!wallet) {
+        wallet = new Wallet({
+          userId: tutorId,
+          balance: 0
+        });
+      }
+      
       wallet.balance += sessionPrice;
       await wallet.save();
+      
       // Log transaction
       const transaction = new Transaction({
         userId: tutorId,
@@ -2060,10 +2072,8 @@ exports.completeOneOnOneSession = async (req, res) => {
       });
 
       await transaction.save();
-      tutor.servicePrice = 5000
-      tutor.save()
     }
-    
+        
     await user.save();
 
     return successResponse(null, res, 200, "Session marked as completed. Subscription is now inactive.");
