@@ -12,14 +12,16 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify connection configuration
-transporter.verify(function (error, success) {
-  if (error) {
-    console.error('Email server connection error:', error);
-  } else {
-    console.log('Email server connection established successfully');
-  }
-}).catch((error) => {
+try {
+  transporter.verify(function (error, success) {
+    if (error) {
+      console.error('Email server connection error:', error);
+    } else {
+      console.log('Email server connection established successfully');
+    }
+  });
+} catch (error) {
   console.error('Email server verification failed:', error);
-});
+}
 
 module.exports = transporter;
