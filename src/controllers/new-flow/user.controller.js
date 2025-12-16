@@ -2068,6 +2068,7 @@ exports.completeOneOnOneSession = async (req, res) => {
         type: 'earnings',
         walletId: wallet._id,
         amount: sessionPrice,
+        status:"completed",
         description: `Earnings from one-on-one session with ${user.fullName}`,
         date: new Date()
       });
