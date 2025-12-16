@@ -10,15 +10,21 @@ const emailTemplates = require('../utils/templates/email.templates');
  * @returns {Promise} - Email sending result
  */
 const sendEmail = async (to, subject, html, text) => {
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
-    to,
-    subject,
-    html,
-    text
-  };
+  try {
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
+      to,
+      subject,
+      html,
+      text
+    };
 
-  return await transporter.sendMail(mailOptions);
+    return await transporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error('Failed to send email:', error);
+    // Don't throw error, just log it to prevent app crashes
+    return null;
+  }
 };
 
 /**
