@@ -6,6 +6,8 @@ const Progress = require('../../models/progress.model');
 const QuizAttempt = require('../../models/quizAttempt.model');
 const Bookmark = require('../../models/bookmark.model');
 const User = require('../../models/user.model');
+const Wallet = require('../../models/wallet.model');
+const Transaction = require('../../models/transaction.model');
 const Quiz = require('../../models/quiz.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse, internalServerErrorResponse } = require('../../utils/custom_response/responses');
 
@@ -2044,9 +2046,18 @@ exports.completeOneOnOneSession = async (req, res) => {
     // award the tutor their money for the session
     const tutor = await User.findById(tutorId);
     if (tutor) {
-      const sessionPrice = user.oneOnOneSubscriptions[subscriptionIndex].price || 0;
-      tutor.earnings = (tutor.earnings || 0) + sessionPrice;
-      await tutor.save();
+      const sessionPrice = tutor.servicePrice || 0
+      let wallet = await Wallet.findOne({ userId:tutorId });
+      wallet.balance += sessionPrice;
+      await wallet.save();
+      // Log transaction
+      const transaction = new Transaction({
+        userId: tutorId,
+        type: 'credit',
+        amount: sessionPrice,
+        description: `Earnings from one-on-one session with ${user.fullName}`,
+        date: new Date()
+      });
     }
     
     await user.save();
