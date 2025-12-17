@@ -51,6 +51,10 @@ exports.register = async (req, res) => {
       const referrer = await User.findOne({ referralCode });
       if (referrer) {
         user.referredBy = referrer._id;
+      }else
+      {
+        console.warn('Invalid referral code provided:', referralCode);
+        return badRequestResponse('Invalid referral code', 'BAD_REQUEST', 400, res);
       }
     }
 
@@ -106,7 +110,29 @@ exports.verifyEmail = async (req, res) => {
 
     await user.save();
 
-    return successResponse({ message: 'Email verified successfully' }, res);
+    // Generate token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    return successResponse({
+      message: 'Email verified successfully',
+      token, 
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        isEmgsTutor: user.isEmgsTutor,
+        profilePicture:user.profilePicture
+      }
+    }, res);
+
+    // return successResponse({ message: 'Email verified successfully' }, res);
   } catch (error) {
     return badRequestResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
@@ -282,9 +308,6 @@ exports.login = async (req, res) => {
       }
     }, res);
   } catch (error) {
-    console.log(error)
-    console.log(error)
-    console.log(error)
     console.log(error)
     return internalServerErrorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
