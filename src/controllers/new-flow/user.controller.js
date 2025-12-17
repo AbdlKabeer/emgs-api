@@ -9,6 +9,7 @@ const User = require('../../models/user.model');
 const Wallet = require('../../models/wallet.model');
 const Transaction = require('../../models/transaction.model');
 const Quiz = require('../../models/quiz.model');
+const Notification = require('../../models/notification.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse, internalServerErrorResponse } = require('../../utils/custom_response/responses');
 
 
@@ -2074,6 +2075,18 @@ exports.completeOneOnOneSession = async (req, res) => {
       });
 
       await transaction.save();
+
+      // add notfication for the tutor about the payment
+      const notification = new Notification({
+        userId: tutorId,
+        title: 'New Earnings Received',
+        message: `You have received $${sessionPrice.toFixed(2)} for your one-on-one session with ${user.fullName}.`,
+        isRead: false,
+        type: 'service',
+        createdAt: new Date()
+      });
+
+      await notification.save();
     }
         
     await user.save();
