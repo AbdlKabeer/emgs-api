@@ -28,9 +28,7 @@ const updateServicesUser = async () => {
       console.log(`${index + 1}. ${tutor.fullName} (${tutor.email})`);
     });
 
-    // Use the first EMGS tutor (or you can modify to choose a specific one)
-    const selectedTutor = emgsTutors[0];
-    console.log(`\n✅ Selected Tutor: ${selectedTutor.fullName}\n`);
+    console.log(`\n📝 Distributing services among ${emgsTutors.length} EMGS tutors...\n`);
 
     // Get all services except the first one
     const allServices = await Service.find().sort({ createdAt: -1 });
@@ -45,15 +43,19 @@ const updateServicesUser = async () => {
     
     console.log(`📝 Updating ${servicesToUpdate.length} services...\n`);
 
-    for (const service of servicesToUpdate) {
+    // Distribute services among EMGS tutors in round-robin fashion
+    for (let i = 0; i < servicesToUpdate.length; i++) {
+      const service = servicesToUpdate[i];
+      const selectedTutor = emgsTutors[i % emgsTutors.length];
+      
       await Service.findByIdAndUpdate(service._id, {
         user: selectedTutor._id
       });
-      console.log(`✅ Updated: ${service.name}`);
+      console.log(`✅ Updated: ${service.name} → ${selectedTutor.fullName}`);
     }
 
     console.log(`\n✅ Successfully updated ${servicesToUpdate.length} services!`);
-    console.log(`   All services (except the first) now assigned to: ${selectedTutor.fullName}`);
+    console.log(`   Services distributed among ${emgsTutors.length} EMGS tutors`);
 
   } catch (error) {
     console.error('❌ Error:', error.message);
