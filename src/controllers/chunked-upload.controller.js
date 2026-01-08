@@ -20,6 +20,8 @@ const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/mpeg', 'video/quicktime', 'vide
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 // Add allowed audio types
 const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'];
+// Add allowed document types
+const ALLOWED_DOCUMENT_TYPES = ['application/pdf'];
 
 // Ensure chunks directory exists
 const ensureChunksDirExists = async () => {
@@ -47,7 +49,7 @@ exports.initChunkedUpload = async (req, res) => {
     }
 
     // Validate file type
-    const allowedTypes = [...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES, ...ALLOWED_AUDIO_TYPES];
+    const allowedTypes = [...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES, ...ALLOWED_AUDIO_TYPES, ...ALLOWED_DOCUMENT_TYPES];
     if (!allowedTypes.includes(mimetype)) {
       return badRequestResponse(
         `Invalid file type. Allowed types: ${allowedTypes.join(', ')}`,
@@ -243,13 +245,20 @@ exports.completeChunkedUpload = async (req, res) => {
 
     // Upload merged file to Cloudinary
     // Adjust resource_type based on mimetype
+    let resourceType = 'image';
+    let folder = 'course-thumbnails';
+    
+    if (uploadSession.mimetype.startsWith('video/') || uploadSession.mimetype.startsWith('audio/')) {
+      resourceType = 'video';
+      folder = 'course-content';
+    } else if (uploadSession.mimetype === 'application/pdf') {
+      resourceType = 'raw';
+      folder = 'course-documents';
+    }
+    
     const uploadOptions = {
-      folder: uploadSession.mimetype.startsWith('video/') || uploadSession.mimetype.startsWith('audio/')
-        ? 'course-content'
-        : 'course-thumbnails',
-      resource_type: uploadSession.mimetype.startsWith('video/') || uploadSession.mimetype.startsWith('audio/')
-        ? 'video'
-        : 'image',
+      folder: folder,
+      resource_type: resourceType,
       public_id: `${Date.now()}_${path.parse(uploadSession.filename).name}`,
       chunk_size: 6000000
     };
