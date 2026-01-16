@@ -653,8 +653,14 @@ exports.getCourseProgress = async (req, res) => {
       courseEnrolledUsers.forEach(user => {
         const userId = user._id.toString();
         
-        // If no lessons in course, we can't determine completion
-        if (courseLessons.length === 0) return;
+        // If no lessons in course, treat students as in-progress (can't complete a course with no content)
+        if (courseLessons.length === 0) {
+          // Only set as in progress if not already marked as completed or dropped
+          if (!userStatus.has(userId)) {
+            userStatus.set(userId, 'inProgress');
+          }
+          return;
+        }
         
         // Check how many lessons the user has completed for this course
         const completedLessonsInCourse = user.completedLessons.filter(lessonId => 
