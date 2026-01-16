@@ -732,7 +732,8 @@ exports.getCourseProgress = async (req, res) => {
         percentage: totalStudents > 0 ? (completedCount / totalStudents) * 100 : 0
       },
       totalStudents,
-      courses: courseStats
+      courses : []
+      // courses: courseStats
     };
     
     return successResponse(progressStats, res, 200, 'Course progress fetched successfully');
