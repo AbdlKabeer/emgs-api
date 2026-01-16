@@ -580,7 +580,8 @@ exports.getCourseProgress = async (req, res) => {
     }
 
     // Get all published courses created by this tutor
-    const courses = await Course.find({ createdBy: tutorId, isPublished: true });
+    const courses = await Course.find({ createdBy: tutorId});
+    // const courses = await Course.find({ createdBy: tutorId, isPublished: true });
     
     if (!courses || courses.length === 0) {
       return successResponse({ 
