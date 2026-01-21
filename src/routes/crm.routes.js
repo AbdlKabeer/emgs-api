@@ -7,6 +7,84 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/v1/crm/services:
+ *   get:
+ *     summary: Get all active services
+ *     description: Fetches all active services (Admin only)
+ *     tags:
+ *       - CRM
+ *     responses:
+ *       200:
+ *         description: List of services
+ *       401:
+ *         description: Unauthorized, admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/services', [authenticate, isAdmin], crmController.getAllServices);
+// CRM Chat Endpoints
+/**
+ * @swagger
+ * /api/v1/crm/chat/send:
+ *   post:
+ *     summary: Send a message to a student
+ *     description: CRM sends a message to a student (Admin only)
+ *     tags:
+ *       - CRM
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               studentId:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Message sent
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized, admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/chat/send', [authenticate, isAdmin], crmController.sendMessageToStudent);
+
+/**
+ * @swagger
+ * /api/v1/crm/chat/{studentId}:
+ *   get:
+ *     summary: Get chat history with a student
+ *     description: Fetch chat history between CRM and a student (Admin only)
+ *     tags:
+ *       - CRM
+ *     parameters:
+ *       - name: studentId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Chat history
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized, admin access required
+ *       404:
+ *         description: No conversation found
+ *       500:
+ *         description: Internal server error
+ */
+
+router.get('/chat/:studentId', [authenticate, isAdmin], crmController.getChatWithStudent);
+
+/**
+ * @swagger
  * /api/v1/crm/inquiries:
  *   get:
  *     summary: Get all inquiries (Admin only)
