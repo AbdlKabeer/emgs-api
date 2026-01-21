@@ -11,6 +11,77 @@ const {
   paginationResponse
 } = require('../utils/custom_response/responses');
 
+// CRM Chat Endpoints
+const Conversation = require('../models/conversation.model');
+const Message = require('../models/message.model');
+
+
+// Get all active services (CRM)
+exports.getAllServices = async (req, res) => {
+  try {
+    const services = await Service.find({ isActive: true });
+    return successResponse(services, res);
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// Send a message from CRM to a student
+exports.sendMessageToStudent = async (req, res) => {
+  try {
+    const { studentId, content } = req.body;
+    if (!studentId || !content) {
+      return res.status(400).json({ message: 'studentId and content are required.' });
+    }
+
+    // Find or create a conversation between CRM and the student
+    let conversation = await Conversation.findOne({
+      participants: { $all: [studentId, 'CRM'] },
+    });
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [studentId, 'CRM'],
+      });
+    }
+
+    // Create the message
+    const message = await Message.create({
+      conversation: conversation._id,
+      sender: 'CRM',
+      receiver: studentId,
+      content,
+      sentAt: new Date(),
+    });
+
+    res.status(201).json({ message: 'Message sent', data: message });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to send message', error: error.message });
+  }
+};
+
+// Get chat history between CRM and a student
+exports.getChatWithStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    if (!studentId) {
+      return res.status(400).json({ message: 'studentId is required.' });
+    }
+
+    const conversation = await Conversation.findOne({
+      participants: { $all: [studentId, 'CRM'] },
+    });
+    if (!conversation) {
+      return res.status(404).json({ message: 'No conversation found.' });
+    }
+
+    const messages = await Message.find({ conversation: conversation._id })
+      .sort({ sentAt: 1 });
+
+    res.json({ conversationId: conversation._id, messages });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch chat', error: error.message });
+  }
+};
 
 exports.getAllInquiries = async (req, res) => {
   try {
