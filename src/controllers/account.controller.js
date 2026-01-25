@@ -9,6 +9,50 @@ const generateVerificationCode = () => {
 
 
 
+// Switch active role
+exports.switchActiveRole = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { role } = req.body;
+    const allowedRoles = ['user', 'tutor', 'admin'];
+    if (!allowedRoles.includes(role)) {
+      return badRequestResponse('Invalid role', 'INVALID_ROLE', 400, res);
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    if (!user.roles.includes(role)) {
+      return badRequestResponse('User does not have this role', 'ROLE_NOT_ASSIGNED', 403, res);
+    }
+    user.role = role;
+    await user.save();
+    return successResponse({ activeRole: user.role }, res, 200, 'Active role switched successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// Student requests to become a tutor
+exports.requestToBecomeTutor = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    if (user.roles.includes('tutor')) {
+      return badRequestResponse('You are already a tutor', 'ALREADY_TUTOR', 409, res);
+    }
+    // Here you could add logic to notify admin or store a request, for now just add 'tutor' to roles
+    user.roles.push('tutor');
+    await user.save();
+    return successResponse({ roles: user.roles }, res, 200, 'Request to become a tutor submitted successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
 // Get user profile
 exports.getUserProfile = async (req, res) => {
   try {
@@ -38,15 +82,17 @@ exports.getUserProfile = async (req, res) => {
         preferredLanguage: user.preferredLanguage,
         profilePicture: user.profilePicture,
         isVerified: user.isVerified,
-        referralCode:user.referralCode,
+        referralCode: user.referralCode,
         bio: user.bio,
-        isAppliedForOneOnOne:user.isAppliedForOneOnOne,
-        isOneOnOne:user.isOneOnOne,
+        isAppliedForOneOnOne: user.isAppliedForOneOnOne,
+        isOneOnOne: user.isOneOnOne,
         enrolledCourses: user.enrolledCourses,
         completedLessons: user.completedLessons,
         completedCoursesCount: user.completedCourses.length,
-        referralCode:user.referralCode,
-        inProgressCoursesCount: user.enrolledCourses.length - user.completedCourses.length
+        referralCode: user.referralCode,
+        inProgressCoursesCount: user.enrolledCourses.length - user.completedCourses.length,
+        roles: user.roles,
+          role: user.role
       }
     }, res);
   } catch (error) {

@@ -1,9 +1,68 @@
+
 const express = require('express');
 const accountController = require('../controllers/account.controller');
 const {authenticate} = require('../middleware/auth.middleware');
 const uploadMiddleware = require('../middleware/upload.middleware'); 
 
 const router = express.Router();
+
+
+
+/**
+ * @swagger
+ * /api/v1/account/active-role:
+ *   put:
+ *     summary: Switch active role
+ *     description: Switches the user's active role (user, tutor, admin)
+ *     tags:
+ *       - Account Management
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [user, tutor, admin]
+ *     responses:
+ *       200:
+ *         description: Successfully switched active role
+ *       400:
+ *         description: Invalid role
+ *       403:
+ *         description: Role not assigned to user
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/active-role', authenticate, accountController.switchActiveRole);
+
+/**
+ * @swagger
+ * /api/v1/account/request-tutor:
+ *   post:
+ *     summary: Request to become a tutor
+ *     description: Allows a student to request to become a tutor
+ *     tags:
+ *       - Account Management
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Request submitted successfully
+ *       404:
+ *         description: User not found
+ *       409:
+ *         description: Already a tutor
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/request-tutor', authenticate, accountController.requestToBecomeTutor);
 
 /**
  * @swagger
