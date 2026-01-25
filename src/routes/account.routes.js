@@ -1,4 +1,3 @@
-
 const express = require('express');
 const accountController = require('../controllers/account.controller');
 const {authenticate} = require('../middleware/auth.middleware');
@@ -6,6 +5,25 @@ const uploadMiddleware = require('../middleware/upload.middleware');
 
 const router = express.Router();
 
+
+
+/**
+ * @swagger
+ * /api/v1/account/tutor-request-status:
+ *   get:
+ *     summary: Get status of user's tutor request
+ *     description: Returns the status and rejection message (if any) of the user's tutor application
+ *     tags:
+ *       - Account Management
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully fetched tutor request status
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/tutor-request-status', authenticate, accountController.getTutorRequestStatus);
 
 
 /**
