@@ -1,4 +1,5 @@
 const User = require('../models/user.model');
+const TutorRequest = require('../models/tutorRequest.model');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
 
 
@@ -8,6 +9,22 @@ const generateVerificationCode = () => {
 };
 
 
+// Get status of user's tutor request
+exports.getTutorRequestStatus = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const request = await TutorRequest.findOne({ user: userId }).sort({ createdAt: -1 });
+    if (!request) {
+      return successResponse({ status: 'none', rejectionMessage: null }, res, 200, 'No tutor request found');
+    }
+    return successResponse({
+      status: request.status,
+      rejectionMessage: request.status === 'rejected' ? (request.rejectionMessage || null) : null
+    }, res, 200, 'Tutor request status fetched');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
 
 // Switch active role
 exports.switchActiveRole = async (req, res) => {
@@ -33,7 +50,8 @@ exports.switchActiveRole = async (req, res) => {
   }
 };
 
-// Student requests to become a tutor
+
+
 exports.requestToBecomeTutor = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -44,10 +62,39 @@ exports.requestToBecomeTutor = async (req, res) => {
     if (user.roles.includes('tutor')) {
       return badRequestResponse('You are already a tutor', 'ALREADY_TUTOR', 409, res);
     }
-    // Here you could add logic to notify admin or store a request, for now just add 'tutor' to roles
-    user.roles.push('tutor');
-    await user.save();
-    return successResponse({ roles: user.roles }, res, 200, 'Request to become a tutor submitted successfully');
+    // Check if a pending request already exists
+    const existingRequest = await TutorRequest.findOne({ user: userId, status: 'pending' });
+    if (existingRequest) {
+      return badRequestResponse('You already have a pending tutor request', 'ALREADY_PENDING', 409, res);
+    }
+    // Create new tutor request
+    const {
+      fullName,
+      email,
+      phone,
+      bio,
+      preferredLanguage,
+      proficiency,
+      certificateType,
+      certificate,
+      introduction,
+      otherCertificateType
+    } = req.body;
+    const tutorRequest = new TutorRequest({
+      user: userId,
+      fullName: fullName || user.fullName,
+      email: email || user.email,
+      phone: phone || user.phone,
+      bio,
+      preferredLanguage,
+      proficiency,
+      certificateType,
+      certificate,
+      introduction,
+      otherCertificateType
+    });
+    await tutorRequest.save();
+    return successResponse({ requestId: tutorRequest._id, status: tutorRequest.status }, res, 200, 'Tutor request submitted successfully');
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
   }
@@ -72,6 +119,9 @@ exports.getUserProfile = async (req, res) => {
       return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
     }
 
+    // Check for pending tutor request
+    const TutorRequest = require('../models/tutorRequest.model');
+    const hasPendingTutorRequest = await TutorRequest.exists({ user: user._id, status: 'pending' });
     return successResponse({
       user: {
         id: user._id,
@@ -92,7 +142,8 @@ exports.getUserProfile = async (req, res) => {
         referralCode: user.referralCode,
         inProgressCoursesCount: user.enrolledCourses.length - user.completedCourses.length,
         roles: user.roles,
-          role: user.role
+        role: user.role,
+        hasPendingTutorRequest: !!hasPendingTutorRequest
       }
     }, res);
   } catch (error) {
