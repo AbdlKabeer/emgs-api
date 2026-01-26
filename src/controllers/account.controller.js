@@ -85,7 +85,6 @@ exports.requestToBecomeTutor = async (req, res) => {
       fullName: fullName || user.fullName,
       email: email || user.email,
       phone: phone || user.phone,
-      status: 'approved',
       bio,
       preferredLanguage,
       proficiency,
@@ -97,13 +96,13 @@ exports.requestToBecomeTutor = async (req, res) => {
     await tutorRequest.save();
 
 
-    if (!user.roles.includes('tutor')) user.roles.push('tutor');
-    user.role = 'tutor';
-    user.bio = bio || user.bio;
-    user.preferredLanguage = preferredLanguage || user.preferredLanguage;
-    user.certificateType = certificateType || user.certificateType;
-    user.certificate = certificate || user.certificate;
-    await user.save();
+    // if (!user.roles.includes('tutor')) user.roles.push('tutor');
+    // user.role = 'tutor';
+    // user.bio = bio || user.bio;
+    // user.preferredLanguage = preferredLanguage || user.preferredLanguage;
+    // user.certificateType = certificateType || user.certificateType;
+    // user.certificate = certificate || user.certificate;
+    // await user.save();
 
 
     return successResponse({ requestId: tutorRequest._id, status: tutorRequest.status }, res, 200, 'Tutor request submitted successfully');
