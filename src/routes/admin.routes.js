@@ -161,6 +161,44 @@ router.delete('/users/:id', adminController.deleteUser);
 
 /**
  * @swagger
+ * /api/v1/admin/users/{id}/tutor-type:
+ *   patch:
+ *     summary: Update Tutor Type
+ *     description: Updates the tutorType for a tutor user by their ID.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the tutor to update
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               tutorType:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Tutor type successfully updated
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: Tutor not found
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/users/:id/tutor-type', adminController.updateTutorType);
+
+/**
+ * @swagger
  * /api/v1/admin/payments:
  *   get:
  *     summary: Get All Payments

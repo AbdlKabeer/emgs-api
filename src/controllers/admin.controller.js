@@ -161,6 +161,29 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+// Update tutorType for a tutor (admin only)
+exports.updateTutorType = async (req, res) => {
+  try {
+    const { tutorType } = req.body;
+    if (!tutorType) {
+      return validationErrorResponse('tutorType is required', res);
+    }
+    // Find user and ensure they are a tutor
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return errorResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    if (user.role !== 'tutor') {
+      return errorResponse('User is not a tutor', 'BAD_REQUEST', 400, res);
+    }
+    user.tutorType = tutorType;
+    await user.save();
+    return successResponse(user, res, 200, 'Tutor type updated successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 // Get all payments (admin only)
 exports.getAllPayments = async (req, res) => {
   try {
