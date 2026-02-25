@@ -10,10 +10,33 @@ const Wallet = require('../models/wallet.model');
 const { 
   successResponse, 
   badRequestResponse, 
-  internalServerErrorResponse 
+  internalServerErrorResponse, 
+  paginationResponse
 } = require('../utils/custom_response/responses');
 
 
+// Get payment history for authenticated user (paginated)
+exports.getUserPaymentHistory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    let { page = 1, limit = 10 } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    const skip = (page - 1) * limit;
+    const [payments, total] = await Promise.all([
+      Payment.find({ userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Payment.countDocuments({ userId })
+    ]);
+
+    return paginationResponse(payments, total, page, limit, res, 'Payment history fetched successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
 
 // Get user progress for a specific course
 exports.initiatePayment = async (req, res) => {
