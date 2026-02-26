@@ -173,15 +173,15 @@ exports.getEnrolledCourseContent = async (req, res) => {
     const userId = req.user.id;
 
     // Verify enrollment
-    const enrollment = await Enrollment.findOne({ 
-      userId, 
-      courseId, 
-      status: 'active' 
-    });
+    // const enrollment = await Enrollment.findOne({ 
+    //   userId, 
+    //   courseId, 
+    //   status: 'active' 
+    // });
 
-    if (!enrollment) {
-      return errorResponse('Not enrolled in this course', 'NOT_ENROLLED', 403, res);
-    }
+    // if (!enrollment) {
+    //   return errorResponse('Not enrolled in this course', 'NOT_ENROLLED', 403, res);
+    // }
 
     const course = await Course.findById(courseId)
       .populate('createdBy', 'firstName lastName profilePicture ratings averageRating');
