@@ -285,4 +285,112 @@ router.put('/payments/:id', adminController.updatePaymentStatus);
  */
 router.post('/notifications', adminController.sendNotification);
 
+
+/**
+ * @swagger
+ * /api/v1/admin/tutor-requests:
+ *   get:
+ *     summary: Get All Tutor Requests
+ *     description: Retrieves a paginated list of all tutor requests. Optionally filter by status.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *       - name: status
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [pending, approved, rejected]
+ *         description: Filter by request status
+ *     responses:
+ *       200:
+ *         description: List of tutor requests
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/tutor-requests', adminController.getAllTutorRequests);
+
+
+/**
+ * @swagger
+ * /api/v1/admin/tutor-requests/{id}/approve:
+ *   put:
+ *     summary: Approve Tutor Request
+ *     description: Approves a pending tutor request by ID.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the tutor request to approve
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Tutor request approved
+ *       404:
+ *         description: Tutor request not found
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/tutor-requests/:id/approve', adminController.approveTutorRequest);
+
+/**
+ * @swagger
+ * /api/v1/admin/tutor-requests/{id}/reject:
+ *   put:
+ *     summary: Reject Tutor Request
+ *     description: Rejects a pending tutor request by ID.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the tutor request to reject
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               rejectionMessage:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Tutor request rejected
+ *       404:
+ *         description: Tutor request not found
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/tutor-requests/:id/reject', adminController.rejectTutorRequest);
+
+
 module.exports = router;

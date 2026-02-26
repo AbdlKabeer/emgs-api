@@ -1,4 +1,4 @@
-// src/controllers/admin.controller.js
+const TutorRequest = require('../models/tutorRequest.model');
 const User = require('../models/user.model');
 const Course = require('../models/course.model');
 const Lesson = require('../models/lesson.model');
@@ -7,6 +7,78 @@ const Inquiry = require('../models/inquiry.model');
 const Payment = require('../models/payment.model');
 const Notification = require('../models/notification.model');
 const { successResponse, errorResponse, validationErrorResponse , paginationResponse} = require('../utils/custom_response/responses');
+
+
+
+// Get all tutor requests (admin only)
+exports.getAllTutorRequests = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const filter = {};
+    if (req.query.status) filter.status = req.query.status;
+    const total = await TutorRequest.countDocuments(filter);
+    const requests = await TutorRequest.find(filter)
+      .populate('user', 'fullName email')
+      .populate('reviewedBy', 'fullName email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    return paginationResponse(requests, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Approve tutor request (admin only)
+exports.approveTutorRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user._id;
+    const tutorRequest = await TutorRequest.findById(id);
+    if (!tutorRequest) {
+      return errorResponse('Tutor request not found', 'NOT_FOUND', 404, res);
+    }
+    if (tutorRequest.status !== 'pending') {
+      return errorResponse('Request already processed', 'BAD_REQUEST', 400, res);
+    }
+    tutorRequest.status = 'approved';
+    tutorRequest.reviewedBy = adminId;
+    tutorRequest.reviewedAt = new Date();
+    await tutorRequest.save();
+    // Optionally, update user role to tutor
+    await User.findByIdAndUpdate(tutorRequest.user, { role: 'tutor', isVerified: true });
+    return successResponse(tutorRequest, res, 200, 'Tutor request approved');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Reject tutor request (admin only)
+exports.rejectTutorRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rejectionMessage } = req.body;
+    const adminId = req.user._id;
+    const tutorRequest = await TutorRequest.findById(id);
+    if (!tutorRequest) {
+      return errorResponse('Tutor request not found', 'NOT_FOUND', 404, res);
+    }
+    if (tutorRequest.status !== 'pending') {
+      return errorResponse('Request already processed', 'BAD_REQUEST', 400, res);
+    }
+    tutorRequest.status = 'rejected';
+    tutorRequest.rejectionMessage = rejectionMessage || null;
+    tutorRequest.reviewedBy = adminId;
+    tutorRequest.reviewedAt = new Date();
+    await tutorRequest.save();
+    return successResponse(tutorRequest, res, 200, 'Tutor request rejected');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 
 // Dashboard stats
 exports.getDashboardStats = async (req, res) => {
