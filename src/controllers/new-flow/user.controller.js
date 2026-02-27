@@ -393,12 +393,6 @@ exports.submitQuiz = async (req, res) => {
 
     const courseId = quiz?.moduleId?.courseId?._id || quiz?.moduleId?.courseId;
 
-    // // Verify enrollment
-    // const enrollment = await Enrollment.findOne({ userId, courseId, status: 'active' });
-    // if (!enrollment) {
-    //   return errorResponse('Not enrolled in this course', 'NOT_ENROLLED', 403, res);
-    // }
-
     // Normalize answers to a map keyed by questionId for flexible payloads
     const toId = v => (typeof v === 'string' ? v : v?.toString?.());
     let answerMap = {};
