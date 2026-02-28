@@ -37,36 +37,50 @@ exports.approveTutorRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = req.user._id;
+
     const tutorRequest = await TutorRequest.findById(id);
     if (!tutorRequest) {
       return errorResponse('Tutor request not found', 'NOT_FOUND', 404, res);
     }
+
     if (tutorRequest.status !== 'pending') {
       return errorResponse('Request already processed', 'BAD_REQUEST', 400, res);
     }
-    tutorRequest.status = 'approved';
-    tutorRequest.reviewedBy = adminId;
-    tutorRequest.reviewedAt = new Date();
-    await tutorRequest.save();
 
-    // add tutor to the user roles list
-    const user = User.findById(tutorRequest.user._id);
+    // Find user properly (FIXED HERE)
+    const user = await User.findById(tutorRequest.user);
     if (!user) {
       return errorResponse('User not found', 'NOT_FOUND', 404, res);
     }
 
-    if (user.roles.includes('tutor')){
+    // Initialize roles if missing
+    if (!user.roles || !Array.isArray(user.roles)) {
+      user.roles = ['user'];
+    }
+
+    if (user.roles.includes('tutor')) {
       return errorResponse('User is already a tutor', 'BAD_REQUEST', 400, res);
     }
+
+    // Update tutor request
+    tutorRequest.status = 'approved';
+    tutorRequest.reviewedBy = adminId;
+    tutorRequest.reviewedAt = new Date();
+
+    await tutorRequest.save();
+
+    // Update user
     user.roles.push('tutor');
     user.isVerified = true;
+
     await user.save();
+
     return successResponse(tutorRequest, res, 200, 'Tutor request approved');
+
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
-
 // Reject tutor request (admin only)
 exports.rejectTutorRequest = async (req, res) => {
   try {
@@ -282,11 +296,71 @@ exports.getAllUsers = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const total = await User.countDocuments();
+    // Build search and filter query
+    const filter = {};
+    
+    // Search functionality - search by name, email, or phone
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i'); // case-insensitive
+      filter.$or = [
+        { fullName: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex }
+      ];
+    }
 
-    const users = await User.find()
+    // Filter by role
+    if (req.query.role && ['user', 'tutor', 'admin'].includes(req.query.role)) {
+      filter.roles = req.query.role;
+    }
+
+    // Filter by verification status
+    if (req.query.isVerified) {
+      filter.isVerified = req.query.isVerified === 'true';
+    }
+
+    // Filter by tutor type
+    if (req.query.tutorType && ['emgs', 'partner'].includes(req.query.tutorType)) {
+      filter.tutorType = req.query.tutorType;
+    }
+
+    // Date range filter
+    if (req.query.startDate || req.query.endDate) {
+      filter.createdAt = {};
+      if (req.query.startDate) {
+        filter.createdAt.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        filter.createdAt.$lte = new Date(req.query.endDate);
+      }
+    }
+
+    const total = await User.countDocuments(filter);
+
+    // Sort options
+    let sortOption = { createdAt: -1 }; // default: newest first
+    if (req.query.sortBy) {
+      switch (req.query.sortBy) {
+        case 'name':
+          sortOption = { fullName: 1 };
+          break;
+        case 'email':
+          sortOption = { email: 1 };
+          break;
+        case 'oldest':
+          sortOption = { createdAt: 1 };
+          break;
+        case 'newest':
+          sortOption = { createdAt: -1 };
+          break;
+        default:
+          sortOption = { createdAt: -1 };
+      }
+    }
+
+    const users = await User.find(filter)
       .select('-password')
-      .sort({ createdAt: -1 })
+      .sort(sortOption)
       .skip(skip)
       .limit(limit);
 

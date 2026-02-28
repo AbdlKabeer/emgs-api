@@ -49,9 +49,69 @@ router.get('/analytics', adminController.getSystemAnalytics);
  * /api/v1/admin/users:
  *   get:
  *     summary: Get All Users
- *     description: Retrieves a list of all users in the system.
+ *     description: Retrieves a paginated list of all users with search and filter capabilities.
  *     tags:
  *       - Admin
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *       - name: search
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Search by name, email, or phone
+ *       - name: role
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [user, tutor, admin]
+ *         description: Filter by role
+ *       - name: isVerified
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *         description: Filter by verification status
+ *       - name: tutorType
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [emgs, partner]
+ *         description: Filter by tutor type
+ *       - name: startDate
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter users created from this date
+ *       - name: endDate
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter users created until this date
+ *       - name: sortBy
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [name, email, newest, oldest]
+ *         description: Sort users by field
  *     responses:
  *       200:
  *         description: List of users successfully fetched
