@@ -218,6 +218,59 @@ router.get('/payments', adminController.getAllPayments);
 
 /**
  * @swagger
+ * /api/v1/admin/users/{userId}/payments:
+ *   get:
+ *     summary: Get All Payments for a User
+ *     description: Retrieves a paginated list of all payments made by a specific user. Optionally filter by status or item type.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         description: The ID of the user
+ *         schema:
+ *           type: string
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *       - name: status
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [pending, completed, failed, refunded]
+ *         description: Filter by payment status
+ *       - name: itemType
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [course, service, oneOnOne, one-on-one]
+ *         description: Filter by item type
+ *     responses:
+ *       200:
+ *         description: User payments successfully fetched
+ *       404:
+ *         description: User not found
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/users/:userId/payments', adminController.getUserPayments);
+
+/**
+ * @swagger
  * /api/v1/admin/payments/{id}:
  *   put:
  *     summary: Update Payment Status by ID
@@ -391,6 +444,190 @@ router.put('/tutor-requests/:id/approve', adminController.approveTutorRequest);
  *         description: Internal server error
  */
 router.put('/tutor-requests/:id/reject', adminController.rejectTutorRequest);
+
+
+/**
+ * @swagger
+ * /api/v1/admin/tutors:
+ *   get:
+ *     summary: Get All Tutors
+ *     description: Retrieves a paginated list of all tutors. Optionally filter by tutorType.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *       - name: tutorType
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [emgs, partner]
+ *         description: Filter by tutor type
+ *     responses:
+ *       200:
+ *         description: List of tutors
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/tutors', adminController.getAllTutors);
+
+/**
+ * @swagger
+ * /api/v1/admin/tutors/{id}:
+ *   get:
+ *     summary: Get Single Tutor
+ *     description: Retrieves a specific tutor by ID along with their created courses.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the tutor to fetch
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Tutor details successfully fetched
+ *       404:
+ *         description: Tutor not found
+ *       400:
+ *         description: User is not a tutor
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/tutors/:id', adminController.getTutorById);
+
+/**
+ * @swagger
+ * /api/v1/admin/tutors/{tutorId}/courses:
+ *   get:
+ *     summary: Get All Courses of a Tutor
+ *     description: Retrieves a paginated list of all courses created by a specific tutor. Optionally filter by status.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: tutorId
+ *         in: path
+ *         required: true
+ *         description: The ID of the tutor
+ *         schema:
+ *           type: string
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *       - name: status
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [draft, review, published, rejected]
+ *         description: Filter by course status
+ *     responses:
+ *       200:
+ *         description: List of tutor courses
+ *       404:
+ *         description: Tutor not found
+ *       400:
+ *         description: User is not a tutor
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/tutors/:tutorId/courses', adminController.getTutorCourses);
+
+/**
+ * @swagger
+ * /api/v1/admin/courses/{courseId}/approve:
+ *   put:
+ *     summary: Approve and Publish Tutor Course
+ *     description: Approves a tutor's course and publishes it to make it available to students.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: courseId
+ *         in: path
+ *         required: true
+ *         description: The ID of the course to approve
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Course approved and published successfully
+ *       404:
+ *         description: Course not found
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/courses/:courseId/approve', adminController.approveTutorCourse);
+
+/**
+ * @swagger
+ * /api/v1/admin/courses/{courseId}/reject:
+ *   put:
+ *     summary: Reject Tutor Course
+ *     description: Rejects a tutor's course with a rejection reason.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: courseId
+ *         in: path
+ *         required: true
+ *         description: The ID of the course to reject
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rejectionMessage
+ *             properties:
+ *               rejectionMessage:
+ *                 type: string
+ *                 description: Reason for rejecting the course
+ *     responses:
+ *       200:
+ *         description: Course rejected successfully
+ *       404:
+ *         description: Course not found
+ *       400:
+ *         description: Bad request - rejection message required
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/courses/:courseId/reject', adminController.rejectTutorCourse);
 
 
 module.exports = router;

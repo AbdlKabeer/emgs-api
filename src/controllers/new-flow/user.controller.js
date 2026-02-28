@@ -1186,7 +1186,7 @@ exports.getAllCourses = async (req, res) => {
     const userId = req.user ? req.user.id : null;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    let query = {  };
+    let query = {  status: 'published'};
     // let query = { isPublished: true };
     if (category) query.category = category;
     if (category) query.category = category;
