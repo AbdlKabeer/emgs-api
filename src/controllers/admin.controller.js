@@ -47,8 +47,19 @@ exports.approveTutorRequest = async (req, res) => {
     tutorRequest.reviewedBy = adminId;
     tutorRequest.reviewedAt = new Date();
     await tutorRequest.save();
-    // Optionally, update user role to tutor
-    await User.findByIdAndUpdate(tutorRequest.user, { role: 'tutor', isVerified: true });
+
+    // add tutor to the user roles list
+    const user = User.findById(tutorRequest.user._id);
+    if (!user) {
+      return errorResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    if (user.roles.includes('tutor')){
+      return errorResponse('User is already a tutor', 'BAD_REQUEST', 400, res);
+    }
+    user.roles.push('tutor');
+    user.isVerified = true;
+    await user.save();
     return successResponse(tutorRequest, res, 200, 'Tutor request approved');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
