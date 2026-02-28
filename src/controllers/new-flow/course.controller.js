@@ -132,6 +132,42 @@ exports.createCourse = async (req, res) => {
     //   return errorResponse('Price must be greater than 0 for paid courses', 'VALIDATION_ERROR', 400, res);
     // }
 
+    const STATUS_MESSAGES = {
+      pending: {
+        message: 'Your account is pending approval. Please verify your email.',
+        code: 'ACCOUNT_PENDING'
+      },
+      suspended: {
+        message: 'Your account has been suspended. Contact support.',
+        code: 'ACCOUNT_SUSPENDED'
+      },
+      banned: {
+        message: 'Your account has been permanently banned.',
+        code: 'ACCOUNT_BANNED'
+      },
+      inactive: {
+        message: 'Your account is inactive.',
+        code: 'ACCOUNT_INACTIVE'
+      },
+      rejected: {
+        message: 'Your account has been rejected. Contact support.',
+        code: 'ACCOUNT_REJECTED'
+      }
+    };
+
+    // check the status of the user
+    const user = await User.findById(userId);
+    if (user.status !== 'active') {
+      const statusData = STATUS_MESSAGES[user.status];
+
+      return errorResponse(
+        statusData?.message || 'Your account is not active.',
+        statusData?.code || 'ACCOUNT_RESTRICTED',
+        403,
+        res
+      );
+    }
+
     const course = new Course({
       title,
       description,
@@ -783,6 +819,42 @@ exports.createCourseWithContent = async (req, res) => {
 
     if (!modules || !Array.isArray(modules) || modules.length === 0) {
       return errorResponse('At least one module is required', 'VALIDATION_ERROR', 400, res);
+    }
+
+    const STATUS_MESSAGES = {
+      pending: {
+        message: 'Your account is pending approval. Please verify your email.',
+        code: 'ACCOUNT_PENDING'
+      },
+      suspended: {
+        message: 'Your account has been suspended. Contact support.',
+        code: 'ACCOUNT_SUSPENDED'
+      },
+      banned: {
+        message: 'Your account has been permanently banned.',
+        code: 'ACCOUNT_BANNED'
+      },
+      inactive: {
+        message: 'Your account is inactive.',
+        code: 'ACCOUNT_INACTIVE'
+      },
+      rejected: {
+        message: 'Your account has been rejected. Contact support.',
+        code: 'ACCOUNT_REJECTED'
+      }
+    };
+
+    // check the status of the user
+    const user = await User.findById(userId);
+    if (user.status !== 'active') {
+      const statusData = STATUS_MESSAGES[user.status];
+
+      return errorResponse(
+        statusData?.message || 'Your account is not active.',
+        statusData?.code || 'ACCOUNT_RESTRICTED',
+        403,
+        res
+      );
     }
     // Create the course first
     const course = new Course({
