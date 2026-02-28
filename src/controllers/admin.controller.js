@@ -101,6 +101,11 @@ exports.approveTutor = async (req, res) => {
       return errorResponse('User not found', 'NOT_FOUND', 404, res);
     }
     
+    // Initialize roles array if it doesn't exist
+    if (!user.roles || !Array.isArray(user.roles)) {
+      user.roles = ['user'];
+    }
+    
     // Check if user has tutor role
     if (!user.roles.includes('tutor')) {
       return errorResponse('User is not a tutor', 'BAD_REQUEST', 400, res);
@@ -142,6 +147,11 @@ exports.rejectTutor = async (req, res) => {
     
     if (!user) {
       return errorResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Initialize roles array if it doesn't exist
+    if (!user.roles || !Array.isArray(user.roles)) {
+      user.roles = [user.role];
     }
     
     // Check if user has tutor role
@@ -674,6 +684,11 @@ exports.getTutorById = async (req, res) => {
       .select('-password -verificationCode -verificationCodeExpiry -passwordVerificationCode -passwordVerificationCodeExpiry')
       .populate('enrolledCourses', 'title thumbnail')
       .populate('completedCourses', 'title thumbnail');
+    // Initialize roles array if it doesn't exist
+    if (!tutor.roles || !Array.isArray(tutor.roles)) {
+      tutor.roles = ['user'];
+    }
+    
     
     if (!tutor) {
       return errorResponse('Tutor not found', 'NOT_FOUND', 404, res);
@@ -700,6 +715,11 @@ exports.getTutorById = async (req, res) => {
 exports.getTutorCourses = async (req, res) => {
   try {
     const { tutorId } = req.params;
+    // Initialize roles array if it doesn't exist
+    if (!tutor.roles || !Array.isArray(tutor.roles)) {
+      tutor.roles = ['user'];
+    }
+    
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
