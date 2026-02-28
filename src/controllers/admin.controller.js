@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const TutorRequest = require('../models/tutorRequest.model');
 const User = require('../models/user.model');
 const Course = require('../models/course.model');
@@ -298,6 +299,63 @@ exports.getAllPayments = async (req, res) => {
 };
 
 
+// Get all payments for a specific user (admin only)
+exports.getUserPayments = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Verify user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return errorResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Build filter
+    const filter = { userId };
+    if (req.query.status && ['pending', 'completed', 'failed', 'refunded'].includes(req.query.status)) {
+      filter.status = req.query.status;
+    }
+    if (req.query.itemType && ['course', 'service', 'oneOnOne', 'one-on-one'].includes(req.query.itemType)) {
+      filter.itemType = req.query.itemType;
+    }
+
+    const total = await Payment.countDocuments(filter);
+    const payments = await Payment.find(filter)
+      .populate('userId', 'fullName email profilePicture')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Calculate total revenue for this user
+    const totalRevenue = await Payment.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId), status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+
+    return successResponse({
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        profilePicture: user.profilePicture
+      },
+      payments,
+      totalRevenue: totalRevenue.length > 0 ? totalRevenue[0].total : 0,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    }, res, 200, 'User payments fetched successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 // Update payment status (admin only)
 exports.updatePaymentStatus = async (req, res) => {
   try {
@@ -466,6 +524,167 @@ exports.getSystemAnalytics = async (req, res) => {
       }
     }, res);
 
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get all tutors with optional filter by tutorType
+exports.getAllTutors = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Build filter
+    const filter = { roles: 'tutor' };
+    if (req.query.tutorType && ['emgs', 'partner'].includes(req.query.tutorType)) {
+      filter.tutorType = req.query.tutorType;
+    }
+    
+    const total = await User.countDocuments(filter);
+    const tutors = await User.find(filter)
+      .select('-password -verificationCode -verificationCodeExpiry -passwordVerificationCode -passwordVerificationCodeExpiry')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    
+    return paginationResponse(tutors, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get single tutor by ID
+exports.getTutorById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tutor = await User.findById(id)
+      .select('-password -verificationCode -verificationCodeExpiry -passwordVerificationCode -passwordVerificationCodeExpiry')
+      .populate('enrolledCourses', 'title thumbnail')
+      .populate('completedCourses', 'title thumbnail');
+    
+    if (!tutor) {
+      return errorResponse('Tutor not found', 'NOT_FOUND', 404, res);
+    }
+    
+    if (!tutor.roles.includes('tutor')) {
+      return errorResponse('User is not a tutor', 'BAD_REQUEST', 400, res);
+    }
+    
+    // Get courses created by this tutor
+    const createdCourses = await Course.find({ createdBy: id })
+      .select('title description thumbnail status enrollmentCount rating createdAt');
+    
+    return successResponse({
+      tutor,
+      createdCourses
+    }, res, 200, 'Tutor fetched successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get all courses of a specific tutor
+exports.getTutorCourses = async (req, res) => {
+  try {
+    const { tutorId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Verify tutor exists
+    const tutor = await User.findById(tutorId);
+    if (!tutor) {
+      return errorResponse('Tutor not found', 'NOT_FOUND', 404, res);
+    }
+    
+    if (!tutor.roles.includes('tutor')) {
+      return errorResponse('User is not a tutor', 'BAD_REQUEST', 400, res);
+    }
+    
+    // Build filter
+    const filter = { createdBy: tutorId };
+    if (req.query.status && ['draft', 'review', 'published', 'rejected'].includes(req.query.status)) {
+      filter.status = req.query.status;
+    }
+    
+    const total = await Course.countDocuments(filter);
+    const courses = await Course.find(filter)
+      .populate('createdBy', 'fullName email profilePicture')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    
+    return paginationResponse(courses, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Approve and publish a tutor course
+exports.approveTutorCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const course = await Course.findById(courseId);
+    
+    if (!course) {
+      return errorResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Update course status to published
+    course.status = 'published';
+    course.isPublished = true;
+    course.rejectionMessage = null; // Clear any previous rejection message
+    await course.save();
+    
+    // Optionally send notification to tutor
+    const notification = new Notification({
+      user: course.createdBy,
+      title: 'Course Approved',
+      message: `Your course "${course.title}" has been approved and published.`,
+      type: 'course_approval'
+    });
+    await notification.save();
+    
+    return successResponse(course, res, 200, 'Course approved and published successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Reject a tutor course with rejection reason
+exports.rejectTutorCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { rejectionMessage } = req.body;
+    
+    if (!rejectionMessage) {
+      return errorResponse('Rejection message is required', 'BAD_REQUEST', 400, res);
+    }
+    
+    const course = await Course.findById(courseId);
+    
+    if (!course) {
+      return errorResponse('Course not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Update course status to rejected
+    course.status = 'rejected';
+    course.isPublished = false;
+    course.rejectionMessage = rejectionMessage;
+    await course.save();
+    
+    // Send notification to tutor
+    const notification = new Notification({
+      user: course.createdBy,
+      title: 'Course Rejected',
+      message: `Your course "${course.title}" has been rejected. Reason: ${rejectionMessage}`,
+      type: 'course_rejection'
+    });
+    await notification.save();
+    
+    return successResponse(course, res, 200, 'Course rejected successfully');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }

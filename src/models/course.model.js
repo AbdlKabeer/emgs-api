@@ -42,6 +42,10 @@ const courseSchema = new mongoose.Schema({
     enum: ['draft', 'review', 'published', 'rejected'],
     default: 'draft'
   },
+  rejectionMessage: {
+    type: String,
+    default: null
+  },
   courseType: {
     type: String,
     enum: ['emgs', 'tutor'],
