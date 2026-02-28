@@ -12,6 +12,11 @@ const userSchema = new mongoose.Schema(
       type: [{ type: String, enum: ['user', 'tutor', 'admin'] }],
       default: ['user']
     },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'suspended', 'banned', 'pending', 'rejected'],
+      default: 'pending'
+    },
     tutorType: {
     type: String,
       enum: ['emgs', 'partner'],
