@@ -448,10 +448,83 @@ router.put('/tutor-requests/:id/reject', adminController.rejectTutorRequest);
 
 /**
  * @swagger
+ * /api/v1/admin/tutors/{tutorId}/approve:
+ *   put:
+ *     summary: Approve Tutor
+ *     description: Approves and verifies an existing tutor directly by their user ID.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: tutorId
+ *         in: path
+ *         required: true
+ *         description: The ID of the tutor to approve
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Tutor approved successfully
+ *       404:
+ *         description: User not found
+ *       400:
+ *         description: User is not a tutor
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/tutors/:tutorId/approve', adminController.approveTutor);
+
+/**
+ * @swagger
+ * /api/v1/admin/tutors/{tutorId}/reject:
+ *   put:
+ *     summary: Reject/Suspend Tutor
+ *     description: Rejects, suspends, or revokes an existing tutor's status by their user ID.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: tutorId
+ *         in: path
+ *         required: true
+ *         description: The ID of the tutor to reject/suspend
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Reason for rejection or suspension
+ *               action:
+ *                 type: string
+ *                 enum: [suspend, revoke]
+ *                 description: Action to take - suspend (unverify) or revoke (remove tutor role)
+ *     responses:
+ *       200:
+ *         description: Tutor suspended or revoked successfully
+ *       404:
+ *         description: User not found
+ *       400:
+ *         description: User is not a tutor
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/tutors/:tutorId/reject', adminController.rejectTutor);
+
+
+/**
+ * @swagger
  * /api/v1/admin/tutors:
  *   get:
  *     summary: Get All Tutors
- *     description: Retrieves a paginated list of all tutors. Optionally filter by tutorType.
+ *     description: Retrieves a paginated list of all tutors. Optionally filter by tutorType and verification status.
  *     tags:
  *       - Admin
  *     parameters:
@@ -474,6 +547,13 @@ router.put('/tutor-requests/:id/reject', adminController.rejectTutorRequest);
  *           type: string
  *           enum: [emgs, partner]
  *         description: Filter by tutor type
+ *       - name: status
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [verified, unverified, all]
+ *         description: Filter by verification status
  *     responses:
  *       200:
  *         description: List of tutors

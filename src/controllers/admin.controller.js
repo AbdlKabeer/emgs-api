@@ -91,6 +91,107 @@ exports.rejectTutorRequest = async (req, res) => {
   }
 };
 
+// Approve tutor directly by user ID (admin only)
+exports.approveTutor = async (req, res) => {
+  try {
+    const { tutorId } = req.params;
+    const user = await User.findById(tutorId);
+    
+    if (!user) {
+      return errorResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Check if user has tutor role
+    if (!user.roles.includes('tutor')) {
+      return errorResponse('User is not a tutor', 'BAD_REQUEST', 400, res);
+    }
+    
+    // Verify/approve the tutor
+    user.isVerified = true;
+    await user.save();
+    
+    // Send notification to tutor
+    const notification = new Notification({
+      user: user._id,
+      title: 'Tutor Account Approved',
+      message: 'Your tutor account has been verified and approved by the admin.',
+      type: 'tutor_approval'
+    });
+    await notification.save();
+    
+    return successResponse({
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      roles: user.roles,
+      isVerified: user.isVerified,
+      tutorType: user.tutorType
+    }, res, 200, 'Tutor approved successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Reject/suspend tutor directly by user ID (admin only)
+exports.rejectTutor = async (req, res) => {
+  try {
+    const { tutorId } = req.params;
+    const { reason, action } = req.body; // action: 'suspend' or 'revoke'
+    
+    const user = await User.findById(tutorId);
+    
+    if (!user) {
+      return errorResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    
+    // Check if user has tutor role
+    if (!user.roles.includes('tutor')) {
+      return errorResponse('User is not a tutor', 'BAD_REQUEST', 400, res);
+    }
+    
+    let message = '';
+    
+    if (action === 'revoke') {
+      // Remove tutor role completely
+      user.roles = user.roles.filter(role => role !== 'tutor');
+      
+      // If active role was tutor, switch to user
+      if (user.role === 'tutor') {
+        user.role = 'user';
+      }
+      
+      message = `Your tutor role has been revoked. Reason: ${reason || 'Administrative decision'}`;
+    } else {
+      // Default: suspend (unverify)
+      user.isVerified = false;
+      message = `Your tutor account has been suspended. Reason: ${reason || 'Under review'}`;
+    }
+    
+    await user.save();
+    
+    // Send notification to tutor
+    const notification = new Notification({
+      user: user._id,
+      title: action === 'revoke' ? 'Tutor Role Revoked' : 'Tutor Account Suspended',
+      message,
+      type: 'tutor_rejection'
+    });
+    await notification.save();
+    
+    return successResponse({
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      roles: user.roles,
+      isVerified: user.isVerified,
+      action: action || 'suspend',
+      reason: reason || null
+    }, res, 200, action === 'revoke' ? 'Tutor role revoked successfully' : 'Tutor suspended successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 
 // Dashboard stats
 exports.getDashboardStats = async (req, res) => {
@@ -540,6 +641,16 @@ exports.getAllTutors = async (req, res) => {
     const filter = { roles: 'tutor' };
     if (req.query.tutorType && ['emgs', 'partner'].includes(req.query.tutorType)) {
       filter.tutorType = req.query.tutorType;
+    }
+    
+    // Filter by verification status
+    if (req.query.status) {
+      if (req.query.status === 'verified') {
+        filter.isVerified = true;
+      } else if (req.query.status === 'unverified') {
+        filter.isVerified = false;
+      }
+      // If status is 'all' or any other value, don't add filter (show all)
     }
     
     const total = await User.countDocuments(filter);
