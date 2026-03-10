@@ -134,7 +134,7 @@ exports.approveTutor = async (req, res) => {
       user: user._id,
       title: 'Tutor Account Approved',
       message: 'Your tutor account has been verified and approved by the admin.',
-      type: 'tutor_approval'
+      type: 'system'
     });
     await notification.save();
     
@@ -198,7 +198,7 @@ exports.rejectTutor = async (req, res) => {
       user: user._id,
       title: action === 'revoke' ? 'Tutor Role Revoked' : 'Tutor Account Suspended',
       message,
-      type: 'tutor_rejection'
+      type: 'system'
     });
     await notification.save();
     
