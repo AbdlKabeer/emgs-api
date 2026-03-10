@@ -881,13 +881,13 @@ exports.rejectTutorCourse = async (req, res) => {
     await course.save();
     
     // Send notification to tutor
-    const notification = new Notification({
-      user: course.createdBy,
-      title: 'Course Rejected',
-      message: `Your course "${course.title}" has been rejected. Reason: ${rejectionMessage}`,
-      type: 'course_rejection'
-    });
-    await notification.save();
+    // const notification = new Notification({
+    //   user: course.createdBy,
+    //   title: 'Course Rejected',
+    //   message: `Your course "${course.title}" has been rejected. Reason: ${rejectionMessage}`,
+    //   type: 'course_rejection'
+    // });
+    // await notification.save();
     
     return successResponse(course, res, 200, 'Course rejected successfully');
   } catch (error) {
