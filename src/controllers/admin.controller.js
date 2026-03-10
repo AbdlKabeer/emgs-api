@@ -844,13 +844,13 @@ exports.approveTutorCourse = async (req, res) => {
     await course.save();
     
     // Optionally send notification to tutor
-    const notification = new Notification({
-      user: course.createdBy,
-      title: 'Course Approved',
-      message: `Your course "${course.title}" has been approved and published.`,
-      type: 'course_approval'
-    });
-    await notification.save();
+    // const notification = new Notification({
+    //   user: course.createdBy,
+    //   title: 'Course Approved',
+    //   message: `Your course "${course.title}" has been approved and published.`,
+    //   type: 'course_approval'
+    // });
+    // await notification.save();
     
     return successResponse(course, res, 200, 'Course approved and published successfully');
   } catch (error) {
