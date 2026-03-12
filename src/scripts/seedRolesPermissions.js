@@ -193,7 +193,8 @@ const rolesData = [
 const seedRolesAndPermissions = async () => {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGO_URI);
+    const MONGO_URI = process.env.MONGODB_URI || process.env.CONNECTION_STRING || 'mongodb+srv://programmerolakay:karantashi1@cluster0.gga6a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+    await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
     // Clear existing data
@@ -260,15 +261,23 @@ const seedRolesAndPermissions = async () => {
     
     // Check if there are any admin users without assigned roles
     console.log('\n👤 Checking admin users...');
-    const adminUsers = await User.find({ roles: 'admin', assignedRole: null });
+    const adminUsers = await User.find({
+      $or: [
+        { role: 'admin' },
+        // { roles: { $in: ['admin'] } }
+      ],
+      assignedRole: { $in: [null, undefined] }
+    });
     if (adminUsers.length > 0) {
       console.log(`\n⚠️  Found ${adminUsers.length} admin user(s) without assigned roles:`);
       adminUsers.forEach(user => {
         console.log(`  - ${user.fullName} (${user.email})`);
       });
-      console.log('\n💡 To assign roles to these users, use the API:');
-      console.log('   POST /api/admin/roles/users/:userId/role');
-      console.log('   Body: { "roleId": "<role_id>" }');
+      console.log('\n💡 To assign roles to these users, run:');
+      console.log('   npm run assign:admin-roles');
+      console.log('\n   Or use the API:');
+      console.log('   POST /api/v2/admin/roles/users/:userId/role');
+      console.log('   Body: { "roleId": "<admin_role_id>" }');
     } else {
       console.log('✅ No admin users without roles found');
     }

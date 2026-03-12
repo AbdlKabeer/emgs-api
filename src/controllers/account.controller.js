@@ -124,6 +124,14 @@ exports.getUserProfile = async (req, res) => {
       .populate({
         path: 'completedLessons',
         select: 'title courseId'
+      })
+      .populate({
+        path: 'assignedRole',
+        select: 'name slug description permissions isSystemRole isActive',
+        populate: {
+          path: 'permissions',
+          select: 'name module action description isActive'
+        }
       });
 
     if (!user) {
@@ -133,7 +141,9 @@ exports.getUserProfile = async (req, res) => {
     // Check for pending tutor request
     const TutorRequest = require('../models/tutorRequest.model');
     const hasPendingTutorRequest = await TutorRequest.exists({ user: user._id, status: 'pending' });
-    return successResponse({
+    
+    // Base response data
+    const responseData = {
       user: {
         id: user._id,
         fullName: user.fullName,
@@ -156,7 +166,22 @@ exports.getUserProfile = async (req, res) => {
         role: user.role,
         hasPendingTutorRequest: !!hasPendingTutorRequest
       }
-    }, res);
+    };
+    // Add assignedRole and permissions for admin users
+    const isAdmin = user.role === 'admin' || user.roles.includes('admin');
+    if (isAdmin && user.assignedRole) {
+      responseData.user.assignedRole = {
+        id: user.assignedRole._id,
+        name: user.assignedRole.name,
+        slug: user.assignedRole.slug,
+        description: user.assignedRole.description,
+        isSystemRole: user.assignedRole.isSystemRole,
+        isActive: user.assignedRole.isActive,
+        permissions: user.assignedRole.permissions
+      };
+    }
+
+    return successResponse(responseData, res);
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
   }
