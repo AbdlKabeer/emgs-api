@@ -46,7 +46,6 @@ const roleSchema = new mongoose.Schema({
 });
 
 // Index for faster queries
-roleSchema.index({ slug: 1 });
 roleSchema.index({ isActive: 1 });
 
 // Pre-save hook to generate slug from name

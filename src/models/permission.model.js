@@ -43,7 +43,6 @@ const permissionSchema = new mongoose.Schema({
 
 // Index for faster queries
 permissionSchema.index({ module: 1, action: 1 });
-permissionSchema.index({ name: 1 });
 permissionSchema.index({ isActive: 1 });
 
 // Static method to get all permissions grouped by module
