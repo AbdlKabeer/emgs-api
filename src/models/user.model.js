@@ -12,6 +12,12 @@ const userSchema = new mongoose.Schema(
       type: [{ type: String, enum: ['user', 'tutor', 'admin'] }],
       default: ['user']
     },
+    assignedRole: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Role',
+      default: null
+      // For admin users with role-based permissions
+    },
     status: {
       type: String,
       enum: ['active', 'inactive', 'suspended', 'banned', 'pending', 'rejected'],

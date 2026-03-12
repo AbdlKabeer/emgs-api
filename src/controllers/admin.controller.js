@@ -890,7 +890,7 @@ exports.rejectTutorCourse = async (req, res) => {
         user: course.createdBy,
         title: 'Course Rejected',
         message: `Your course "${course.title}" has been rejected. Reason: ${rejectionMessage}`,
-        type: 'course_rejection'
+        type: 'system'
       });
       await notification.save();
     }catch(err){
