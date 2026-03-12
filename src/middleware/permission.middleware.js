@@ -12,8 +12,10 @@ const isSuperAdmin = () => {
         return errorResponse('Authentication required', 'UNAUTHORIZED', 401, res);
       }
 
+      console.log('Checking Super Admin access for user:', req.user.email);
+
       // Check if user has admin role
-      if (!req.user.roles || !req.user.roles.includes('admin')) {
+      if (!req.user.role || req.user.role !== 'admin') {
         return errorResponse('Access denied. Admin privileges required.', 'FORBIDDEN', 403, res);
       }
 
@@ -44,10 +46,12 @@ const checkPermission = (requiredPermission) => {
       }
 
       // Check if user has admin role
-      if (!req.user.roles || !req.user.roles.includes('admin')) {
+      if (!req.user.role || req.user.role !== 'admin') {
         return errorResponse('Access denied. Admin privileges required.', 'FORBIDDEN', 403, res);
       }
 
+      console.log(`Checking permission "${requiredPermission}" for user: ${req.user.email}`);
+      console.log(`User's assigned role ID: ${req.user.assignedRole}`);
       // If no assignedRole, deny access (legacy admins need to be assigned roles)
       if (!req.user.assignedRole) {
         return errorResponse('Access denied. No role assigned. Please contact system administrator.', 'FORBIDDEN', 403, res);

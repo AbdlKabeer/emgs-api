@@ -25,7 +25,8 @@ exports.authenticate = async (req, res, next) => {
     req.user = {
       id: user._id,
       role: user.role,
-      email: user.email
+      email: user.email,
+      assignedRole: user.assignedRole // Include assignedRole for RBAC
     };
     
     next();
