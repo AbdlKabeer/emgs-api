@@ -14,8 +14,11 @@ exports.createRole = async (req, res) => {
       return validationErrorResponse('Role name is required', res);
     }
 
-    // Check if role already exists
-    const existingRole = await Role.findOne({ name });
+    // Generate slug from name
+    const slug = name.toLowerCase().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
+
+    // Check if role already exists (by name or slug)
+    const existingRole = await Role.findOne({ $or: [{ name }, { slug }] });
     if (existingRole) {
       return errorResponse('Role with this name already exists', 'DUPLICATE', 400, res);
     }
@@ -30,9 +33,10 @@ exports.createRole = async (req, res) => {
 
     const role = new Role({
       name,
+      slug,
       description,
       permissions: permissions || [],
-      createdBy: req.user._id
+      createdBy: req.user.id
     });
 
     await role.save();
@@ -121,11 +125,13 @@ exports.updateRole = async (req, res) => {
 
     // Check if new name already exists
     if (name && name !== role.name) {
-      const existingRole = await Role.findOne({ name });
+      const newSlug = name.toLowerCase().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
+      const existingRole = await Role.findOne({ $or: [{ name }, { slug: newSlug }] });
       if (existingRole) {
         return errorResponse('Role with this name already exists', 'DUPLICATE', 400, res);
       }
       role.name = name;
+      role.slug = newSlug;
     }
 
     if (description !== undefined) role.description = description;
@@ -140,7 +146,7 @@ exports.updateRole = async (req, res) => {
       role.permissions = permissions;
     }
 
-    role.updatedBy = req.user._id;
+    role.updatedBy = req.user.id;
     await role.save();
 
     const updatedRole = await Role.getRoleWithPermissions(role._id);
@@ -215,7 +221,7 @@ exports.addPermissionsToRole = async (req, res) => {
       }
     });
 
-    role.updatedBy = req.user._id;
+    role.updatedBy = req.user.id;
     await role.save();
 
     const updatedRole = await Role.getRoleWithPermissions(role._id);
@@ -244,7 +250,7 @@ exports.removePermissionFromRole = async (req, res) => {
 
     // Remove permission
     role.permissions = role.permissions.filter(p => p.toString() !== permissionId);
-    role.updatedBy = req.user._id;
+    role.updatedBy = req.user.id;
     await role.save();
 
     const updatedRole = await Role.getRoleWithPermissions(role._id);
