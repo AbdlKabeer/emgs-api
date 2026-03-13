@@ -207,7 +207,7 @@ const isAdmin = () => {
         return errorResponse('Authentication required', 'UNAUTHORIZED', 401, res);
       }
 
-      if (!req.user.roles || !req.user.roles.includes('admin')) {
+      if (!req.user.role || req.user.role !== 'admin') {
         return errorResponse('Access denied. Admin privileges required.', 'FORBIDDEN', 403, res);
       }
 
