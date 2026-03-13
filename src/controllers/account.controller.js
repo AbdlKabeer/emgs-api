@@ -52,7 +52,6 @@ exports.switchActiveRole = async (req, res) => {
 };
 
 
-
 exports.requestToBecomeTutor = async (req, res) => {
   try {
     const userId = req.user.id;
