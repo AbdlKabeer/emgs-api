@@ -26,7 +26,7 @@ router.use(authenticate);
  */
 router.get('/dashboard',
 authenticate,
-  isAdmin(), 
+  isAdmin, 
   adminController.getDashboardStats);
 
 /**
@@ -45,7 +45,7 @@ authenticate,
  *       500:
  *         description: Internal server error
  */
-router.get('/analytics', authenticate, isAdmin(), adminController.getSystemAnalytics);
+router.get('/analytics', authenticate, isAdmin, adminController.getSystemAnalytics);
 
 /**
  * @swagger
@@ -123,7 +123,7 @@ router.get('/analytics', authenticate, isAdmin(), adminController.getSystemAnaly
  *       500:
  *         description: Internal server error
  */
-router.get('/users', authenticate, isAdmin(), adminController.getAllUsers);
+router.get('/users', authenticate, isAdmin, adminController.getAllUsers);
 
 /**
  * @swagger
@@ -150,7 +150,7 @@ router.get('/users', authenticate, isAdmin(), adminController.getAllUsers);
  *       500:
  *         description: Internal server error
  */
-router.get('/users/:id', authenticate, isAdmin(), adminController.getUserById);
+router.get('/users/:id', authenticate, isAdmin, adminController.getUserById);
 
 /**
  * @swagger
@@ -194,7 +194,7 @@ router.get('/users/:id', authenticate, isAdmin(), adminController.getUserById);
  *       500:
  *         description: Internal server error
  */
-router.put('/users/:id', authenticate, isAdmin(), adminController.updateUser);
+router.put('/users/:id', authenticate, isAdmin, adminController.updateUser);
 
 /**
  * @swagger
@@ -221,7 +221,7 @@ router.put('/users/:id', authenticate, isAdmin(), adminController.updateUser);
  *       500:
  *         description: Internal server error
  */
-router.delete('/users/:id', authenticate, isAdmin(), adminController.deleteUser);
+router.delete('/users/:id', authenticate, isAdmin, adminController.deleteUser);
 
 /**
  * @swagger
@@ -259,7 +259,7 @@ router.delete('/users/:id', authenticate, isAdmin(), adminController.deleteUser)
  *       500:
  *         description: Internal server error
  */
-router.patch('/users/:id/tutor-type', authenticate, isAdmin(), adminController.updateTutorType);
+router.patch('/users/:id/tutor-type', authenticate, isAdmin, adminController.updateTutorType);
 
 /**
  * @swagger
@@ -277,7 +277,7 @@ router.patch('/users/:id/tutor-type', authenticate, isAdmin(), adminController.u
  *       500:
  *         description: Internal server error
  */
-router.get('/payments', authenticate, isAdmin(), adminController.getAllPayments);
+router.get('/payments', authenticate, isAdmin, adminController.getAllPayments);
 
 /**
  * @swagger
@@ -368,7 +368,7 @@ router.get('/users/:userId/payments', adminController.getUserPayments);
  *       500:
  *         description: Internal server error
  */
-router.put('/payments/:id', authenticate, isAdmin(), adminController.updatePaymentStatus);
+router.put('/payments/:id', authenticate, isAdmin, adminController.updatePaymentStatus);
 
 /**
  * @swagger
@@ -399,7 +399,7 @@ router.put('/payments/:id', authenticate, isAdmin(), adminController.updatePayme
  *       500:
  *         description: Internal server error
  */
-router.post('/notifications', authenticate, isAdmin(), adminController.sendNotification);
+router.post('/notifications', authenticate, isAdmin, adminController.sendNotification);
 
 
 /**
@@ -438,7 +438,7 @@ router.post('/notifications', authenticate, isAdmin(), adminController.sendNotif
  *       500:
  *         description: Internal server error
  */
-router.get('/tutor-requests', authenticate, isAdmin(), adminController.getAllTutorRequests);
+router.get('/tutor-requests', authenticate, isAdmin, adminController.getAllTutorRequests);
 
 
 /**
@@ -468,7 +468,7 @@ router.get('/tutor-requests', authenticate, isAdmin(), adminController.getAllTut
  *       500:
  *         description: Internal server error
  */
-router.put('/tutor-requests/:id/approve', authenticate, isAdmin(), adminController.approveTutorRequest);
+router.put('/tutor-requests/:id/approve', authenticate, isAdmin, adminController.approveTutorRequest);
 
 /**
  * @swagger
@@ -506,7 +506,7 @@ router.put('/tutor-requests/:id/approve', authenticate, isAdmin(), adminControll
  *       500:
  *         description: Internal server error
  */
-router.put('/tutor-requests/:id/reject', authenticate, isAdmin(), adminController.rejectTutorRequest);
+router.put('/tutor-requests/:id/reject', authenticate, isAdmin, adminController.rejectTutorRequest);
 
 
 /**
@@ -536,7 +536,7 @@ router.put('/tutor-requests/:id/reject', authenticate, isAdmin(), adminControlle
  *       500:
  *         description: Internal server error
  */
-router.put('/tutors/:tutorId/approve', authenticate, isAdmin(), adminController.approveTutor);
+router.put('/tutors/:tutorId/approve', authenticate, isAdmin, adminController.approveTutor);
 
 /**
  * @swagger
@@ -579,7 +579,7 @@ router.put('/tutors/:tutorId/approve', authenticate, isAdmin(), adminController.
  *       500:
  *         description: Internal server error
  */
-router.put('/tutors/:tutorId/reject', authenticate, isAdmin(), adminController.rejectTutor);
+router.put('/tutors/:tutorId/reject', authenticate, isAdmin, adminController.rejectTutor);
 
 
 /**
@@ -625,7 +625,7 @@ router.put('/tutors/:tutorId/reject', authenticate, isAdmin(), adminController.r
  *       500:
  *         description: Internal server error
  */
-router.get('/tutors', authenticate, isAdmin(), adminController.getAllTutors);
+router.get('/tutors', authenticate, isAdmin, adminController.getAllTutors);
 
 /**
  * @swagger
@@ -654,7 +654,7 @@ router.get('/tutors', authenticate, isAdmin(), adminController.getAllTutors);
  *       500:
  *         description: Internal server error
  */
-router.get('/tutors/:id', authenticate, isAdmin(), adminController.getTutorById);
+router.get('/tutors/:id', authenticate, isAdmin, adminController.getTutorById);
 
 /**
  * @swagger
@@ -702,7 +702,7 @@ router.get('/tutors/:id', authenticate, isAdmin(), adminController.getTutorById)
  *       500:
  *         description: Internal server error
  */
-router.get('/tutors/:tutorId/courses', authenticate, isAdmin(), adminController.getTutorCourses);
+router.get('/tutors/:tutorId/courses', authenticate, isAdmin, adminController.getTutorCourses);
 
 /**
  * @swagger
@@ -729,7 +729,7 @@ router.get('/tutors/:tutorId/courses', authenticate, isAdmin(), adminController.
  *       500:
  *         description: Internal server error
  */
-router.put('/courses/:courseId/approve', authenticate, isAdmin(), adminController.approveTutorCourse);
+router.put('/courses/:courseId/approve', authenticate, isAdmin, adminController.approveTutorCourse);
 
 /**
  * @swagger
@@ -770,7 +770,7 @@ router.put('/courses/:courseId/approve', authenticate, isAdmin(), adminControlle
  *       500:
  *         description: Internal server error
  */
-router.put('/courses/:courseId/reject', authenticate, isAdmin(), adminController.rejectTutorCourse);
+router.put('/courses/:courseId/reject', authenticate, isAdmin, adminController.rejectTutorCourse);
 
 
 module.exports = router;
