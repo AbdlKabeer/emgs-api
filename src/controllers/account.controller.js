@@ -1,5 +1,6 @@
 const User = require('../models/user.model');
 const TutorRequest = require('../models/tutorRequest.model');
+const Notification = require('../models/notification.model');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
 
 
@@ -94,6 +95,21 @@ exports.requestToBecomeTutor = async (req, res) => {
       otherCertificateType
     });
     await tutorRequest.save();
+
+    // send notification email to admins about new tutor request
+    try{
+      const adminUsers = await User.find({ roles: 'admin' });
+      const notifications = adminUsers.map(admin => ({
+        user: admin._id,
+        title: 'New Tutor Request',
+        message: `A new tutor request has been submitted by ${tutorRequest.fullName} (${tutorRequest.email}).`,
+        type: 'tutor_request'
+      }));
+      await Notification.insertMany(notifications);
+      
+    }catch (error) {
+      console.error('Error loading Notification model:', error);
+    }
 
 
     // if (!user.roles.includes('tutor')) user.roles.push('tutor');

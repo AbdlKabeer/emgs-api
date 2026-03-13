@@ -849,7 +849,7 @@ exports.approveTutorCourse = async (req, res) => {
         user: course.createdBy,
         title: 'Course Approved',
         message: `Your course "${course.title}" has been approved and published.`,
-        type: 'course_approval'
+        type: 'course'
       });
       await notification.save();
     }catch(err){
@@ -890,7 +890,7 @@ exports.rejectTutorCourse = async (req, res) => {
         user: course.createdBy,
         title: 'Course Rejected',
         message: `Your course "${course.title}" has been rejected. Reason: ${rejectionMessage}`,
-        type: 'system'
+        type: 'course'
       });
       await notification.save();
     }catch(err){
