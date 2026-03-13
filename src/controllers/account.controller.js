@@ -62,10 +62,16 @@ exports.requestToBecomeTutor = async (req, res) => {
     if (user.roles.includes('tutor')) {
       return badRequestResponse('You are already a tutor', 'ALREADY_TUTOR', 409, res);
     }
-    // Check if a pending request already exists
-    const existingRequest = await TutorRequest.findOne({ user: userId, status: 'pending' });
+    // Check if a pending or approved request already exists
+    const existingRequest = await TutorRequest.findOne({ 
+      user: userId, 
+      status: { $in: ['pending', 'approved'] } 
+    });
     if (existingRequest) {
-      return badRequestResponse('You already have a pending tutor request', 'ALREADY_PENDING', 409, res);
+      const statusMessage = existingRequest.status === 'pending' 
+        ? 'You already have a pending tutor request. Please wait for admin approval.' 
+        : 'Your tutor request has already been approved.';
+      return badRequestResponse(statusMessage, 'REQUEST_EXISTS', 409, res);
     }
     // Create new tutor request
     const {
