@@ -40,8 +40,35 @@ const newFlowCourseRoutes = require('./routes/new-flow/course.routes');
 // Initialize express app
 const app = express();
 
+// CORS Configuration
+const allowedOrigins = [
+  'https://emgs-dash.vercel.app',
+  'https://emgs-learn.vercel.app'
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow all localhost origins (any port)
+    if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in the allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Reject other origins
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true // Allow cookies to be sent
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json({ limit: '200mb' })); // Support large JSON payloads
@@ -101,11 +128,28 @@ const server = http.createServer(app);
 
 server.setTimeout(10 * 60 * 1000);  // 10 minutes timeout for long-lived connections
 
-// Initialize Socket.IO
+// Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
-    origin: '*', // Change this to your frontend origin in production
-    methods: ['GET', 'POST']
+    origin: function (origin, callback) {
+      // Allow requests with no origin
+      if (!origin) return callback(null, true);
+      
+      // Allow all localhost origins (any port)
+      if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+        return callback(null, true);
+      }
+      
+      // Check if origin is in the allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Reject other origins
+      callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
