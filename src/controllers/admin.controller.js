@@ -759,17 +759,31 @@ exports.getTutorById = async (req, res) => {
       .populate('enrolledCourses', 'title thumbnail')
       .populate('completedCourses', 'title thumbnail');
     // Initialize roles array if it doesn't exist
+
     if (!tutor.roles || !Array.isArray(tutor.roles)) {
       tutor.roles = ['user'];
+      // add tutor role to it if user is a tutor
+      if (tutor.role === 'tutor')  {
+        tutor.roles.push('tutor');
+
+      }
     }
+    
     
     
     if (!tutor) {
       return errorResponse('Tutor not found', 'NOT_FOUND', 404, res);
     }
-    
-    if (!tutor.roles.includes('tutor')) {
+
+    if (!tutor.roles.includes('tutor') && tutor.role !== 'tutor') {
+
       return errorResponse('User is not a tutor', 'BAD_REQUEST', 400, res);
+    }
+
+    // add tutor role to it if user is a tutor but doesn't have tutor role in roles array (data inconsistency fix)
+    if (tutor.role === 'tutor' && !tutor.roles.includes('tutor')) {
+      tutor.roles.push('tutor');
+      await tutor.save();
     }
     
     // Get courses created by this tutor
