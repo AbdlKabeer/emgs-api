@@ -41,6 +41,24 @@ router.get('/', authenticate, notificationController.getUserNotifications);
 
 /**
  * @swagger
+ * /api/v1/notifications/stream:
+ *   get:
+ *     summary: Get notifications stream (SSE)
+ *     description: Real-time notification stream using Server-Sent Events
+ *     tags:
+ *       - Notifications
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: SSE stream established
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/stream', authenticate, notificationController.getNotificationStream);
+
+/**
+ * @swagger
  * /api/v1/notifications/{notificationId}:
  *   get:
  *     summary: Get a single notification
