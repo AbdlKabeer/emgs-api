@@ -120,7 +120,8 @@ exports.createCourse = async (req, res) => {
       isPublished, 
       thumbnail, 
       goals, 
-      notes 
+      notes ,
+      status
     } = req.body;
     
     // Validation
@@ -180,7 +181,7 @@ exports.createCourse = async (req, res) => {
       goals: goals || [],
       notes: notes || [],
       createdBy: userId,
-      status: 'draft',
+      status: 'review', // default to review status on creation
       isPublished: false
     });
     
