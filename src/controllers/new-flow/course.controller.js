@@ -186,6 +186,28 @@ exports.createCourse = async (req, res) => {
     });
     
     await course.save();
+
+
+    // send notification to admin about new course submission
+    try{
+      const adminUsers = await User.find({ role: 'admin' });
+
+      const notificationPromises = adminUsers.map(async (admin) => {
+        const notification = new Notification({
+          user: admin._id,
+          title: 'Course Rejected',
+          message: `A new course "${course.title}" has been submitted for review. Please review it.`,
+          type: 'system'
+        });
+
+        return notification.save();
+      });
+
+      await Promise.all(notificationPromises);
+    }catch(err){
+      console.error('Error sending notifications to admins:', err);
+    }
+
     
     return successResponse(
       {
