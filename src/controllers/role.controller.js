@@ -330,7 +330,12 @@ exports.removeRoleFromUser = async (req, res) => {
       return errorResponse('User not found', 'NOT_FOUND', 404, res);
     }
 
+
     user.assignedRole = null;
+
+    if (user.roles.includes('admin')) {
+      user.roles = user.roles.filter(r => r !== 'admin');
+    }
     await user.save();
 
     const updatedUser = await User.findById(userId).select('-password');
