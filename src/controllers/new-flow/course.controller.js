@@ -157,6 +157,8 @@ exports.createCourse = async (req, res) => {
 
     // check the status of the user
     const user = await User.findById(userId);
+    
+     // default to pending if status is not set
     if (user.status !== 'active') {
       const statusData = STATUS_MESSAGES[user.status];
 
