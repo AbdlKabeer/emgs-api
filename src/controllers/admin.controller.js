@@ -974,7 +974,7 @@ exports.approveTutorCourse = async (req, res) => {
     // Optionally send notification to tutor
     try{
        const notification = new Notification({
-        user: course.createdBy,
+        userId: course.createdBy,
         title: 'Course Approved',
         message: `Your course "${course.title}" has been approved and published.`,
         type: 'course'
