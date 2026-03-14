@@ -325,7 +325,7 @@ exports.submitCourseForReview = async (req, res) => {
       const notificationPromises = adminUsers.map(async (admin) => {
         const notification = new Notification({
           user: admin._id,
-          title: 'Course Rejected',
+          title: 'Course Submitted for Review',
           message: `A new course "${course.title}" has been submitted for review. Please review it.`,
           type: 'system'
         });
