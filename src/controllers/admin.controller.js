@@ -960,6 +960,10 @@ exports.approveTutorCourse = async (req, res) => {
     if (!course) {
       return errorResponse('Course not found', 'NOT_FOUND', 404, res);
     }
+
+    if (course.status === 'published') {
+      return errorResponse('Course is already published', 'BAD_REQUEST', 400, res);
+    }
     
     // Update course status to published
     course.status = 'published';
