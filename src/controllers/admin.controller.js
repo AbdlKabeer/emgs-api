@@ -1015,7 +1015,7 @@ exports.rejectTutorCourse = async (req, res) => {
     // Send notification to tutor
     try{
       const notification = new Notification({
-        user: course.createdBy,
+        userId: course.createdBy,
         title: 'Course Rejected',
         message: `Your course "${course.title}" has been rejected. Reason: ${rejectionMessage}`,
         type: 'course'
