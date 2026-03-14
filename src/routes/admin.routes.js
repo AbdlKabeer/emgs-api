@@ -706,6 +706,8 @@ router.delete('/tutors/:id', authenticate, isAdmin, adminController.deleteTutor)
  */
 router.get('/tutors/:tutorId/courses', authenticate, isAdmin, adminController.getTutorCourses);
 
+router.get('/courses', authenticate, isAdmin, adminController.getAllCourses);
+
 /**
  * @swagger
  * /api/v1/admin/courses/{courseId}/approve:

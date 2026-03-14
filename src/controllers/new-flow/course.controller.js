@@ -3,7 +3,7 @@ const Course = require('../../models/course.model');
 const Lesson = require('../../models/lesson.model');
 const Module = require('../../models/module.model');
 const Quiz = require('../../models/quiz.model');
-const QuizProgress = require('../../models/quiz-progress.model');
+const Notification = require('../../models/notification.model');
 const Question = require('../../models/question.model');
 const Bookmark = require('../../models/bookmark.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../../utils/custom_response/responses');
@@ -194,7 +194,7 @@ exports.createCourse = async (req, res) => {
 
       const notificationPromises = adminUsers.map(async (admin) => {
         const notification = new Notification({
-          user: admin._id,
+          userId: admin._id,
           title: 'Course Submitted for Review',
           message: `A new course "${course.title}" has been submitted for review. Please review it.`,
           type: 'system'
@@ -202,7 +202,6 @@ exports.createCourse = async (req, res) => {
 
         return notification.save();
       });
-
       await Promise.all(notificationPromises);
     }catch(err){
       console.error('Error sending notifications to admins:', err);
