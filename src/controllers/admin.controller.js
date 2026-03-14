@@ -127,6 +127,7 @@ exports.approveTutor = async (req, res) => {
     
     // Verify/approve the tutor
     user.isVerified = true;
+    user.status = 'active';
     await user.save();
     
     // Send notification to tutor
