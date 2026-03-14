@@ -847,6 +847,39 @@ exports.getTutorCourses = async (req, res) => {
   }
 };
 
+// Delete a tutor by ID
+exports.deleteTutor = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the tutor
+    const tutor = await User.findById(id);
+    if (!tutor) {
+      return errorResponse('Tutor not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Check if the user is actually a tutor
+    if (!tutor.roles.includes('tutor') && tutor.role !== 'tutor') {
+      return errorResponse('User is not a tutor', 'BAD_REQUEST', 400, res);
+    }
+
+    // Optional: delete all courses created by this tutor
+    // await Course.deleteMany({ createdBy: id });
+
+    // Delete the tutor
+    await tutor.remove();
+
+    return successResponse(
+      null,
+      res,
+      200,
+      'Tutor and their courses have been deleted successfully'
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 // Approve and publish a tutor course
 exports.approveTutorCourse = async (req, res) => {
   try {
