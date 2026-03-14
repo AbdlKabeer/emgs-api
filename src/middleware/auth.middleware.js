@@ -37,7 +37,7 @@ exports.authenticate = async (req, res, next) => {
 
 // Check if user is admin
 exports.isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
+  if (req.user.role !== 'admin' && req.user.roles && !req.user.roles.includes('admin')) {
     return res.status(403).json({ message: 'Access denied, admin only' });
   }
   next();
@@ -45,7 +45,7 @@ exports.isAdmin = (req, res, next) => {
 
 // Check if user is tutor
 exports.isTutor = (req, res, next) => {
-  if (req.user.role !== 'tutor') {
+  if (req.user.role !== 'tutor' && req.user.roles && !req.user.roles.includes('tutor')) { 
     return res.status(403).json({ message: 'Access denied, tutor only' });
   }
   next();
