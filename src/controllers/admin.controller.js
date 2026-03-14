@@ -881,6 +881,76 @@ exports.deleteTutor = async (req, res) => {
   }
 };
 
+
+exports.getAllCourses = async (req, res) => {
+  try {
+    const { category, status } = req.query;
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Build query
+    let query = {};
+
+    // Allow filtering by status or default statuses
+    if (status) {
+      query.status = status;
+    } else {
+      query.status = { $in: ['published', 'review'] };
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    const total = await Course.countDocuments(query);
+
+    const courses = await Course.find(query)
+      .select(
+        'title description category thumbnail isFree price tutorId lessons enrolledUsers ratings averageRating createdAt'
+      )
+      .populate('createdBy', 'fullName email profilePicture bio')
+      .sort({ createdAt: -1 }) // Most recent first
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // Bookmarks placeholder (if you implement later)
+    let bookmarks = [];
+
+    // Enhance course data
+    const enhancedCourses = courses.map((course) => {
+      return {
+        ...course,
+        isBookmarked: bookmarks.some(
+          (bookmark) =>
+            bookmark.courseId.toString() === course._id.toString()
+        ),
+        enrolledStudentsCount: course.enrolledUsers
+          ? course.enrolledUsers.length
+          : 0,
+        lessonCount: course.lessons ? course.lessons.length : 0,
+      };
+    });
+
+    return paginationResponse(
+      enhancedCourses,
+      total,
+      page,
+      limit,
+      res
+    );
+  } catch (error) {
+    return errorResponse(
+      error.message,
+      'INTERNAL_SERVER_ERROR',
+      500,
+      res
+    );
+  }
+};
+
 // Approve and publish a tutor course
 exports.approveTutorCourse = async (req, res) => {
   try {
