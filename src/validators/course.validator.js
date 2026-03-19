@@ -43,8 +43,13 @@ exports.createCourseValidator = [
   body('category')
     .notEmpty()
     .withMessage('Category is required')
-    .isIn(['IELTS', 'CV', 'NCLEX', 'CBT', 'OET', 'OSCE'])
-    .withMessage('Category must be one of: IELTS, CV, NCLEX, CBT, OET, OSCE'),
+    .custom((value) => {
+      const mongoose = require('mongoose');
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Category must be a valid ObjectId');
+      }
+      return true;
+    }),
   
   body('thumbnail')
     .notEmpty()

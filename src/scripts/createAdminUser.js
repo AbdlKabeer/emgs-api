@@ -4,8 +4,8 @@
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const User = require('../src/models/user.model');
-const config = require('../src/config/email.config'); // adjust if you have a db config
+const User = require('../models/user.model');
+const config = require('../config/email.config'); // adjust if you have a db config
 
 const MONGO_URI =  'mongodb+srv://programmerolakay:karantashi1@cluster0.gga6a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 

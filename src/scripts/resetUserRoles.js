@@ -1,7 +1,7 @@
 // scripts/resetUserRoles.js
 
 const mongoose = require('mongoose');
-const User = require('../src/models/user.model'); // Adjust path if needed
+const User = require('../models/user.model'); // Adjust path if needed
 
 const MONGODB_URI = 'mongodb+srv://programmerolakay:karantashi1@cluster0.gga6a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0' || 'mongodb://localhost:27017/your-db-name';
 

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const User = require('../src/models/user.model');
+const User = require('../models/user.model');
 require('dotenv').config();
 
 const dbUri = process.env.MONGODB_URI;

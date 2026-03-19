@@ -11,7 +11,8 @@ const courseSchema = new mongoose.Schema({
     required: false
   },
   category: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CourseCategory',
     required: true
   },
   isFree: {

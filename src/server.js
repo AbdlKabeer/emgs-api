@@ -34,6 +34,7 @@ const waitlistRoutes = require('./routes/waitlist.routes');
 const chatRoutes = require('./routes/new-flow/chat.routes');
 const studentRoutes = require('./routes/new-flow/user.routes');
 const newFlowCourseRoutes = require('./routes/new-flow/course.routes');
+const categoryRoutes = require('./routes/category.routes');
 // const swaggerUi = require('swagger-ui-express');
 // const swaggerSpec = require('./config/swagger');
 
@@ -103,6 +104,7 @@ app.use('/api/v1/tutors', tutorRoutes);
 app.use('/api/v2/support', supportRoutes);
 app.use('/api/v2/wallet', walletRoutes);
 app.use('/api/v2/waitlist', waitlistRoutes);
+app.use('/api/v2/categories', categoryRoutes);
 app.use('/api/v2/student', studentRoutes);
 app.use('/api/v2/tutors', newTutorRoutes);
 app.use('/api/v2/chat', chatRoutes);
