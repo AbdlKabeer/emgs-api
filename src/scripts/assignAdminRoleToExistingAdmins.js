@@ -4,8 +4,8 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const User = require('../src/models/user.model');
-const Role = require('../src/models/role.model');
+const User = require('../models/user.model');
+const Role = require('../models/role.model');
 
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://programmerolakay:karantashi1@cluster0.gga6a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
