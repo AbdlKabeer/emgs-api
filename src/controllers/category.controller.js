@@ -49,7 +49,7 @@ exports.getCategoryById = async (req, res) => {
       return errorResponse('Category not found', 'NOT_FOUND', 404, res);
     }
     
-    return successResponse({ category }, 'Category fetched successfully', res);
+    return successResponse({ category }, res, 200, 'Category fetched successfully');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
@@ -76,7 +76,7 @@ exports.createCategory = async (req, res) => {
     
     await category.save();
     
-    return successResponse({ category }, 'Category created successfully', res, 201);
+    return successResponse({ category }, res, 201, 'Category created successfully');
   } catch (error) {
     if (error.code === 11000) {
       return errorResponse('Category with this name or slug already exists', 'BAD_REQUEST', 400, res);
@@ -117,7 +117,7 @@ exports.updateCategory = async (req, res) => {
     
     await category.save();
     
-    return successResponse({ category }, 'Category updated successfully', res);
+    return successResponse({ category }, res, 200, 'Category updated successfully');
   } catch (error) {
     if (error.code === 11000) {
       return errorResponse('Category with this name or slug already exists', 'BAD_REQUEST', 400, res);
@@ -151,7 +151,7 @@ exports.deleteCategory = async (req, res) => {
     
     await CourseCategory.findByIdAndDelete(id);
     
-    return successResponse(null, 'Category deleted successfully', res);
+    return successResponse(null, res, 200, 'Category deleted successfully');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
@@ -183,7 +183,7 @@ exports.getCategoryStats = async (req, res) => {
     
     const stats = await Promise.all(statsPromises);
     
-    return successResponse({ stats }, 'Category statistics fetched successfully', res);
+    return successResponse({ stats }, res, 200, 'Category statistics fetched successfully');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }

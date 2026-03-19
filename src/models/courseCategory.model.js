@@ -39,9 +39,9 @@ const courseCategorySchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate slug before saving
-courseCategorySchema.pre('save', function(next) {
-  if (this.isModified('name')) {
+// Generate slug before validation (so it's present when required field is checked)
+courseCategorySchema.pre('validate', function(next) {
+  if (this.name && (!this.slug || this.isModified('name'))) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
