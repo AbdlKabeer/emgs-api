@@ -26,6 +26,8 @@ exports.getUserPaymentHistory = async (req, res) => {
     const skip = (page - 1) * limit;
     const [payments, total] = await Promise.all([
       Payment.find({ userId })
+        .populate('metadata.courseId', 'title price')
+        .populate('metadata.tutorId', 'fullName email')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -191,6 +193,8 @@ exports.validatePayment = async (req, res) => {
             // Mark payment as completed
             payment.status = 'completed';
             await payment.save();
+            // create the transaction record for the purchase
+            
             let fullAmount  = payment.amount
             // Update tutor earnings
             
@@ -345,6 +349,8 @@ exports.initiateCardPayment = async (req, res) => {
       'Content-Type': 'application/json'
     });
 
+    let amount = 0;
+
     if (itemType == 'course') {
       const course = await Course.findById(itemId);
       if (!course) {
@@ -354,13 +360,18 @@ exports.initiateCardPayment = async (req, res) => {
       // if (!course.isPublished) {
       //   return badRequestResponse('Cannot enroll for an unpublished course', 'BAD_REQUEST', 400, res);
       // }
+      amount = course.price || 100; // default price if not set
 
       let payment = new Payment({
         userId,
         itemId,
         itemType,
-        amount: 100,
+        amount: amount,
         status: "pending",
+        metadata: {
+          courseId: itemId,
+          source: 'course',
+        }
       });
 
       await payment.save();
@@ -372,7 +383,7 @@ exports.initiateCardPayment = async (req, res) => {
       };
 
       const payload = {
-        amount: 10 * 100, // Paystack expects amount in kobo
+        amount: 10 * amount, // Paystack expects amount in kobo
         email: req.user.email,
         callback_url: callbackUrl,
         cancel_url: callbackUrl,
@@ -417,7 +428,7 @@ exports.initiateCardPayment = async (req, res) => {
       };
 
       const payload = {
-        amount: 10 * 100,
+        amount: 10 * amount, // Paystack expects amount in kobo
         email: req.user.email,
         callback_url: callbackUrl,
         cancel_url: callbackUrl,
@@ -455,6 +466,10 @@ exports.initiateCardPayment = async (req, res) => {
         itemType,
         amount,
         status:"pending",
+        metadata: {
+          tutorId: itemId,
+          source: 'one-on-one',
+        }
       });
 
 

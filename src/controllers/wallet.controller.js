@@ -43,7 +43,8 @@ exports.getWallet = async (req, res) => {
         description: t.description,
         reference: t.reference,
         date: t.createdAt,
-        courseTitle: t.metadata.courseId ? t.metadata.courseId.title : null
+        courseTitle: t.metadata.courseId ? t.metadata.courseId.title : null,
+        metadata: t.metadata
       }))
     }, res);
   } catch (error) {
