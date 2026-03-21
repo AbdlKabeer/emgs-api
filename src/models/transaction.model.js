@@ -19,6 +19,7 @@ const transactionSchema = new mongoose.Schema(
     metadata: {
       courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
       paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
+      source: { type: String },
       bankName: { type: String },
       accountNumber: { type: String },
       accountName: { type: String },
