@@ -383,7 +383,7 @@ exports.initiateCardPayment = async (req, res) => {
       };
 
       const payload = {
-        amount: 10 * amount, // Paystack expects amount in kobo
+        amount: 100 * amount, // Paystack expects amount in kobo
         email: req.user.email,
         callback_url: callbackUrl,
         cancel_url: callbackUrl,
@@ -415,7 +415,7 @@ exports.initiateCardPayment = async (req, res) => {
         userId,
         itemId,
         itemType,
-        amount: 100,
+        amount: service.price || 100,
         status: "pending",
       });
 
@@ -428,7 +428,7 @@ exports.initiateCardPayment = async (req, res) => {
       };
 
       const payload = {
-        amount: 10 * amount, // Paystack expects amount in kobo
+        amount: 100 * amount, // Paystack expects amount in kobo
         email: req.user.email,
         callback_url: callbackUrl,
         cancel_url: callbackUrl,
