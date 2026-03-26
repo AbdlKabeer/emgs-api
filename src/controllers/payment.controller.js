@@ -411,11 +411,18 @@ exports.initiateCardPayment = async (req, res) => {
         return badRequestResponse('service not found', 'NOT_FOUND', 404, res);
       }
 
+
+      if (!service.price) {
+        return badRequestResponse('Service price not set', 'BAD_REQUEST', 400, res);
+      }
+
+      amount = service.price; // Set amount for service
+
       let payment = new Payment({
         userId,
         itemId,
         itemType,
-        amount: service.price || 100,
+        amount: amount,
         status: "pending",
       });
 
@@ -458,7 +465,7 @@ exports.initiateCardPayment = async (req, res) => {
       }
       
       // Price can be set from tutor's servicePrice or fixed amount
-      const amount = tutor.servicePrice || 5000; // example default
+      amount = tutor.servicePrice || 5000; // example default
       
       let payment = new Payment({
         userId,
@@ -482,7 +489,7 @@ exports.initiateCardPayment = async (req, res) => {
       };
 
       const payload = {
-        amount: amount,
+        amount: 100 * amount, // Paystack expects amount in kobo
         email: req.user.email,
         callback_url: callbackUrl,
         cancel_url: callbackUrl,
