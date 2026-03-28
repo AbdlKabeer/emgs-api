@@ -203,7 +203,7 @@ exports.getServiceById = async (req, res) => {
 
 exports.createService = async (req, res) => {
   try {
-    const { name, description, category, whatsappContact, price } = req.body;
+    const { name, description, category, whatsappContact, price, features, autoResponderMessage } = req.body;
     
     const service = new Service({
       name,
@@ -211,7 +211,10 @@ exports.createService = async (req, res) => {
       category,
       whatsappContact,
       price,
-      isActive: true
+      features,
+      autoResponderMessage,
+      isActive: true,
+      user: req.user.id // Add user from authenticated user
     });
     
     await service.save();
@@ -331,6 +334,135 @@ exports.getServicesByCategory = async (req, res) => {
 };
 
 
+// ==================== USER SERVICE MANAGEMENT ENDPOINTS ====================
+
+// Get all services created by the authenticated user
+exports.getUserServices = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const services = await Service.find({ user: userId }).sort({ createdAt: -1 });
+    
+    return successResponse(services, res, 200, 'User services retrieved successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res, 500);
+  }
+};
+
+// Create a service for the authenticated user
+exports.createUserService = async (req, res) => {
+  try {
+    const { name, description, category, whatsappContact, price, features, autoResponderMessage } = req.body;
+    const userId = req.user.id;
+    
+    const service = new Service({
+      name,
+      description,
+      category,
+      whatsappContact,
+      price,
+      features,
+      autoResponderMessage,
+      isActive: true,
+      user: userId
+    });
+    
+    await service.save();
+
+    return successResponse({
+      service
+    }, res, 201, 'Service created successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res, 500);
+  }
+};
+
+// Update user's own service
+exports.updateUserService = async (req, res) => {
+  try {
+    const { name, description, category, whatsappContact, price, features, isActive, autoResponderMessage } = req.body;
+    const userId = req.user.id;
+    const serviceId = req.params.id;
+    
+    // Find service and verify ownership
+    const service = await Service.findOne({ _id: serviceId, user: userId });
+    
+    if (!service) {
+      return badRequestResponse('Service not found or you do not have permission to update it', "NOT_FOUND", 404, res);
+    }
+    
+    // Update fields
+    if (name !== undefined) service.name = name;
+    if (description !== undefined) service.description = description;
+    if (category !== undefined) service.category = category;
+    if (whatsappContact !== undefined) service.whatsappContact = whatsappContact;
+    if (price !== undefined) service.price = price;
+    if (features !== undefined) service.features = features;
+    if (isActive !== undefined) service.isActive = isActive;
+    if (autoResponderMessage !== undefined) service.autoResponderMessage = autoResponderMessage;
+    
+    await service.save();
+    
+    return successResponse({
+      service
+    }, res, 200, 'Service updated successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res, 500);
+  }
+};
+
+// Delete user's own service
+exports.deleteUserService = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const serviceId = req.params.id;
+    
+    // Find and delete service only if it belongs to the user
+    const service = await Service.findOneAndDelete({ _id: serviceId, user: userId });
+    
+    if (!service) {
+      return badRequestResponse('Service not found or you do not have permission to delete it', "NOT_FOUND", 404, res);
+    }
+    
+    return successResponse(null, res, 200, 'Service deleted successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res, 500);
+  }
+};
+
+// Update just the price of user's own service
+exports.updateUserServicePrice = async (req, res) => {
+  try {
+    const { price } = req.body;
+    const userId = req.user.id;
+    const serviceId = req.params.id;
+    
+    if (price === undefined || price === null) {
+      return badRequestResponse('Price is required', "VALIDATION_ERROR", 400, res);
+    }
+    
+    if (typeof price !== 'number' || price < 0) {
+      return badRequestResponse('Price must be a positive number', "VALIDATION_ERROR", 400, res);
+    }
+    
+    // Find service and verify ownership
+    const service = await Service.findOne({ _id: serviceId, user: userId });
+    
+    if (!service) {
+      return badRequestResponse('Service not found or you do not have permission to update it', "NOT_FOUND", 404, res);
+    }
+    
+    service.price = price;
+    await service.save();
+    
+    return successResponse({
+      serviceId: service._id,
+      price: service.price
+    }, res, 200, 'Service price updated successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res, 500);
+  }
+};
 
 
 

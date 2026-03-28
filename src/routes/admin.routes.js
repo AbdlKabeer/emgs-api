@@ -777,4 +777,324 @@ router.put('/courses/:courseId/approve', authenticate, isAdmin, adminController.
 router.put('/courses/:courseId/reject', authenticate, isAdmin, adminController.rejectTutorCourse);
 
 
+// ==================== SERVICE MANAGEMENT ROUTES ====================
+
+/**
+ * @swagger
+ * /api/v1/admin/services:
+ *   get:
+ *     summary: Get all services
+ *     description: Retrieves all services with pagination, filtering, and search capabilities.
+ *     tags:
+ *       - Admin - Services
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - name: category
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by category
+ *       - name: isActive
+ *         in: query
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status
+ *       - name: search
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Search by name or description
+ *     responses:
+ *       200:
+ *         description: Services retrieved successfully
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/services', authenticate, isAdmin, adminController.getAllServices);
+
+/**
+ * @swagger
+ * /api/v1/admin/services/{id}:
+ *   get:
+ *     summary: Get service by ID
+ *     description: Retrieves detailed information about a specific service.
+ *     tags:
+ *       - Admin - Services
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Service ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Service retrieved successfully
+ *       404:
+ *         description: Service not found
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/services/:id', authenticate, isAdmin, adminController.getServiceById);
+
+/**
+ * @swagger
+ * /api/v1/admin/services:
+ *   post:
+ *     summary: Create a new service
+ *     description: Allows admins to create a new service.
+ *     tags:
+ *       - Admin - Services
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - description
+ *               - category
+ *               - whatsappContact
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Service name
+ *               description:
+ *                 type: string
+ *                 description: Service description
+ *               category:
+ *                 type: string
+ *                 enum: ['Job Application', 'IELTS Masterclass', 'Parcel Services', 'Flight Booking', 'Visa Booking', 'Loan Services', 'NCLEX Services', 'CBT Services', 'OET Services', 'OSCE Services', 'Proof of Funds']
+ *                 description: Service category
+ *               whatsappContact:
+ *                 type: string
+ *                 description: WhatsApp contact number
+ *               price:
+ *                 type: number
+ *                 description: Service price
+ *               features:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Service features
+ *               autoResponderMessage:
+ *                 type: string
+ *                 description: Auto-responder message
+ *               userId:
+ *                 type: string
+ *                 description: User ID to assign service to (optional, defaults to admin)
+ *     responses:
+ *       201:
+ *         description: Service created successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/services', authenticate, isAdmin, adminController.createService);
+
+/**
+ * @swagger
+ * /api/v1/admin/services/{id}:
+ *   put:
+ *     summary: Update a service
+ *     description: Allows admins to update any service.
+ *     tags:
+ *       - Admin - Services
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Service ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               whatsappContact:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               features:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               isActive:
+ *                 type: boolean
+ *               autoResponderMessage:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Service updated successfully
+ *       404:
+ *         description: Service not found
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/services/:id', authenticate, isAdmin, adminController.updateService);
+
+/**
+ * @swagger
+ * /api/v1/admin/services/{id}/price:
+ *   patch:
+ *     summary: Update service price
+ *     description: Allows admins to update only the price of a service.
+ *     tags:
+ *       - Admin - Services
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Service ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - price
+ *             properties:
+ *               price:
+ *                 type: number
+ *                 description: New service price
+ *                 minimum: 0
+ *     responses:
+ *       200:
+ *         description: Service price updated successfully
+ *       400:
+ *         description: Invalid price
+ *       404:
+ *         description: Service not found
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/services/:id/price', authenticate, isAdmin, adminController.updateServicePrice);
+
+/**
+ * @swagger
+ * /api/v1/admin/services/{id}:
+ *   delete:
+ *     summary: Delete a service
+ *     description: Allows admins to permanently delete a service.
+ *     tags:
+ *       - Admin - Services
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Service ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Service deleted successfully
+ *       404:
+ *         description: Service not found
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/services/:id', authenticate, isAdmin, adminController.deleteService);
+
+/**
+ * @swagger
+ * /api/v1/admin/services/{id}/toggle-status:
+ *   patch:
+ *     summary: Toggle service active status
+ *     description: Allows admins to activate or deactivate a service.
+ *     tags:
+ *       - Admin - Services
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Service ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Service status toggled successfully
+ *       404:
+ *         description: Service not found
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/services/:id/toggle-status', authenticate, isAdmin, adminController.toggleServiceStatus);
+
+/**
+ * @swagger
+ * /api/v1/admin/services/inquiries:
+ *   get:
+ *     summary: Get service inquiries
+ *     description: Retrieves all service inquiries with filtering options.
+ *     tags:
+ *       - Admin - Services
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - name: serviceId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by service ID
+ *       - name: status
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by inquiry status
+ *     responses:
+ *       200:
+ *         description: Inquiries retrieved successfully
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/services/inquiries', authenticate, isAdmin, adminController.getServiceInquiries);
+
+
 module.exports = router;
