@@ -69,6 +69,28 @@ const userSchema = new mongoose.Schema(
     notificationsEnabled: { type: Boolean, default: true },
     enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     enrolledServices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service' }],
+    activeSubscriptions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Subscription' }],
+    
+    // Service session-based subscriptions (similar to one-on-one)
+    serviceSubscriptions: [
+      {
+        serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
+        isActive: { type: Boolean, default: true },
+        expiry: { type: Date, default: null },
+        purchasedAt: { type: Date, default: Date.now },
+        paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' }
+      }
+    ],
+
+    completedServiceSessions: [
+      {
+        serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
+        completedAt: { type: Date, default: Date.now },
+        completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Staff/Admin who marked it complete
+        notes: { type: String, default: '' }
+      }
+    ],
+    
     completedLessons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Lesson' }],
     completedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     certificates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Certificate' }],
