@@ -112,8 +112,44 @@ exports.initiatePayment = async (req, res) => {
       }, res, 200, 'Payment initiated successfully for one-on-one tutoring' );
     }
     else if(itemType == 'service'){
-      return badRequestResponse('Payment already initiated',"NOT_AVAILABLE",400,res );
+      // Find the service
+      const service = await Service.findById(itemId);
+      if (!service) {
+        return badRequestResponse('Service not found', 'NOT_FOUND', 404, res);
+      }
 
+      if (!service.isActive) {
+        return badRequestResponse('Service is not active', 'NOT_ACTIVE', 400, res);
+      }
+
+      // Determine price based on whether it's session-based or regular
+      let amount;
+      if (service.sessionEnabled && service.sessionPrice) {
+        amount = service.sessionPrice;
+      } else if (service.price) {
+        amount = service.price;
+      } else {
+        return badRequestResponse('Service price not set', 'PRICE_NOT_SET', 400, res);
+      }
+
+      let payment = new Payment({
+        userId,
+        itemId, // service id here
+        itemType,
+        amount,
+        status:"pending",
+      });
+      
+      await payment.save();
+      
+      return successResponse({
+        transactionRef: payment._id,
+        metadata: {
+          transactionRef: payment._id,
+          itemId,
+          itemType
+        }
+      }, res, 200, 'Payment initiated successfully for service' );
     }
     
     return successResponse(progress, res);
@@ -234,37 +270,116 @@ exports.validatePayment = async (req, res) => {
               return badRequestResponse('service not found', 'NOT_FOUND', 404, res);
             }
             
-            // Check if user is already enrolled
             const user = await User.findById(userId);
-            if (user.enrolledServices.includes(paymentId)) {
-              return badRequestResponse('User already enrolled in this service', 'BAD_REQUEST', 400, res);
+            if (!user) {
+              return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
             }
-            
-            // Update user and course
-            await User.findByIdAndUpdate(
-              userId,
-              { $push: { enrolledServices: paymentId } }
-            );
-            
-            await Service.findByIdAndUpdate(
-              paymentId,
-              { $push: { enrolledUsers: userId } }
-            );
-            
-            // Create notification
-            const notification = new Notification({
-              userId,
-              title: 'Service Enrollment',
-              message: `You have successfully enrolled in ${service.name}`,
-              type: 'service',
-              relatedItemId: paymentId
-            });
 
-            await notification.save();
-            
-            // Mark payment as completed
-            payment.status = 'completed';
-            await payment.save();
+            // Check if service has session-based subscription enabled
+            if (service.sessionEnabled) {
+              // Session-based service (similar to one-on-one)
+              const sessionValidityDays = service.sessionValidityDays || 30;
+              const expiryDate = new Date(Date.now() + sessionValidityDays * 24 * 60 * 60 * 1000);
+
+              // Check if user already has an active session with this service
+              const existingSessionIndex = user.serviceSubscriptions.findIndex(sub =>
+                sub.serviceId.toString() === service._id.toString() &&
+                sub.isActive &&
+                (!sub.expiry || new Date(sub.expiry) > new Date())
+              );
+
+              if (existingSessionIndex >= 0) {
+                // Extend or reactivate existing session
+                user.serviceSubscriptions[existingSessionIndex].isActive = true;
+                user.serviceSubscriptions[existingSessionIndex].expiry = expiryDate;
+                user.serviceSubscriptions[existingSessionIndex].purchasedAt = new Date();
+                user.serviceSubscriptions[existingSessionIndex].paymentId = payment._id;
+              } else {
+                // Add new service session
+                user.serviceSubscriptions.push({
+                  serviceId: service._id,
+                  isActive: true,
+                  expiry: expiryDate,
+                  purchasedAt: new Date(),
+                  paymentId: payment._id
+                });
+              }
+
+              // Add to enrolledServices if not already there
+              if (!user.enrolledServices.includes(paymentId)) {
+                user.enrolledServices.push(paymentId);
+              }
+
+              await user.save();
+
+              // Update service enrolled users
+              if (!service.enrolledUsers.includes(userId)) {
+                await Service.findByIdAndUpdate(
+                  paymentId,
+                  { $push: { enrolledUsers: userId } }
+                );
+              }
+
+              // Mark payment as completed
+              payment.status = 'completed';
+              await payment.save();
+
+              // Create notification
+              const notification = new Notification({
+                userId,
+                title: 'Service Session Purchased',
+                message: `You have successfully purchased a session for ${service.name}. Valid until ${expiryDate.toLocaleDateString()}. Staff will mark it complete once service is rendered.`,
+                type: 'service',
+                relatedItemId: paymentId
+              });
+
+              await notification.save();
+
+              return successResponse(
+                {
+                  sessionExpiry: expiryDate,
+                  sessionValidityDays: sessionValidityDays,
+                  message: 'Service session purchased successfully. Please wait for staff to complete your session.'
+                }, 
+                res, 
+                200, 
+                'Service session purchased successfully'
+              );
+
+            } else {
+              // Regular enrollment (old behavior for non-session services)
+              if (user.enrolledServices.includes(paymentId)) {
+                return badRequestResponse('User already enrolled in this service', 'BAD_REQUEST', 400, res);
+              }
+              
+              // Update user and service
+              await User.findByIdAndUpdate(
+                userId,
+                { $push: { enrolledServices: paymentId } }
+              );
+              
+              await Service.findByIdAndUpdate(
+                paymentId,
+                { $push: { enrolledUsers: userId } }
+              );
+              
+              // Create notification
+              const notification = new Notification({
+                userId,
+                title: 'Service Enrollment',
+                message: `You have successfully enrolled in ${service.name}`,
+                type: 'service',
+                relatedItemId: paymentId
+              });
+
+              await notification.save();
+              
+              // Mark payment as completed
+              payment.status = 'completed';
+              await payment.save();
+
+              return successResponse(null, res, 200, 'Enrolled in service successfully');
+            }
           }
           else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
             const tutor = await User.findById(paymentId);

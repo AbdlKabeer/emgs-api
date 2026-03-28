@@ -35,6 +35,8 @@ const chatRoutes = require('./routes/new-flow/chat.routes');
 const studentRoutes = require('./routes/new-flow/user.routes');
 const newFlowCourseRoutes = require('./routes/new-flow/course.routes');
 const categoryRoutes = require('./routes/category.routes');
+const subscriptionRoutes = require('./routes/subscription.routes');
+const serviceSessionRoutes = require('./routes/service-session.routes');
 // const swaggerUi = require('swagger-ui-express');
 // const swaggerSpec = require('./config/swagger');
 
@@ -105,6 +107,8 @@ app.use('/api/v2/support', supportRoutes);
 app.use('/api/v2/wallet', walletRoutes);
 app.use('/api/v2/waitlist', waitlistRoutes);
 app.use('/api/v2/categories', categoryRoutes);
+app.use('/api/v2/subscriptions', subscriptionRoutes);
+app.use('/api/v2/service-sessions', serviceSessionRoutes);
 app.use('/api/v2/student', studentRoutes);
 app.use('/api/v2/tutors', newTutorRoutes);
 app.use('/api/v2/chat', chatRoutes);
@@ -175,6 +179,10 @@ const io = new Server(server, {
 
 // Pass the Socket.IO instance to your chat logic
 chatSocket(io);
+
+// Start subscription scheduler
+const { startSubscriptionScheduler } = require('./utils/subscription.scheduler');
+startSubscriptionScheduler();
 
 // Start Server
 const PORT = process.env.PORT || 5001;

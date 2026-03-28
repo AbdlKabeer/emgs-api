@@ -1,5 +1,6 @@
 const express = require('express');
 const adminController = require('../controllers/admin.controller');
+const serviceSessionController = require('../controllers/service-session.controller');
 const { authenticate, isAdmin } = require('../middleware/auth.middleware');
 
 const router = express.Router();
@@ -1095,6 +1096,253 @@ router.patch('/services/:id/toggle-status', authenticate, isAdmin, adminControll
  *         description: Internal server error
  */
 router.get('/services/inquiries', authenticate, isAdmin, adminController.getServiceInquiries);
+
+/**
+ * @swagger
+ * /api/v2/admin/service-sessions/pending:
+ *   get:
+ *     summary: Get All Pending Service Sessions
+ *     description: Retrieves all service sessions that have been purchased but not yet completed by staff.
+ *     tags:
+ *       - Admin - Service Sessions
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Items per page
+ *       - name: serviceId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by specific service ID
+ *       - name: userId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by specific user ID
+ *     responses:
+ *       200:
+ *         description: Pending service sessions retrieved successfully
+ *       401:
+ *         description: Unauthorized access
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/service-sessions/pending', authenticate, isAdmin, serviceSessionController.getPendingServiceSessions);
+
+/**
+ * @swagger
+ * /api/v2/admin/service-sessions/{userId}/{serviceId}/complete:
+ *   post:
+ *     summary: Mark Service Session as Complete
+ *     description: Marks a service session as complete, deactivates the session, pays the service provider, and notifies both parties.
+ *     tags:
+ *       - Admin - Service Sessions
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user whose session to complete
+ *       - name: serviceId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the service
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notes:
+ *                 type: string
+ *                 description: Optional notes about the session completion
+ *     responses:
+ *       200:
+ *         description: Service session marked as complete successfully
+ *       400:
+ *         description: Bad request - Missing parameters or invalid data
+ *       404:
+ *         description: User, service, or active session not found
+ *       401:
+ *         description: Unauthorized access
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/service-sessions/:userId/:serviceId/complete', authenticate, isAdmin, serviceSessionController.completeServiceSession);
+
+/**
+ * @swagger
+ * /api/v2/admin/service-sessions/completed:
+ *   get:
+ *     summary: Get All Completed Service Sessions
+ *     description: Retrieves all service sessions that have been marked as complete by staff.
+ *     tags:
+ *       - Admin - Service Sessions
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Items per page
+ *       - name: serviceId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by specific service ID
+ *       - name: userId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by specific user ID
+ *       - name: startDate
+ *         in: query
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date (YYYY-MM-DD)
+ *       - name: endDate
+ *         in: query
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: Completed service sessions retrieved successfully
+ *       401:
+ *         description: Unauthorized access
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/service-sessions/completed', authenticate, isAdmin, serviceSessionController.getCompletedServiceSessions);
+
+/**
+ * @swagger
+ * /api/v2/admin/service-sessions/user/{userId}:
+ *   get:
+ *     summary: Get Service Sessions for a Specific User
+ *     description: Retrieves all service sessions (active, expired, and completed) for a specific user.
+ *     tags:
+ *       - Admin - Service Sessions
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user
+ *     responses:
+ *       200:
+ *         description: User service sessions retrieved successfully
+ *       404:
+ *         description: User not found
+ *       401:
+ *         description: Unauthorized access
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/service-sessions/user/:userId', authenticate, isAdmin, serviceSessionController.getUserServiceSessions);
+
+/**
+ * @swagger
+ * /api/v2/admin/service-sessions/service/{serviceId}/users:
+ *   get:
+ *     summary: Get All Users for a Specific Service
+ *     description: Retrieves all users who have purchased sessions for a specific service, showing both active and completed sessions.
+ *     tags:
+ *       - Admin - Service Sessions
+ *     parameters:
+ *       - name: serviceId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the service
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Items per page
+ *       - name: status
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [all, active, completed]
+ *           default: all
+ *         description: Filter by session status
+ *     responses:
+ *       200:
+ *         description: Service users retrieved successfully
+ *       404:
+ *         description: Service not found
+ *       401:
+ *         description: Unauthorized access
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/service-sessions/service/:serviceId/users', authenticate, isAdmin, serviceSessionController.getServiceUsers);
+
+/**
+ * @swagger
+ * /api/v2/admin/service-sessions/stats:
+ *   get:
+ *     summary: Get Service Session Statistics
+ *     description: Provides overview statistics of all service sessions including pending, completed, and expired counts.
+ *     tags:
+ *       - Admin - Service Sessions
+ *     parameters:
+ *       - name: serviceId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Optional service ID to filter statistics to a specific service
+ *     responses:
+ *       200:
+ *         description: Statistics retrieved successfully
+ *       401:
+ *         description: Unauthorized access
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/service-sessions/stats', authenticate, isAdmin, serviceSessionController.getServiceSessionStats);
 
 
 module.exports = router;
