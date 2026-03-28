@@ -188,7 +188,7 @@ exports.getAllServicesFlat = async (req, res) => {
 
 exports.getServiceById = async (req, res) => {
   try {
-    const service = await Service.findById(req.params.id);
+    const service = await Service.findOne({ _id: req.params.id, isActive: true });
     
     if (!service) {
       return badRequestResponse('Service not found',"NOT_FOUND",404,res)
@@ -277,10 +277,10 @@ exports.createInquiry = async (req, res) => {
     const { serviceId } = req.body;
     const userId = req.user.id;
     
-    // Find service
-    const service = await Service.findById(serviceId);
+    // Find service and ensure it's active
+    const service = await Service.findOne({ _id: serviceId, isActive: true });
     if (!service) {
-      return badRequestResponse('Service not found',"NOT_FOUND",404,res)
+      return badRequestResponse('Service not found or not available',"NOT_FOUND",404,res)
     }
     
     // Find user
