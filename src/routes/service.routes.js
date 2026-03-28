@@ -217,4 +217,221 @@ router.delete('/:id', [authenticate, isAdmin], serviceController.deleteService);
  */
 router.post('/inquiry', authenticate, serviceController.createInquiry);
 
+// ==================== USER SERVICE MANAGEMENT ROUTES ====================
+
+/**
+ * @swagger
+ * /api/v1/services/my-services:
+ *   get:
+ *     summary: Get all services created by the authenticated user
+ *     description: Retrieves all services that belong to the currently authenticated user.
+ *     tags:
+ *       - User Services
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User services retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/my-services', authenticate, serviceController.getUserServices);
+
+/**
+ * @swagger
+ * /api/v1/services/my-services:
+ *   post:
+ *     summary: Create a new service for the authenticated user
+ *     description: Allows authenticated users to create their own service.
+ *     tags:
+ *       - User Services
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - description
+ *               - category
+ *               - whatsappContact
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the service
+ *               description:
+ *                 type: string
+ *                 description: Detailed description of the service
+ *               category:
+ *                 type: string
+ *                 enum: ['Job Application', 'IELTS Masterclass', 'Parcel Services', 'Flight Booking', 'Visa Booking', 'Loan Services', 'NCLEX Services', 'CBT Services', 'OET Services', 'OSCE Services', 'Proof of Funds']
+ *                 description: Category of the service
+ *               whatsappContact:
+ *                 type: string
+ *                 description: WhatsApp contact number
+ *               price:
+ *                 type: number
+ *                 description: Price of the service
+ *               features:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of service features
+ *               autoResponderMessage:
+ *                 type: string
+ *                 description: Auto-responder message for inquiries
+ *     responses:
+ *       201:
+ *         description: Service created successfully
+ *       400:
+ *         description: Invalid data provided
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/my-services', authenticate, serviceCreateValidator, serviceController.createUserService);
+
+/**
+ * @swagger
+ * /api/v1/services/my-services/{id}:
+ *   put:
+ *     summary: Update user's own service
+ *     description: Allows authenticated users to update their own service.
+ *     tags:
+ *       - User Services
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the service to update
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the service
+ *               description:
+ *                 type: string
+ *                 description: Description of the service
+ *               category:
+ *                 type: string
+ *                 description: Category of the service
+ *               whatsappContact:
+ *                 type: string
+ *                 description: WhatsApp contact number
+ *               price:
+ *                 type: number
+ *                 description: Price of the service
+ *               features:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of service features
+ *               isActive:
+ *                 type: boolean
+ *                 description: Whether the service is active
+ *               autoResponderMessage:
+ *                 type: string
+ *                 description: Auto-responder message
+ *     responses:
+ *       200:
+ *         description: Service updated successfully
+ *       400:
+ *         description: Invalid data provided
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Service not found or permission denied
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/my-services/:id', authenticate, serviceController.updateUserService);
+
+/**
+ * @swagger
+ * /api/v1/services/my-services/{id}:
+ *   delete:
+ *     summary: Delete user's own service
+ *     description: Allows authenticated users to delete their own service.
+ *     tags:
+ *       - User Services
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the service to delete
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Service deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Service not found or permission denied
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/my-services/:id', authenticate, serviceController.deleteUserService);
+
+/**
+ * @swagger
+ * /api/v1/services/my-services/{id}/price:
+ *   patch:
+ *     summary: Update the price of user's own service
+ *     description: Allows authenticated users to update only the price of their own service.
+ *     tags:
+ *       - User Services
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: The ID of the service to update
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - price
+ *             properties:
+ *               price:
+ *                 type: number
+ *                 description: New price for the service
+ *                 minimum: 0
+ *     responses:
+ *       200:
+ *         description: Service price updated successfully
+ *       400:
+ *         description: Invalid price provided
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Service not found or permission denied
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/my-services/:id/price', authenticate, serviceController.updateUserServicePrice);
+
 module.exports = router;

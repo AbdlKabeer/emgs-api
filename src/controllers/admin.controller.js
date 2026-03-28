@@ -1031,3 +1031,222 @@ exports.rejectTutorCourse = async (req, res) => {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
 };
+
+
+// ==================== SERVICE MANAGEMENT ====================
+
+// Get all services with pagination and filters
+exports.getAllServices = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const filter = {};
+    
+    // Filter options
+    if (req.query.category) filter.category = req.query.category;
+    if (req.query.isActive !== undefined) filter.isActive = req.query.isActive === 'true';
+    if (req.query.search) {
+      filter.$or = [
+        { name: { $regex: req.query.search, $options: 'i' } },
+        { description: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+
+    const total = await Service.countDocuments(filter);
+    
+    const services = await Service.find(filter)
+      .populate('user', 'fullName email profilePicture')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return paginationResponse(services, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get service by ID
+exports.getServiceById = async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id)
+      .populate('user', 'fullName email profilePicture phone')
+      .populate('enrolledUsers', 'fullName email profilePicture');
+    
+    if (!service) {
+      return errorResponse('Service not found', 'NOT_FOUND', 404, res);
+    }
+    
+    return successResponse(service, res, 200, 'Service retrieved successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Create a new service
+exports.createService = async (req, res) => {
+  try {
+    const { name, description, category, whatsappContact, price, features, autoResponderMessage, userId } = req.body;
+    
+    // Validate required fields
+    if (!name || !description || !category || !whatsappContact) {
+      return errorResponse('Missing required fields', 'VALIDATION_ERROR', 400, res);
+    }
+
+    // If userId is provided, verify the user exists
+    if (userId) {
+      const user = await User.findById(userId);
+      if (!user) {
+        return errorResponse('User not found', 'NOT_FOUND', 404, res);
+      }
+    }
+    
+    const service = new Service({
+      name,
+      description,
+      category,
+      whatsappContact,
+      price,
+      features,
+      autoResponderMessage,
+      isActive: true,
+      user: userId || req.user.id // Use provided userId or admin's ID
+    });
+    
+    await service.save();
+
+    const populatedService = await Service.findById(service._id)
+      .populate('user', 'fullName email profilePicture');
+
+    return successResponse(populatedService, res, 201, 'Service created successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Update a service
+exports.updateService = async (req, res) => {
+  try {
+    const { name, description, category, whatsappContact, price, features, isActive, autoResponderMessage } = req.body;
+    
+    const service = await Service.findById(req.params.id);
+    
+    if (!service) {
+      return errorResponse('Service not found', 'NOT_FOUND', 404, res);
+    }
+
+    // Update fields
+    if (name !== undefined) service.name = name;
+    if (description !== undefined) service.description = description;
+    if (category !== undefined) service.category = category;
+    if (whatsappContact !== undefined) service.whatsappContact = whatsappContact;
+    if (price !== undefined) service.price = price;
+    if (features !== undefined) service.features = features;
+    if (isActive !== undefined) service.isActive = isActive;
+    if (autoResponderMessage !== undefined) service.autoResponderMessage = autoResponderMessage;
+    
+    await service.save();
+
+    const updatedService = await Service.findById(service._id)
+      .populate('user', 'fullName email profilePicture');
+    
+    return successResponse(updatedService, res, 200, 'Service updated successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Update service price
+exports.updateServicePrice = async (req, res) => {
+  try {
+    const { price } = req.body;
+    
+    if (price === undefined || price === null) {
+      return errorResponse('Price is required', 'VALIDATION_ERROR', 400, res);
+    }
+    
+    if (typeof price !== 'number' || price < 0) {
+      return errorResponse('Price must be a non-negative number', 'VALIDATION_ERROR', 400, res);
+    }
+    
+    const service = await Service.findById(req.params.id);
+    
+    if (!service) {
+      return errorResponse('Service not found', 'NOT_FOUND', 404, res);
+    }
+    
+    service.price = price;
+    await service.save();
+    
+    return successResponse({ serviceId: service._id, price: service.price }, res, 200, 'Service price updated successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Delete a service
+exports.deleteService = async (req, res) => {
+  try {
+    const service = await Service.findByIdAndDelete(req.params.id);
+    
+    if (!service) {
+      return errorResponse('Service not found', 'NOT_FOUND', 404, res);
+    }
+    
+    return successResponse(null, res, 200, 'Service deleted successfully');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Toggle service active status
+exports.toggleServiceStatus = async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+    
+    if (!service) {
+      return errorResponse('Service not found', 'NOT_FOUND', 404, res);
+    }
+    
+    service.isActive = !service.isActive;
+    await service.save();
+    
+    return successResponse(
+      { serviceId: service._id, isActive: service.isActive }, 
+      res, 
+      200, 
+      `Service ${service.isActive ? 'activated' : 'deactivated'} successfully`
+    );
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+// Get service inquiries
+exports.getServiceInquiries = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const filter = {};
+    
+    if (req.query.serviceId) filter.serviceId = req.query.serviceId;
+    if (req.query.status) filter.status = req.query.status;
+
+    const total = await Inquiry.countDocuments(filter);
+    
+    const inquiries = await Inquiry.find(filter)
+      .populate('userId', 'fullName email profilePicture phone')
+      .populate('serviceId', 'name category price')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return paginationResponse(inquiries, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
