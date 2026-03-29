@@ -826,6 +826,45 @@ router.get('/services', authenticate, isAdmin, adminController.getAllServices);
 
 /**
  * @swagger
+ * /api/v1/admin/services/inquiries:
+ *   get:
+ *     summary: Get service inquiries
+ *     description: Retrieves all service inquiries with filtering options.
+ *     tags:
+ *       - Admin - Services
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - name: serviceId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by service ID
+ *       - name: status
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by inquiry status
+ *     responses:
+ *       200:
+ *         description: Inquiries retrieved successfully
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/services/inquiries', authenticate, isAdmin, adminController.getServiceInquiries);
+
+/**
+ * @swagger
  * /api/v1/admin/services/{id}:
  *   get:
  *     summary: Get service by ID
@@ -1057,45 +1096,6 @@ router.delete('/services/:id', authenticate, isAdmin, adminController.deleteServ
  *         description: Internal server error
  */
 router.patch('/services/:id/toggle-status', authenticate, isAdmin, adminController.toggleServiceStatus);
-
-/**
- * @swagger
- * /api/v1/admin/services/inquiries:
- *   get:
- *     summary: Get service inquiries
- *     description: Retrieves all service inquiries with filtering options.
- *     tags:
- *       - Admin - Services
- *     parameters:
- *       - name: page
- *         in: query
- *         schema:
- *           type: integer
- *         description: Page number
- *       - name: limit
- *         in: query
- *         schema:
- *           type: integer
- *         description: Items per page
- *       - name: serviceId
- *         in: query
- *         schema:
- *           type: string
- *         description: Filter by service ID
- *       - name: status
- *         in: query
- *         schema:
- *           type: string
- *         description: Filter by inquiry status
- *     responses:
- *       200:
- *         description: Inquiries retrieved successfully
- *       401:
- *         description: Unauthorized access
- *       500:
- *         description: Internal server error
- */
-router.get('/services/inquiries', authenticate, isAdmin, adminController.getServiceInquiries);
 
 /**
  * @swagger
