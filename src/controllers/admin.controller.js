@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 const TutorRequest = require('../models/tutorRequest.model');
 const User = require('../models/user.model');
@@ -9,7 +10,69 @@ const Payment = require('../models/payment.model');
 const Notification = require('../models/notification.model');
 const { successResponse, errorResponse, validationErrorResponse , paginationResponse} = require('../utils/custom_response/responses');
 
+// Get all staff users (admin only)
+exports.getAllStaff = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
+    // Build search and filter query
+    const filter = { roles: 'staff' };
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      filter.$or = [
+        { fullName: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex }
+      ];
+    }
+
+    const total = await User.countDocuments(filter);
+    const staff = await User.find(filter)
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    return paginationResponse(staff, total, page, limit, res);
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
+
+
+// Admin creates a staff user
+exports.createStaff = async (req, res) => {
+  try {
+    const { fullName, email, password, phone } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return errorResponse('User already exists with this email', 'BAD_REQUEST', 400, res);
+    }
+
+    // Create new staff user
+    const staffUser = new User({
+      fullName,
+      email,
+      password,
+      phone,
+      role: 'admin',
+      roles: ['admin'],
+      isVerified: true,
+      status: 'active'
+    });
+
+    await staffUser.save();
+
+    return successResponse({ userId: staffUser._id }, res, 201, 'Staff user created successfully.');
+  } catch (error) {
+    return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
 
 // Get all tutor requests (admin only)
 exports.getAllTutorRequests = async (req, res) => {
