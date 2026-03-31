@@ -1345,4 +1345,82 @@ router.get('/service-sessions/service/:serviceId/users', authenticate, isAdmin, 
 router.get('/service-sessions/stats', authenticate, isAdmin, serviceSessionController.getServiceSessionStats);
 
 
+
+/**
+ * @swagger
+ * /api/v1/admin/staff:
+ *   post:
+ *     summary: Create a staff user
+ *     description: Allows admin to create a new staff user.
+ *     tags:
+ *       - Admin
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - email
+ *               - password
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Staff user created successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/staff', authenticate, isAdmin, adminController.createStaff);
+
+/**
+ * @swagger
+ * /api/v1/admin/staff:
+ *   get:
+ *     summary: Get all staff users
+ *     description: Retrieves a paginated list of all staff users.
+ *     tags:
+ *       - Admin
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *       - name: search
+ *         in: query
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Search by name, email, or phone
+ *     responses:
+ *       200:
+ *         description: List of staff users successfully fetched
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/staff', authenticate, isAdmin, adminController.getAllStaff);
+
+
 module.exports = router;
