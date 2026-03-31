@@ -276,7 +276,7 @@ exports.validatePayment = async (req, res) => {
             }
 
             // Check if service has session-based subscription enabled
-            if (service.sessionEnabled) {
+            if (true) {
               // Session-based service (similar to one-on-one)
               const sessionValidityDays = service.sessionValidityDays || 30;
               const expiryDate = new Date(Date.now() + sessionValidityDays * 24 * 60 * 60 * 1000);
