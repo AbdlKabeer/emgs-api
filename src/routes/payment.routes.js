@@ -14,4 +14,9 @@ router.post('/verify', authenticate, paymentController.validatePayment);
 router.get('/history', authenticate, paymentController.getUserPaymentHistory);
 // router.post('/verify', authenticate,verifyPaymentValidator, paymentController.validatePayment);
 
+// Webhook endpoints for payment providers
+router.post('/webhook/paystack', paymentController.paystackWebhook);
+router.post('/webhook/flutterwave', paymentController.flutterwaveWebhook);
+router.post('/webhook/stripe', paymentController.stripeWebhook);
+
 module.exports = router;
