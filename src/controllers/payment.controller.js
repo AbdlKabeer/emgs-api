@@ -453,11 +453,6 @@ exports.initiateCardPayment = async (req, res) => {
     const userId = req.user.id;
     const provider = (paymentProvider || 'flutterwave').toLowerCase();
 
-    // let progress = await Payment.findOne({ userId, itemId, itemType, status: 'completed' });
-
-    // if (progress) {
-    //   return badRequestResponse('Payment already initiated', res);
-    // }
 
     // Helper to get Paystack headers
     const paystackHeaders = () => ({
@@ -477,19 +472,19 @@ exports.initiateCardPayment = async (req, res) => {
       'Content-Type': 'application/json'
     });
 
-    let amount = 0;
+    // let progress = await Payment.findOne({ userId, itemId, itemType, status: 'completed' });
 
-    if (itemType == 'course') {
-      const course = await Course.findById(itemId);
-      if (!course) {
-        return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+    if (itemType == 'service') {
+      const service = await Service.findById(itemId);
+      if (!service) {
+        return badRequestResponse('service not found', 'NOT_FOUND', 404, res);
       }
 
-      // if (!course.isPublished) {
-      //   return badRequestResponse('Cannot enroll for an unpublished course', 'BAD_REQUEST', 400, res);
-      // }
-      amount = course.price || 100; // default price if not set
+      if (!service.price) {
+        return badRequestResponse('Service price not set', 'BAD_REQUEST', 400, res);
+      }
 
+      amount = service.price; // Set amount for service
 
       let payment = new Payment({
         userId,
@@ -498,21 +493,18 @@ exports.initiateCardPayment = async (req, res) => {
         amount: amount,
         status: "pending",
         paymentMethod: provider,
-        metadata: {
-          courseId: itemId,
-          source: 'course',
-        }
       });
 
       await payment.save();
 
       const metadata = {
-        transactionRef: payment._id,
+        transactionRef: payment._id.toString(),
         itemId,
         itemType
       };
 
       if (provider === 'paystack') {
+        metadata = {...metadata, courseId: itemId, source: 'course'};
         const payload = {
           amount: 100 * amount, // Paystack expects amount in kobo
           email: req.user.email,
@@ -558,8 +550,6 @@ exports.initiateCardPayment = async (req, res) => {
       } else if (provider === 'stripe') {
         // Stripe expects amount in kobo (for NGN) or cents (for USD)
         // We'll use NGN for now
-
-        
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
           const session = await stripe.checkout.sessions.create({
@@ -589,34 +579,35 @@ exports.initiateCardPayment = async (req, res) => {
       } else {
         return badRequestResponse('Unsupported payment provider', 'UNSUPPORTED_PROVIDER', 400, res);
       }
-
-    } else if (itemType == 'service') {
-      const service = await Service.findById(itemId);
-      if (!service) {
-        return badRequestResponse('service not found', 'NOT_FOUND', 404, res);
+    }
+    // ...existing code for course and oneOnOne...
+    else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
+      // Find the tutor
+      const tutor = await User.findById(itemId);
+      if (!tutor || tutor.role !== 'tutor') {
+        return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
       }
-
-
-      if (!service.price) {
-        return badRequestResponse('Service price not set', 'BAD_REQUEST', 400, res);
-      }
-
-      amount = service.price; // Set amount for service
-
-
+      
+      // Price can be set from tutor's servicePrice or fixed amount
+      amount = tutor.servicePrice || 5000; // example default
+      
       let payment = new Payment({
         userId,
-        itemId,
+        itemId, // tutor id here
         itemType,
-        amount: amount,
-        status: "pending",
+        amount,
+        status:"pending",
         paymentMethod: provider,
+        metadata: {
+          tutorId: itemId,
+          source: 'one-on-one',
+        }
       });
 
       await payment.save();
 
       const metadata = {
-        transactionRef: payment._id,
+        transactionRef: payment._id.toString(),
         itemId,
         itemType
       };
@@ -636,77 +627,65 @@ exports.initiateCardPayment = async (req, res) => {
         });
         if (response.data.status) {
           const data = response.data.data;
-          return successResponse(data, res, 200, 'Payment initialization successful (Paystack)');
+          return successResponse(data, res, 200, 'Payment initiated successfully for one-on-one tutoring');
         } else {
           return badRequestResponse("Card tokenization can't be completed at the moment", 'INIT_FAILED', 400, res);
         }
       } else if (provider === 'flutterwave') {
-        // TODO: Implement Flutterwave payment initialization
-        // See https://developer.flutterwave.com/docs/collecting-payments/standard/
-        return badRequestResponse('Flutterwave integration not implemented yet', 'NOT_IMPLEMENTED', 400, res);
+        // Flutterwave expects amount in Naira, not kobo
+        const payload = {
+          tx_ref: payment._id.toString(),
+          amount: amount,
+          currency: 'NGN',
+          redirect_url: callbackUrl,
+          customer: {
+            email: req.user.email,
+            name: req.user.fullName || req.user.email
+          },
+          meta: metadata,
+          payment_options: 'card',
+        };
+        const response = await axios.post('https://api.flutterwave.com/v3/payments', payload, {
+          headers: flutterwaveHeaders()
+        });
+        if (response.data.status === 'success') {
+          // Flutterwave returns a link to redirect the user
+          const data = response.data.data;
+          return successResponse(data, res, 200, 'Payment initialization successful (Flutterwave)');
+        } else {
+          return badRequestResponse('Flutterwave payment initialization failed', 'INIT_FAILED', 400, res);
+        }
       } else if (provider === 'stripe') {
-        // TODO: Implement Stripe payment initialization
-        // See https://stripe.com/docs/api/checkout/sessions/create
-        return badRequestResponse('Stripe integration not implemented yet', 'NOT_IMPLEMENTED', 400, res);
+        // Stripe expects amount in kobo (for NGN) or cents (for USD)
+        // We'll use NGN for now
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        try {
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [
+              {
+                price_data: {
+                  currency: 'ngn',
+                  product_data: {
+                    name: itemType + ' payment',
+                  },
+                  unit_amount: amount * 100, // Stripe expects amount in kobo
+                },
+                quantity: 1,
+              },
+            ],
+            mode: 'payment',
+            success_url: callbackUrl + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url: callbackUrl,
+            metadata: metadata,
+            customer_email: req.user.email,
+          });
+          return successResponse({ url: session.url, id: session.id }, res, 200, 'Payment initialization successful (Stripe)');
+        } catch (err) {
+          return badRequestResponse('Stripe payment initialization failed: ' + err.message, 'INIT_FAILED', 400, res);
+        }
       } else {
         return badRequestResponse('Unsupported payment provider', 'UNSUPPORTED_PROVIDER', 400, res);
-      }
-    }
-    else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
-      // Find the tutor
-      const tutor = await User.findById(itemId);
-      if (!tutor || tutor.role !== 'tutor') {
-        return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
-      }
-      
-      // Price can be set from tutor's servicePrice or fixed amount
-      amount = tutor.servicePrice || 5000; // example default
-      
-      let payment = new Payment({
-        userId,
-        itemId, // tutor id here
-        itemType,
-        amount,
-        status:"pending",
-        metadata: {
-          tutorId: itemId,
-          source: 'one-on-one',
-        }
-      });
-
-
-      await payment.save();
-
-      const metadata = {
-        transactionRef: payment._id,
-        itemId,
-        itemType
-      };
-
-      const payload = {
-        amount: 100 * amount, // Paystack expects amount in kobo
-        email: req.user.email,
-        callback_url: callbackUrl,
-        cancel_url: callbackUrl,
-        currency: 'NGN',
-        channels: ['card'],
-        metadata: metadata
-      };
-      
-      
-      const response = await axios.post(`https://api.paystack.co/transaction/initialize`, payload, {
-        headers: paystackHeaders()
-      });
-
-      console.log(response)
-
-      if (response.data.status) {
-        const data = response.data.data;
-        console.log(data);
-
-        return successResponse(data, res, 200, 'Payment initiated successfully for one-on-one tutoring');
-      } else {
-        return badRequestResponse("Card tokenization can't be completed at the moment", 'INIT_FAILED', 400, res);
       }
     }
   } catch (error) {
