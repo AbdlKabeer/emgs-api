@@ -158,6 +158,156 @@ exports.initiatePayment = async (req, res) => {
   }
 };
 
+// Helper to run business logic for all providers
+async function handleBusinessLogic(metadata, payment, userId, res) {
+  let id = metadata?.transactionRef || metadata?.id;
+  let itemType = metadata?.itemType;
+  let paymentId = metadata?.itemId;
+  let courseId = metadata?.itemId;
+  payment = payment || await Payment.findById(id);
+  if (payment) {
+    if (payment.status == 'completed') {
+      return successResponse(null, res, 200, 'Payment already completed');
+    }
+    if (itemType == 'course') {
+      const course = await Course.findById(courseId);
+      if (!course) {
+        return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+      }
+      const user = await User.findById(userId);
+      if (user.enrolledCourses.includes(courseId)) {
+        return badRequestResponse('User already enrolled in this course', 'BAD_REQUEST', 400, res);
+      }
+      await User.findByIdAndUpdate(userId, { $push: { enrolledCourses: courseId } });
+      await Course.findByIdAndUpdate(courseId, { $push: { enrolledUsers: userId } });
+      const notification = new Notification({
+        userId,
+        title: 'Course Enrollment',
+        message: `You have successfully enrolled in ${course.title}`,
+        type: 'course',
+        relatedItemId: courseId
+      });
+      await notification.save();
+      payment.status = 'completed';
+      await payment.save();
+      let fullAmount = payment.amount;
+      if (user.referredBy) {
+        const referrer = await User.findById(user.referredBy);
+        if (referrer) {
+          const referralReward = fullAmount * 0.1;
+          await Wallet.findOneAndUpdate(
+            { userId },
+            { $inc: { balance: referralReward } },
+            { new: true, upsert: true }
+          );
+          fullAmount = fullAmount - referralReward;
+          referrer.referrals.push(user._id);
+          user.referralPointDisbursed = true;
+          await user.save();
+          await referrer.save();
+        }
+      }
+      try {
+        await walletController.updateEarningsFromPurchase(courseId, fullAmount, payment._id);
+      } catch (walletError) {
+        console.error('Error updating wallet:', walletError);
+      }
+      return successResponse(null, res, 200, 'Enrolled in course successfully');
+    } else if (itemType == 'service') {
+      const service = await Service.findById(paymentId);
+      if (!service) {
+        return badRequestResponse('service not found', 'NOT_FOUND', 404, res);
+      }
+      const user = await User.findById(userId);
+      if (!user) {
+        return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+      }
+      const sessionValidityDays = service.sessionValidityDays || 30;
+      const expiryDate = new Date(Date.now() + sessionValidityDays * 24 * 60 * 60 * 1000);
+      const existingSessionIndex = user.serviceSubscriptions.findIndex(sub =>
+        sub.serviceId.toString() === service._id.toString() &&
+        sub.isActive &&
+        (!sub.expiry || new Date(sub.expiry) > new Date())
+      );
+      if (existingSessionIndex >= 0) {
+        user.serviceSubscriptions[existingSessionIndex].isActive = true;
+        user.serviceSubscriptions[existingSessionIndex].expiry = expiryDate;
+        user.serviceSubscriptions[existingSessionIndex].purchasedAt = new Date();
+        user.serviceSubscriptions[existingSessionIndex].paymentId = payment._id;
+      } else {
+        user.serviceSubscriptions.push({
+          serviceId: service._id,
+          isActive: true,
+          expiry: expiryDate,
+          purchasedAt: new Date(),
+          paymentId: payment._id
+        });
+      }
+      if (!user.enrolledServices.includes(paymentId)) {
+        user.enrolledServices.push(paymentId);
+      }
+      await user.save();
+      if (!service.enrolledUsers.includes(userId)) {
+        await Service.findByIdAndUpdate(paymentId, { $push: { enrolledUsers: userId } });
+      }
+      payment.status = 'completed';
+      await payment.save();
+      const notification = new Notification({
+        userId,
+        title: 'Service Session Purchased',
+        message: `You have successfully purchased a session for ${service.name}. Valid until ${expiryDate.toLocaleDateString()}. Staff will mark it complete once service is rendered.`,
+        type: 'service',
+        relatedItemId: paymentId
+      });
+      await notification.save();
+      return successResponse({
+        sessionExpiry: expiryDate,
+        sessionValidityDays: sessionValidityDays,
+        message: 'Service session purchased successfully. Please wait for staff to complete your session.'
+      }, res, 200, 'Service session purchased successfully');
+    } else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
+      const tutor = await User.findById(paymentId);
+      if (!tutor || tutor.role !== 'tutor') {
+        return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
+      }
+      const user = await User.findById(userId);
+      if (!user) {
+        return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+      }
+      const subscriptionDurationDays = 30;
+      const expiryDate = new Date(Date.now() + subscriptionDurationDays * 24 * 60 * 60 * 1000);
+      const existingSubscriptionIndex = user.oneOnOneSubscriptions.findIndex(sub =>
+        sub.tutorId.toString() === tutor._id.toString()
+      );
+      if (existingSubscriptionIndex >= 0) {
+        user.oneOnOneSubscriptions[existingSubscriptionIndex].isActive = true;
+        user.oneOnOneSubscriptions[existingSubscriptionIndex].expiry = expiryDate;
+      } else {
+        user.oneOnOneSubscriptions.push({
+          tutorId: tutor._id,
+          isActive: true,
+          expiry: expiryDate,
+        });
+      }
+      await user.save();
+      payment.status = 'completed';
+      await payment.save();
+      const notification = new Notification({
+        userId,
+        title: 'One-on-One Tutor Subscription',
+        message: `You have successfully subscribed to one-on-one tutoring with ${tutor.fullName}`,
+        type: 'service',
+        relatedItemId: tutor._id
+      });
+      await notification.save();
+      return successResponse(null, res, 200, 'One-on-one tutoring subscription successful');
+    } else {
+      return badRequestResponse('Invalid payment type', 'BAD_REQUEST', 400, res);
+    }
+  }
+  return successResponse({}, res, 200, 'Payment validated successfully');
+}
+
 exports.validatePayment = async (req, res) => {
   try {
     const { reference: transactionRef, provider } = req.body;
@@ -171,155 +321,6 @@ exports.validatePayment = async (req, res) => {
     }
     paymentProvider = paymentProvider.toLowerCase();
 
-    // Helper to run business logic for all providers
-    async function handleBusinessLogic(metadata, payment, userId, res) {
-      let id = metadata?.transactionRef || metadata?.id;
-      let itemType = metadata?.itemType;
-      let paymentId = metadata?.itemId;
-      let courseId = metadata?.itemId;
-      payment = payment || await Payment.findById(id);
-      if (payment) {
-        if (payment.status == 'completed') {
-          return successResponse(null, res, 200, 'Payment already completed');
-        }
-        if (itemType == 'course') {
-          const course = await Course.findById(courseId);
-          if (!course) {
-            return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
-          }
-          const user = await User.findById(userId);
-          if (user.enrolledCourses.includes(courseId)) {
-            return badRequestResponse('User already enrolled in this course', 'BAD_REQUEST', 400, res);
-          }
-          await User.findByIdAndUpdate(userId, { $push: { enrolledCourses: courseId } });
-          await Course.findByIdAndUpdate(courseId, { $push: { enrolledUsers: userId } });
-          const notification = new Notification({
-            userId,
-            title: 'Course Enrollment',
-            message: `You have successfully enrolled in ${course.title}`,
-            type: 'course',
-            relatedItemId: courseId
-          });
-          await notification.save();
-          payment.status = 'completed';
-          await payment.save();
-          let fullAmount = payment.amount;
-          if (user.referredBy) {
-            const referrer = await User.findById(user.referredBy);
-            if (referrer) {
-              const referralReward = fullAmount * 0.1;
-              await Wallet.findOneAndUpdate(
-                { userId },
-                { $inc: { balance: referralReward } },
-                { new: true, upsert: true }
-              );
-              fullAmount = fullAmount - referralReward;
-              referrer.referrals.push(user._id);
-              user.referralPointDisbursed = true;
-              await user.save();
-              await referrer.save();
-            }
-          }
-          try {
-            await walletController.updateEarningsFromPurchase(courseId, fullAmount, payment._id);
-          } catch (walletError) {
-            console.error('Error updating wallet:', walletError);
-          }
-          return successResponse(null, res, 200, 'Enrolled in course successfully');
-        } else if (itemType == 'service') {
-          const service = await Service.findById(paymentId);
-          if (!service) {
-            return badRequestResponse('service not found', 'NOT_FOUND', 404, res);
-          }
-          const user = await User.findById(userId);
-          if (!user) {
-            return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
-          }
-          const sessionValidityDays = service.sessionValidityDays || 30;
-          const expiryDate = new Date(Date.now() + sessionValidityDays * 24 * 60 * 60 * 1000);
-          const existingSessionIndex = user.serviceSubscriptions.findIndex(sub =>
-            sub.serviceId.toString() === service._id.toString() &&
-            sub.isActive &&
-            (!sub.expiry || new Date(sub.expiry) > new Date())
-          );
-          if (existingSessionIndex >= 0) {
-            user.serviceSubscriptions[existingSessionIndex].isActive = true;
-            user.serviceSubscriptions[existingSessionIndex].expiry = expiryDate;
-            user.serviceSubscriptions[existingSessionIndex].purchasedAt = new Date();
-            user.serviceSubscriptions[existingSessionIndex].paymentId = payment._id;
-          } else {
-            user.serviceSubscriptions.push({
-              serviceId: service._id,
-              isActive: true,
-              expiry: expiryDate,
-              purchasedAt: new Date(),
-              paymentId: payment._id
-            });
-          }
-          if (!user.enrolledServices.includes(paymentId)) {
-            user.enrolledServices.push(paymentId);
-          }
-          await user.save();
-          if (!service.enrolledUsers.includes(userId)) {
-            await Service.findByIdAndUpdate(paymentId, { $push: { enrolledUsers: userId } });
-          }
-          payment.status = 'completed';
-          await payment.save();
-          const notification = new Notification({
-            userId,
-            title: 'Service Session Purchased',
-            message: `You have successfully purchased a session for ${service.name}. Valid until ${expiryDate.toLocaleDateString()}. Staff will mark it complete once service is rendered.`,
-            type: 'service',
-            relatedItemId: paymentId
-          });
-          await notification.save();
-          return successResponse({
-            sessionExpiry: expiryDate,
-            sessionValidityDays: sessionValidityDays,
-            message: 'Service session purchased successfully. Please wait for staff to complete your session.'
-          }, res, 200, 'Service session purchased successfully');
-        } else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
-          const tutor = await User.findById(paymentId);
-          if (!tutor || tutor.role !== 'tutor') {
-            return badRequestResponse('Tutor not found', 'NOT_FOUND', 404, res);
-          }
-          const user = await User.findById(userId);
-          if (!user) {
-            return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
-          }
-          const subscriptionDurationDays = 30;
-          const expiryDate = new Date(Date.now() + subscriptionDurationDays * 24 * 60 * 60 * 1000);
-          const existingSubscriptionIndex = user.oneOnOneSubscriptions.findIndex(sub =>
-            sub.tutorId.toString() === tutor._id.toString()
-          );
-          if (existingSubscriptionIndex >= 0) {
-            user.oneOnOneSubscriptions[existingSubscriptionIndex].isActive = true;
-            user.oneOnOneSubscriptions[existingSubscriptionIndex].expiry = expiryDate;
-          } else {
-            user.oneOnOneSubscriptions.push({
-              tutorId: tutor._id,
-              isActive: true,
-              expiry: expiryDate,
-            });
-          }
-          await user.save();
-          payment.status = 'completed';
-          await payment.save();
-          const notification = new Notification({
-            userId,
-            title: 'One-on-One Tutor Subscription',
-            message: `You have successfully subscribed to one-on-one tutoring with ${tutor.fullName}`,
-            type: 'service',
-            relatedItemId: tutor._id
-          });
-          await notification.save();
-          return successResponse(null, res, 200, 'One-on-one tutoring subscription successful');
-        } else {
-          return badRequestResponse('Invalid payment type', 'BAD_REQUEST', 400, res);
-        }
-      }
-      return successResponse({}, res, 200, 'Payment validated successfully');
-    }
 
     if (paymentProvider === 'paystack') {
       const headers = {
