@@ -451,7 +451,7 @@ exports.initiateCardPayment = async (req, res) => {
   try {
     const { itemType, itemId, callbackUrl, paymentProvider } = req.body;
     const userId = req.user.id;
-    const provider = (paymentProvider || 'paystack').toLowerCase();
+    const provider = (paymentProvider || 'flutterwave').toLowerCase();
 
     // let progress = await Payment.findOne({ userId, itemId, itemType, status: 'completed' });
 
