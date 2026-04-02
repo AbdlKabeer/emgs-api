@@ -1107,3 +1107,244 @@ exports.addEmgsTutor = async (req, res) => {
     );
   }
 };
+
+
+// List all users with active one-on-one sessions for the logged-in tutor
+exports.getMyActiveSessions = async (req, res) => {
+  try {
+    const tutorId = req.user.id;
+    // Find users who have an active one-on-one subscription with this tutor
+    const users = await User.find({
+      'oneOnOneSubscriptions': {
+        $elemMatch: {
+          tutorId,
+          isActive: true,
+          $or: [
+            { expiry: null },
+            { expiry: { $gte: new Date() } }
+          ]
+        }
+      }
+    }).select('fullName email phone oneOnOneSubscriptions');
+
+    // Filter to only include relevant subscription info
+    const result = users.map(user => {
+      const session = user.oneOnOneSubscriptions.find(sub => sub.tutorId.toString() === tutorId && sub.isActive && (!sub.expiry || new Date(sub.expiry) > new Date()));
+      return {
+        userId: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        session
+      };
+    });
+    return successResponse(result, res, 200, 'Active sessions fetched successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// List all users with completed one-on-one sessions for the logged-in tutor
+exports.getMyCompletedSessions = async (req, res) => {
+  try {
+    const tutorId = req.user.id;
+    // Find users who have a completed session with this tutor
+    const users = await User.find({
+      'completedOneOnOneSessions': {
+        $elemMatch: { tutorId }
+      }
+    }).select('fullName email phone completedOneOnOneSessions');
+
+    // Filter to only include relevant session info
+    const result = users.map(user => {
+      const session = user.completedOneOnOneSessions.find(sess => sess.tutorId.toString() === tutorId);
+      return {
+        userId: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        session
+      };
+    });
+    return successResponse(result, res, 200, 'Completed sessions fetched successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// Tutor marks a user's session as completed
+exports.markSessionCompleted = async (req, res) => {
+  try {
+    const tutorId = req.user.id;
+    const { userId } = req.body;
+    const { notes } = req.body;
+    if (!userId) {
+      return badRequestResponse('User ID is required', 'MISSING_USER_ID', 400, res);
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    // Find active subscription with this tutor
+    const subscriptionIndex = user.oneOnOneSubscriptions.findIndex(sub =>
+      sub.tutorId.toString() === tutorId &&
+      sub.isActive &&
+      (!sub.expiry || new Date(sub.expiry) > new Date())
+    );
+    if (subscriptionIndex === -1) {
+      return badRequestResponse('No active one-on-one subscription with this tutor', 'NOT_SUBSCRIBED', 400, res);
+    }
+    // Mark subscription as inactive (used up)
+    user.oneOnOneSubscriptions[subscriptionIndex].isActive = false;
+    // Log session completion
+    user.completedOneOnOneSessions = user.completedOneOnOneSessions || [];
+    user.completedOneOnOneSessions.push({
+      tutorId,
+      completedAt: new Date(),
+      notes: notes || ''
+    });
+    await user.save();
+    return successResponse(null, res, 200, 'Session marked as completed.');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+
+// List all users with active service sessions for the logged-in tutor (service provider)
+
+exports.getMyActiveServiceSessions = async (req, res) => {
+  try {
+    const tutorId = req.user.id;
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    const myServices = await require('../models/service.model').find({ user: tutorId }).select('_id');
+    const myServiceIds = myServices.map(s => s._id.toString());
+    // Find users with active serviceSubscriptions for these services
+    const users = await User.find({
+      'serviceSubscriptions': {
+        $elemMatch: {
+          serviceId: { $in: myServiceIds },
+          isActive: true,
+          $or: [
+            { expiry: null },
+            { expiry: { $gte: new Date() } }
+          ]
+        }
+      }
+    }).select('fullName email phone serviceSubscriptions');
+    // Filter to only include relevant subscription info
+    let result = [];
+    users.forEach(user => {
+      user.serviceSubscriptions.forEach(sub => {
+        if (myServiceIds.includes(sub.serviceId.toString()) && sub.isActive && (!sub.expiry || new Date(sub.expiry) > new Date())) {
+          result.push({
+            userId: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            phone: user.phone,
+            serviceId: sub.serviceId,
+            expiry: sub.expiry,
+            purchasedAt: sub.purchasedAt
+          });
+        }
+      });
+    });
+    const total = result.length;
+    result = result.slice(skip, skip + limitNum);
+    return paginationResponse(result, total, pageNum, limitNum, res, 'Active service sessions fetched successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// List all users with completed service sessions for the logged-in tutor (service provider)
+
+exports.getMyCompletedServiceSessions = async (req, res) => {
+  try {
+    const tutorId = req.user.id;
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    const myServices = await require('../models/service.model').find({ user: tutorId }).select('_id');
+    const myServiceIds = myServices.map(s => s._id.toString());
+    // Find users with completedServiceSessions for these services
+    const users = await User.find({
+      'completedServiceSessions': {
+        $elemMatch: {
+          serviceId: { $in: myServiceIds }
+        }
+      }
+    }).select('fullName email phone completedServiceSessions');
+    // Filter to only include relevant session info
+    let result = [];
+    users.forEach(user => {
+      user.completedServiceSessions.forEach(sess => {
+        if (myServiceIds.includes(sess.serviceId.toString())) {
+          result.push({
+            userId: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            phone: user.phone,
+            serviceId: sess.serviceId,
+            completedAt: sess.completedAt,
+            completedBy: sess.completedBy,
+            notes: sess.notes
+          });
+        }
+      });
+    });
+    const total = result.length;
+    result = result.slice(skip, skip + limitNum);
+    return paginationResponse(result, total, pageNum, limitNum, res, 'Completed service sessions fetched successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// Tutor marks a user's service session as completed
+exports.markServiceSessionCompleted = async (req, res) => {
+  try {
+    const tutorId = req.user.id;
+    const { userId, serviceId, notes } = req.body;
+    if (!userId || !serviceId) {
+      return badRequestResponse('User ID and Service ID are required', 'MISSING_PARAMS', 400, res);
+    }
+    // Check that the service belongs to this tutor
+    const Service = require('../models/service.model');
+    const service = await Service.findOne({ _id: serviceId, user: tutorId });
+    if (!service) {
+      return badRequestResponse('Service not found or not owned by you', 'NOT_FOUND', 404, res);
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    }
+    // Find active subscription with this service
+    const subscriptionIndex = user.serviceSubscriptions.findIndex(sub =>
+      sub.serviceId.toString() === serviceId &&
+      sub.isActive &&
+      (!sub.expiry || new Date(sub.expiry) > new Date())
+    );
+    if (subscriptionIndex === -1) {
+      return badRequestResponse('No active service session found for this user', 'NOT_FOUND', 404, res);
+    }
+    // Mark subscription as inactive (completed)
+    user.serviceSubscriptions[subscriptionIndex].isActive = false;
+    // Log session completion
+    user.completedServiceSessions = user.completedServiceSessions || [];
+    user.completedServiceSessions.push({
+      serviceId: service._id,
+      completedAt: new Date(),
+      completedBy: tutorId,
+      notes: notes || ''
+    });
+    await user.save();
+    return successResponse(null, res, 200, 'Service session marked as completed.');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
