@@ -558,6 +558,8 @@ exports.initiateCardPayment = async (req, res) => {
       } else if (provider === 'stripe') {
         // Stripe expects amount in kobo (for NGN) or cents (for USD)
         // We'll use NGN for now
+
+        
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
           const session = await stripe.checkout.sessions.create({
