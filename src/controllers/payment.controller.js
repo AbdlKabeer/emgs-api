@@ -538,6 +538,9 @@ exports.initiateCardPayment = async (req, res) => {
       } else if (provider === 'stripe') {
         // Stripe expects amount in kobo (for NGN) or cents (for USD)
         // We'll use NGN for now
+        if (amount < 1000) {
+          return badRequestResponse('Stripe payment initialization failed: Amount too low for Stripe minimum. Please enter an amount of at least ₦1000.', 'INIT_FAILED', 400, res);
+        }
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
           const session = await stripe.checkout.sessions.create({
@@ -549,7 +552,7 @@ exports.initiateCardPayment = async (req, res) => {
                   product_data: {
                     name: itemType + ' payment',
                   },
-                  unit_amount: amount * 100, // Stripe expects amount in kobo
+                  unit_amount: Math.round(amount * 100), // Stripe expects integer in kobo
                 },
                 quantity: 1,
               },
@@ -568,7 +571,115 @@ exports.initiateCardPayment = async (req, res) => {
         return badRequestResponse('Unsupported payment provider', 'UNSUPPORTED_PROVIDER', 400, res);
       }
     }
-    // ...existing code for course and oneOnOne...
+    else if (itemType === 'course') {
+      // If no progress record exists, create a new one
+      const course = await Course.findById(itemId);
+      if (!course) {
+        return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
+      }
+      
+      amount = course.price || 100; // Set amount for course
+
+      let payment = new Payment({
+        userId,
+        itemId,
+        itemType,
+        amount,
+        status:"pending",
+        paymentMethod: provider,
+        metadata: {
+          courseId: itemId,
+          source: 'course',
+        }
+      });
+      
+      await payment.save();
+
+      const metadata = {
+        transactionRef: payment._id.toString(),
+        itemId,
+        itemType
+      };
+
+      if (provider === 'paystack') {
+        const payload = {
+          amount: 100 * amount, // Paystack expects amount in kobo
+          email: req.user.email,
+          callback_url: callbackUrl,
+          cancel_url: callbackUrl,
+          currency: 'NGN',
+          channels: ['card'],
+          metadata: metadata
+        };
+        const response = await axios.post(`https://api.paystack.co/transaction/initialize`, payload, {
+          headers: paystackHeaders()
+        });
+        if (response.data.status) {
+          const data = response.data.data;
+          return successResponse(data, res, 200, 'Payment initialization successful (Paystack)');
+        } else {
+          return badRequestResponse("Card tokenization can't be completed at the moment", 'INIT_FAILED', 400, res);
+        }
+      } else if (provider === 'flutterwave') {
+        // Flutterwave expects amount in Naira, not kobo
+        const payload = {
+          tx_ref: payment._id.toString(),
+          amount: amount,
+          currency: 'NGN',
+          redirect_url: callbackUrl,
+          customer: {
+            email: req.user.email,
+            name: req.user.fullName || req.user.email
+          },
+          meta: metadata,
+          payment_options: 'card',
+        };
+        const response = await axios.post('https://api.flutterwave.com/v3/payments', payload, {
+          headers: flutterwaveHeaders()
+        });
+        if (response.data.status === 'success') {
+          // Flutterwave returns a link to redirect the user
+          const data = response.data.data;
+          return successResponse(data, res, 200, 'Payment initialization successful (Flutterwave)');
+        } else {
+          return badRequestResponse('Flutterwave payment initialization failed', 'INIT_FAILED', 400, res);
+        }
+      } else if (provider === 'stripe') {
+        // Stripe expects amount in kobo (for NGN) or cents (for USD)
+        // We'll use NGN for now
+        if (amount < 1000) {
+          return badRequestResponse('Stripe payment initialization failed: Amount too low for Stripe minimum. Please enter an amount of at least ₦1000.', 'INIT_FAILED', 400, res);
+        }
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        try {
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [
+              {
+                price_data: {
+                  currency: 'ngn',
+                  product_data: {
+                    name: itemType + ' payment',
+                  },
+                  unit_amount: Math.round(amount * 100), // Stripe expects integer in kobo
+                },
+                quantity: 1,
+              },
+            ],
+            mode: 'payment',
+            success_url: callbackUrl + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url: callbackUrl,
+            metadata: metadata,
+            customer_email: req.user.email,
+          });
+          return successResponse({ url: session.url, id: session.id }, res, 200, 'Payment initialization successful (Stripe)');
+        } catch (err) {
+          return badRequestResponse('Stripe payment initialization failed: ' + err.message, 'INIT_FAILED', 400, res);
+        }
+      } else {
+        return badRequestResponse('Unsupported payment provider', 'UNSUPPORTED_PROVIDER', 400, res);
+      }
+    }
     else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
       // Find the tutor
       const tutor = await User.findById(itemId);
@@ -646,6 +757,9 @@ exports.initiateCardPayment = async (req, res) => {
       } else if (provider === 'stripe') {
         // Stripe expects amount in kobo (for NGN) or cents (for USD)
         // We'll use NGN for now
+        if (amount < 1000) {
+          return badRequestResponse('Stripe payment initialization failed: Amount too low for Stripe minimum. Please enter an amount of at least ₦1000.', 'INIT_FAILED', 400, res);
+        }
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
           const session = await stripe.checkout.sessions.create({
@@ -657,7 +771,7 @@ exports.initiateCardPayment = async (req, res) => {
                   product_data: {
                     name: itemType + ' payment',
                   },
-                  unit_amount: amount * 100, // Stripe expects amount in kobo
+                  unit_amount: Math.round(amount * 100), // Stripe expects integer in kobo
                 },
                 quantity: 1,
               },
