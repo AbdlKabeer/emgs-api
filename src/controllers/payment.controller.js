@@ -314,9 +314,18 @@ exports.validatePayment = async (req, res) => {
     const userId = req.user.id;
     let payment;
     let paymentProvider = provider;
+    // Helper to check for valid ObjectId
+    const isValidObjectId = (id) => {
+      const mongoose = require('mongoose');
+      return mongoose.Types.ObjectId.isValid(id) && (String(new mongoose.Types.ObjectId(id)) === id);
+    };
     if (!paymentProvider) {
       // Try to infer from payment record
-      payment = await Payment.findOne({ _id: transactionRef }) || await Payment.findOne({ _id: transactionRef.toString() });
+      if (isValidObjectId(transactionRef)) {
+        payment = await Payment.findOne({ _id: transactionRef });
+      } else {
+        payment = await Payment.findOne({ transactionRef }) || await Payment.findOne({ 'metadata.transactionRef': transactionRef });
+      }
       paymentProvider = payment?.paymentMethod || 'paystack';
     }
     paymentProvider = paymentProvider.toLowerCase();
