@@ -263,7 +263,7 @@ async function handleBusinessLogic(metadata, payment, userId, res) {
       return successResponse({
         sessionExpiry: expiryDate,
         sessionValidityDays: sessionValidityDays,
-        message: 'Service session purchased successfully. Please wait for staff to complete your session.'
+        message: 'Service session purchased successfully.'
       }, res, 200, 'Service session purchased successfully');
     } else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
       const tutor = await User.findById(paymentId);
@@ -310,28 +310,38 @@ async function handleBusinessLogic(metadata, payment, userId, res) {
 
 exports.validatePayment = async (req, res) => {
   try {
-    const { reference: transactionRef, provider } = req.body;
+    let {paymentProvider } = req.body;
     const userId = req.user.id;
     let payment;
-    let paymentProvider = provider;
     // Helper to check for valid ObjectId
     const isValidObjectId = (id) => {
       const mongoose = require('mongoose');
       return mongoose.Types.ObjectId.isValid(id) && (String(new mongoose.Types.ObjectId(id)) === id);
     };
-    if (!paymentProvider) {
-      // Try to infer from payment record
-      if (isValidObjectId(transactionRef)) {
-        payment = await Payment.findOne({ _id: transactionRef });
-      } else {
-        payment = await Payment.findOne({ transactionRef }) || await Payment.findOne({ 'metadata.transactionRef': transactionRef });
-      }
-      paymentProvider = payment?.paymentMethod || 'paystack';
-    }
+    // if (!paymentProvider) {
+    //   // Try to infer from payment record
+    //   if (isValidObjectId(transactionRef)) {
+    //     payment = await Payment.findOne({ _id: transactionRef });
+    //   } else {
+    //     payment = await Payment.findOne({ transactionRef }) || await Payment.findOne({ 'metadata.transactionRef': transactionRef });
+    //   }
+    //   paymentProvider = payment?.paymentMethod || 'paystack';
+    // }
     paymentProvider = paymentProvider.toLowerCase();
 
 
     if (paymentProvider === 'paystack') {
+      const { reference: transactionRef } = req.body;
+
+      if (!paymentProvider) {
+        // Try to infer from payment record
+        if (isValidObjectId(transactionRef)) {
+          payment = await Payment.findOne({ _id: transactionRef });
+        } else {
+          payment = await Payment.findOne({ transactionRef }) || await Payment.findOne({ 'metadata.transactionRef': transactionRef });
+        }
+        paymentProvider = payment?.paymentMethod || 'paystack';
+      }
       const headers = {
         'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
       };
@@ -353,10 +363,19 @@ exports.validatePayment = async (req, res) => {
         return internalServerErrorResponse(error.message, res);
       }
     } else if (paymentProvider === 'flutterwave') {
+      const  {transaction_id:transactionRef} = req.body;
+        if (isValidObjectId(transactionRef)) {
+          payment = await Payment.findOne({ _id: transactionRef });
+        } else {
+          payment = await Payment.findOne({ transactionRef }) || await Payment.findOne({ 'metadata.transactionRef': transactionRef });
+        }
       try {
         const headers = {
           Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
         };
+        console.log(headers)
+        console.log(headers)
+        console.log(headers)
         const response = await axios.get(
           `https://api.flutterwave.com/v3/transactions/${transactionRef}/verify`,
           { headers }
