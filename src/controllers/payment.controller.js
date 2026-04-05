@@ -373,9 +373,7 @@ exports.validatePayment = async (req, res) => {
         const headers = {
           Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
         };
-        console.log(headers)
-        console.log(headers)
-        console.log(headers)
+        
         const response = await axios.get(
           `https://api.flutterwave.com/v3/transactions/${transactionRef}/verify`,
           { headers }
@@ -385,6 +383,18 @@ exports.validatePayment = async (req, res) => {
           let metadata = data.data.meta || data.data.metaData || {};
           // fallback to data.data.tx_ref if needed
           metadata.transactionRef = data.data.tx_ref;
+          
+          payment = await Payment.findOne({ _id: metadata.transactionRef }) 
+          if (!payment) {
+            return badRequestResponse('Payment record not found for this transaction', 'NOT_FOUND', 404, res);
+          }
+
+          // check if payment is completed already
+          if (payment.status === 'completed') {
+            return successResponse(null, res, 200, 'Payment already completed');
+          }
+
+          return await handleBusinessLogic(metadata, payment, userId, res);
           return await handleBusinessLogic(metadata, payment, userId, res);
         } else {
           return badRequestResponse('Flutterwave payment not successful', 'NOT_SUCCESSFUL', 400, res);
@@ -394,11 +404,21 @@ exports.validatePayment = async (req, res) => {
       }
     } else if (paymentProvider === 'stripe') {
       try {
+        const { session_id } = req.body;
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-        const session = await stripe.checkout.sessions.retrieve(transactionRef);
+        const session = await stripe.checkout.sessions.retrieve(session_id);
         if (session && session.payment_status === 'paid') {
           let metadata = session.metadata || {};
-          metadata.transactionRef = session.id;
+          payment = await Payment.findOne({ _id: metadata.transactionRef }) 
+          if (!payment) {
+            return badRequestResponse('Payment record not found for this transaction', 'NOT_FOUND', 404, res);
+          }
+
+          // check if payment is completed already
+          if (payment.status === 'completed') {
+            return successResponse(null, res, 200, 'Payment already completed');
+          }
+
           return await handleBusinessLogic(metadata, payment, userId, res);
         } else {
           return badRequestResponse('Stripe payment not successful', 'NOT_SUCCESSFUL', 400, res);
