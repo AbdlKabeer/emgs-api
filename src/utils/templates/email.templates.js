@@ -68,3 +68,26 @@ exports.getVerificationEmailTemplate = (userName, verificationLink) => {
       text: `Hello ${userName},\n\nYour verification code is: ${verificationCode}\n\nThis code will expire in 15 minutes. Do not share this code with anyone.\n\nIf you did not request this verification, please ignore this email.\n\nThank you!`
     };
   };
+
+  exports.getPurchaseSuccessEmailTemplate = (userName, itemName, amount, transactionRef) => {
+    return {
+      subject: `Purchase Confirmation: ${itemName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+          <h2 style="color: #4CAF50;">Purchase Successful!</h2>
+          <p>Hello ${userName},</p>
+          <p>Thank you for your purchase. Your payment for <strong>${itemName}</strong> has been confirmed.</p>
+          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Item:</strong> ${itemName}</p>
+            <p style="margin: 5px 0;"><strong>Amount:</strong> ₦${amount}</p>
+            <p style="margin: 5px 0;"><strong>Transaction Ref:</strong> ${transactionRef}</p>
+            <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+          </div>
+          <p>You can now access your purchase through your dashboard.</p>
+          <p>If you have any questions, please contact our support team.</p>
+          <p>Thank you for choosing EMGS!</p>
+        </div>
+      `,
+      text: `Hello ${userName},\n\nThank you for your purchase. Your payment for ${itemName} has been confirmed.\n\nPurchase Details:\nItem: ${itemName}\nAmount: ₦${amount}\nTransaction Ref: ${transactionRef}\nDate: ${new Date().toLocaleDateString()}\n\nYou can now access your purchase through your dashboard.\n\nThank you for choosing EMGS!`
+    };
+  };

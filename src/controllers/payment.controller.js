@@ -13,6 +13,8 @@ const {
   internalServerErrorResponse, 
   paginationResponse
 } = require('../utils/custom_response/responses');
+const emailService = require('../services/email.service');
+
 
 
 // Get payment history for authenticated user (paginated)
@@ -212,7 +214,19 @@ async function handleBusinessLogic(metadata, payment, userId, res) {
       } catch (walletError) {
         console.error('Error updating wallet:', walletError);
       }
+      // Send email asynchronously (don't await)
+      emailService.sendPurchaseSuccessEmail(
+        user.email, 
+        user.fullName, 
+        course.title, 
+        payment.amount, 
+        payment._id
+      ).catch(emailError => console.error('Error sending course purchase email:', emailError));
+
       return successResponse(null, res, 200, 'Enrolled in course successfully');
+
+
+
     } else if (itemType == 'service') {
       const service = await Service.findById(paymentId);
       if (!service) {
@@ -260,11 +274,22 @@ async function handleBusinessLogic(metadata, payment, userId, res) {
         relatedItemId: paymentId
       });
       await notification.save();
+      // Send email asynchronously (don't await)
+      emailService.sendPurchaseSuccessEmail(
+        user.email, 
+        user.fullName, 
+        service.name, 
+        payment.amount, 
+        payment._id
+      ).catch(emailError => console.error('Error sending service purchase email:', emailError));
+
       return successResponse({
+
         sessionExpiry: expiryDate,
         sessionValidityDays: sessionValidityDays,
         message: 'Service session purchased successfully.'
       }, res, 200, 'Service session purchased successfully');
+
     } else if (itemType === 'oneOnOne' || itemType === 'one-on-one') {
       const tutor = await User.findById(paymentId);
       if (!tutor || tutor.role !== 'tutor') {
@@ -300,7 +325,18 @@ async function handleBusinessLogic(metadata, payment, userId, res) {
         relatedItemId: tutor._id
       });
       await notification.save();
+      // Send email asynchronously (don't await)
+      emailService.sendPurchaseSuccessEmail(
+        user.email, 
+        user.fullName, 
+        `One-on-One Tutoring with ${tutor.fullName}`, 
+        payment.amount, 
+        payment._id
+      ).catch(emailError => console.error('Error sending one-on-one purchase email:', emailError));
+
       return successResponse(null, res, 200, 'One-on-one tutoring subscription successful');
+
+
     } else {
       return badRequestResponse('Invalid payment type', 'BAD_REQUEST', 400, res);
     }

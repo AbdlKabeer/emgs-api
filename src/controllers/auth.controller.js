@@ -66,13 +66,10 @@ exports.register = async (req, res) => {
 
     await user.save();
 
-    // Send verification email with code
-    try{
-      await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
-    }
-    catch (error) {
-      console.error('Error sending verification email:', error);
-    }
+    // Send verification email with code asynchronously
+    emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode)
+      .catch(error => console.error('Error sending verification email:', error));
+
 
     return successResponse({userId: user._id , code: verificationCode }, res, 201,  'User registered successfully. Please check your email to verify your account.');
   } catch (error) {
@@ -192,8 +189,10 @@ exports.registerTutor = async (req, res) => {
 
     await newTutor.save();
 
-    // Send verification email
-    await sendVerificationEmail(newTutor.email, verificationCode);
+    // Send verification email asynchronously
+    sendVerificationEmail(newTutor.email, verificationCode)
+      .catch(error => console.error('Error sending tutor verification email:', error));
+
 
 
     return successResponse(
@@ -223,8 +222,10 @@ exports.resendVerificationCode = async (req, res) => {
 
     await user.save();
 
-    // Send new verification email
-    await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+    // Send new verification email asynchronously
+    emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode)
+      .catch(error => console.error('Error sending verification code email:', error));
+
 
     return successResponse({ message: 'New verification code sent' }, res);
   } catch (error) {
@@ -331,13 +332,10 @@ exports.forgotPassword = async (req, res) => {
 
     await user.save();
 
-    // Send verification email with code
-    try{
-      await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
-    }
-    catch (error) {
-      console.error('Error sending verification email:', error);
-    }
+    // Send verification email with code asynchronously
+    emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode)
+      .catch(error => console.error('Error sending forgot password email:', error));
+
 
     return successResponse(
       {
