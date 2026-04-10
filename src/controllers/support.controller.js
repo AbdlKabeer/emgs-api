@@ -4,6 +4,8 @@ const User = require('../models/user.model');
 const Inquiry = require('../models/inquiry.model');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
 const Support = require('../models/support.model');
+const { sendEmail } = require('../services/email.service');
+
 
 
 
@@ -43,48 +45,40 @@ exports.submitSupportRequest = async (req, res) => {
     
     await supportRequest.save();
     
-    // Send notification email to support team
-    try {
-      await sendEmail({
-        to: process.env.SUPPORT_EMAIL || 'support@yourapp.com',
-        subject: 'New Support Request',
-        text: `
-          New support request from ${name} (${email})
-          
-          Description:
-          ${description}
-          
-          Request ID: ${supportRequest._id}
-        `
-      });
-    } catch (emailError) {
-      console.error('Failed to send support notification email:', emailError);
-      // Continue processing even if email fails
-    }
+    // Send notification email to support team asynchronously
+    sendEmail({
+      to: process.env.SUPPORT_EMAIL || 'support@yourapp.com',
+      subject: 'New Support Request',
+      text: `
+        New support request from ${name} (${email})
+        
+        Description:
+        ${description}
+        
+        Request ID: ${supportRequest._id}
+      `
+    }).catch(emailError => console.error('Failed to send support notification email:', emailError));
+
     
-    // Send confirmation email to user
-    try {
-      await sendEmail({
-        to: email,
-        subject: 'Your Support Request Has Been Received',
-        text: `
-          Hi ${name},
-          
-          Thank you for contacting our support team. We've received your request and will get back to you as soon as possible.
-          
-          Your Request:
-          ${description}
-          
-          Reference ID: ${supportRequest._id}
-          
-          Best regards,
-          The Support Team
-        `
-      });
-    } catch (emailError) {
-      console.error('Failed to send confirmation email:', emailError);
-      // Continue processing even if email fails
-    }
+    // Send confirmation email to user asynchronously
+    sendEmail({
+      to: email,
+      subject: 'Your Support Request Has Been Received',
+      text: `
+        Hi ${name},
+        
+        Thank you for contacting our support team. We've received your request and will get back to you as soon as possible.
+        
+        Your Request:
+        ${description}
+        
+        Reference ID: ${supportRequest._id}
+        
+        Best regards,
+        The Support Team
+      `
+    }).catch(emailError => console.error('Failed to send confirmation email:', emailError));
+
     
     return successResponse(
       { requestId: supportRequest._id },
@@ -192,31 +186,28 @@ exports.updateSupportRequest = async (req, res) => {
         timestamp: new Date()
       });
       
-      // Send email to user about the response
-      try {
-        await sendEmail({
-          to: supportRequest.email,
-          subject: `Update on your Support Request`,
-          text: `
-            Hi ${supportRequest.name},
-            
-            We have an update on your support request:
-            
-            "${responseMessage}"
-            
-            Request Status: ${status || supportRequest.status}
-            
-            Reference ID: ${supportRequest._id}
-            
-            If you have any further questions, please reply to this email or submit a new request.
-            
-            Best regards,
-            The Support Team
-          `
-        });
-      } catch (emailError) {
-        console.error('Failed to send update email:', emailError);
-      }
+      // Send email to user about the response asynchronously
+      sendEmail({
+        to: supportRequest.email,
+        subject: `Update on your Support Request`,
+        text: `
+          Hi ${supportRequest.name},
+          
+          We have an update on your support request:
+          
+          "${responseMessage}"
+          
+          Request Status: ${status || supportRequest.status}
+          
+          Reference ID: ${supportRequest._id}
+          
+          If you have any further questions, please reply to this email or submit a new request.
+          
+          Best regards,
+          The Support Team
+        `
+      }).catch(emailError => console.error('Failed to send update email:', emailError));
+
     }
     
     await supportRequest.save();
