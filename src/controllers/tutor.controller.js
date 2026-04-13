@@ -1269,36 +1269,52 @@ exports.getMyCompletedServiceSessions = async (req, res) => {
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
-    const myServices = await require('../models/service.model').find({ user: tutorId }).select('_id');
-    const myServiceIds = myServices.map(s => s._id.toString());
-    // Find users with completedServiceSessions for these services
-    const users = await User.find({
-      'completedServiceSessions': {
-        $elemMatch: {
-          serviceId: { $in: myServiceIds }
+    const Service = require('../models/service.model');
+    const myServices = await Service.find({ user: tutorId }).select('_id');
+    const myServiceIds = myServices.map(s => s._id);
+
+    // Use aggregation for efficient filtering and pagination
+    const pipeline = [
+      { $match: { 'completedServiceSessions.serviceId': { $in: myServiceIds } } },
+      { $project: {
+          fullName: 1,
+          email: 1,
+          phone: 1,
+          completedServiceSessions: {
+            $filter: {
+              input: '$completedServiceSessions',
+              as: 'sess',
+              cond: { $in: ['$$sess.serviceId', myServiceIds] }
+            }
+          }
+        }
+      },
+      { $unwind: '$completedServiceSessions' },
+      { $sort: { 'completedServiceSessions.completedAt': -1 } },
+      { $facet: {
+          paginatedResults: [
+            { $skip: skip },
+            { $limit: limitNum },
+            { $project: {
+                userId: '$_id',
+                fullName: 1,
+                email: 1,
+                phone: 1,
+                serviceId: '$completedServiceSessions.serviceId',
+                completedAt: '$completedServiceSessions.completedAt',
+                completedBy: '$completedServiceSessions.completedBy',
+                notes: '$completedServiceSessions.notes'
+              }
+            }
+          ],
+          totalCount: [ { $count: 'count' } ]
         }
       }
-    }).select('fullName email phone completedServiceSessions');
-    // Filter to only include relevant session info
-    let result = [];
-    users.forEach(user => {
-      user.completedServiceSessions.forEach(sess => {
-        if (myServiceIds.includes(sess.serviceId.toString())) {
-          result.push({
-            userId: user._id,
-            fullName: user.fullName,
-            email: user.email,
-            phone: user.phone,
-            serviceId: sess.serviceId,
-            completedAt: sess.completedAt,
-            completedBy: sess.completedBy,
-            notes: sess.notes
-          });
-        }
-      });
-    });
-    const total = result.length;
-    result = result.slice(skip, skip + limitNum);
+    ];
+
+    const aggResult = await User.aggregate(pipeline);
+    const result = aggResult[0]?.paginatedResults || [];
+    const total = aggResult[0]?.totalCount[0]?.count || 0;
     return paginationResponse(result, total, pageNum, limitNum, res, 'Completed service sessions fetched successfully');
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
