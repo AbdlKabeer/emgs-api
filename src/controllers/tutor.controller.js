@@ -4,7 +4,7 @@ const Course = require('../models/course.model');
 const mongoose = require('mongoose');
 const Quiz = require('../models/quiz.model');
 const emailService = require('../services/email.service');
-const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
+const { successResponse, badRequestResponse, internalServerErrorResponse, paginationResponse } = require('../utils/custom_response/responses');
 
 
 
