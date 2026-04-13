@@ -552,6 +552,19 @@ exports.initiateCardPayment = async (req, res) => {
         return badRequestResponse('service not found', 'NOT_FOUND', 404, res);
       }
 
+      // Check for active session for this service
+      const user = await User.findById(userId);
+      if (user && Array.isArray(user.serviceSubscriptions)) {
+        const hasActiveSession = user.serviceSubscriptions.some(sub =>
+          sub.serviceId && sub.serviceId.toString() === itemId.toString() &&
+          sub.isActive &&
+          (!sub.expiry || new Date(sub.expiry) > new Date())
+        );
+        if (hasActiveSession) {
+          return badRequestResponse('You already have an active session for this service. Please use your current session before initiating a new payment.', 'ACTIVE_SESSION_EXISTS', 400, res);
+        }
+      }
+
       if (!service.price) {
         return badRequestResponse('Service price not set', 'BAD_REQUEST', 400, res);
       }
