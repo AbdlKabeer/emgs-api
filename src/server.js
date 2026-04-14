@@ -46,7 +46,8 @@ const app = express();
 // CORS Configuration
 const allowedOrigins = [
   'https://emgs-dash.vercel.app',
-  'https://emgs-learn.vercel.app'
+  'https://emgs-learn.vercel.app',
+  'https://emgs.global'
 ];
 
 const corsOptions = {
