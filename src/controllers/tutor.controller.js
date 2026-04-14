@@ -3,6 +3,7 @@ const User = require('../models/user.model');
 const Course = require('../models/course.model');
 const mongoose = require('mongoose');
 const Quiz = require('../models/quiz.model');
+const Service = require('../models/service.model');
 const emailService = require('../services/email.service');
 const { successResponse, badRequestResponse, internalServerErrorResponse, paginationResponse } = require('../utils/custom_response/responses');
 
@@ -1236,22 +1237,28 @@ exports.getMyActiveServiceSessions = async (req, res) => {
       }
     }).select('fullName email phone serviceSubscriptions');
     // Filter to only include relevant subscription info
+    const Service = require('../models/service.model');
     let result = [];
-    users.forEach(user => {
-      user.serviceSubscriptions.forEach(sub => {
+    for (const user of users) {
+      for (const sub of user.serviceSubscriptions) {
         if (myServiceIds.includes(sub.serviceId.toString()) && sub.isActive && (!sub.expiry || new Date(sub.expiry) > new Date())) {
+          // Fetch service details
+          const service = await Service.findById(sub.serviceId).select('name');
           result.push({
             userId: user._id,
             fullName: user.fullName,
             email: user.email,
             phone: user.phone,
-            serviceId: sub.serviceId,
+            session: {
+              id: sub.serviceId,
+              name: service ? service.name : undefined
+            },
             expiry: sub.expiry,
             purchasedAt: sub.purchasedAt
           });
         }
-      });
-    });
+      }
+    }
     const total = result.length;
     result = result.slice(skip, skip + limitNum);
     return paginationResponse(result, total, pageNum, limitNum, res, 'Active service sessions fetched successfully');
@@ -1313,8 +1320,19 @@ exports.getMyCompletedServiceSessions = async (req, res) => {
     ];
 
     const aggResult = await User.aggregate(pipeline);
-    const result = aggResult[0]?.paginatedResults || [];
+    let result = aggResult[0]?.paginatedResults || [];
     const total = aggResult[0]?.totalCount[0]?.count || 0;
+    // Populate session (service) name for each result
+    
+    for (const item of result) {
+      const service = await Service.findById(item.serviceId).select('name');
+      item.session = {
+        id: item.serviceId,
+        name: service ? service.name : undefined
+      };
+      // Optionally remove old serviceId field if not needed:
+      // delete item.serviceId;
+    }
     return paginationResponse(result, total, pageNum, limitNum, res, 'Completed service sessions fetched successfully');
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
