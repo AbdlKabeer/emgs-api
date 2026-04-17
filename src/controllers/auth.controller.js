@@ -66,12 +66,20 @@ exports.register = async (req, res) => {
 
     await user.save();
 
+
+    // Log parameters before sending email
+    console.log('Sending verification email with:', {
+      email: user.email,
+      fullName: user.fullName,
+      verificationCode
+    });
+
     // Send verification email with code asynchronously
     emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode)
       .catch(error => console.error('Error sending verification email:', error));
 
 
-    return successResponse({userId: user._id , code: verificationCode }, res, 201,  'User registered successfully. Please check your email to verify your account.');
+    return successResponse({userId: user._id }, res, 201,  'User registered successfully. Please check your email to verify your account.');
   } catch (error) {
     console.error(error); // Log the error for debugging
     return internalServerErrorResponse(error.message, res);
