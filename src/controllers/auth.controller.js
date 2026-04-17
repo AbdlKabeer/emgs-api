@@ -59,8 +59,8 @@ exports.register = async (req, res) => {
     }
 
     // Generate verification code
-    const verificationCode = 123456;
-    // const verificationCode = generateVerificationCode();
+    // const verificationCode = 123456;
+    const verificationCode = generateVerificationCode();
     user.verificationCode = verificationCode;
     user.verificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); 
 
