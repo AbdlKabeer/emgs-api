@@ -347,7 +347,6 @@ exports.forgotPassword = async (req, res) => {
 
     return successResponse(
       {
-        code: verificationCode,
         userID: user._id
       },
       res,
@@ -355,11 +354,6 @@ exports.forgotPassword = async (req, res) => {
       `Password reset email sent` 
     );
   } catch (error) {
-    console.log(error)
-    console.log(error)
-    console.log(error)
-    console.log(error)
-    console.log(error)
     return internalServerErrorResponse(error.message,res, 500);
   }
 };
