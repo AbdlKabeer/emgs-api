@@ -48,6 +48,7 @@ exports.getVerificationEmailTemplate = (userName, verificationLink) => {
 
 
   exports.getVerificationCodeEmailTemplate = (userName, verificationCode) => {
+    console.log('Generating verification code email template for:', userName, 'with code:', verificationCode);
     return {
       subject: 'Your Email Verification Code',
       html: `
