@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const emailService = require('../services/email.service');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
+const crypto = require('crypto');
 const User = require('../models/user.model');
 const { URLSearchParams } = require('url');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
@@ -74,9 +75,12 @@ exports.register = async (req, res) => {
       verificationCode
     });
 
-    // Send verification email with code asynchronously
-    emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode)
-      .catch(error => console.error('Error sending verification email:', error));
+    // Send verification email with code
+    try {
+      await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+    }
 
 
     return successResponse({userId: user._id }, res, 201,  'User registered successfully. Please check your email to verify your account.');
@@ -197,9 +201,12 @@ exports.registerTutor = async (req, res) => {
 
     await newTutor.save();
 
-    // Send verification email asynchronously
-    sendVerificationEmail(newTutor.email, verificationCode)
-      .catch(error => console.error('Error sending tutor verification email:', error));
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(newTutor.email, newTutor.fullName, verificationCode);
+    } catch (error) {
+      console.error('Error sending tutor verification email:', error);
+    }
 
 
 
@@ -230,9 +237,12 @@ exports.resendVerificationCode = async (req, res) => {
 
     await user.save();
 
-    // Send new verification email asynchronously
-    emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode)
-      .catch(error => console.error('Error sending verification code email:', error));
+    // Send new verification email
+    try {
+      await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+    } catch (error) {
+      console.error('Error sending verification code email:', error);
+    }
 
 
     return successResponse({ message: 'New verification code sent' }, res);
@@ -248,13 +258,32 @@ exports.verifyEmailToken = async (req, res) => {
   try {
     const { token } = req.params;
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let userId;
+    try {
+      // Try to verify as JWT
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      userId = decoded.id;
+    } catch (err) {
+      // If NOT a JWT, try to find user by the raw verification code (e.g. for tutors)
+      const userWithCode = await User.findOne({ 
+        verificationCode: token,
+        verificationCodeExpiry: { $gt: new Date() }
+      });
+      
+      if (!userWithCode) {
+        return badRequestResponse('Invalid or expired verification token', 'INVALID_TOKEN', 400, res);
+      }
+      userId = userWithCode._id;
+    }
 
     // Update user
     const user = await User.findByIdAndUpdate(
-      decoded.id,
-      { isVerified: true },
+      userId,
+      { 
+        isVerified: true,
+        verificationCode: null,
+        verificationCodeExpiry: null
+      },
       { new: true }
     );
 
@@ -340,9 +369,12 @@ exports.forgotPassword = async (req, res) => {
 
     await user.save();
 
-    // Send verification email with code asynchronously
-    emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode)
-      .catch(error => console.error('Error sending forgot password email:', error));
+    // Send verification email with code
+    try {
+      await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+    } catch (error) {
+      console.error('Error sending forgot password email:', error);
+    }
 
 
     return successResponse(
