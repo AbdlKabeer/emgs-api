@@ -67,6 +67,18 @@ exports.register = async (req, res) => {
 
     await user.save();
 
+    // Send webhook for new user signup
+    const { sendWebhook } = require('../services/webhook.service');
+    await sendWebhook('signup', {
+      userId: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      referralCode: user.referralCode,
+      referredBy: user.referredBy,
+      createdAt: user.createdAt
+    });
 
     // Log parameters before sending email
     console.log('Sending verification email with:', {

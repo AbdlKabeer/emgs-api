@@ -37,10 +37,30 @@ exports.sendMessage = async (req, res) => {
     await conversation.save();
 
     // Populate message data
-    await message.populate('sender', 'name avatar');
+    await message.populate('sender', 'fullName email phone roles');
     if (replyTo) {
       await message.populate('replyTo', 'content sender');
     }
+
+    // Send webhook
+    const direction = message.sender.roles.includes('user') ? 'in' : 'out';
+    const { sendWebhook } = require('../../services/webhook.service');
+    await sendWebhook('new_message', {
+      contact: {
+        id: message.sender._id,
+        name: message.sender.fullName,
+        email: message.sender.email,
+        phone: message.sender.phone
+      },
+      message: {
+        body: message.content.text,
+        direction,
+        timestamp: message.createdAt
+      },
+      conversation: {
+        id: conversationId
+      }
+    });
 
     return successResponse(message,res,200, 'Message sent successfully');
   } catch (error) {
