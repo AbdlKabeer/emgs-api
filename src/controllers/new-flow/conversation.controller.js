@@ -56,7 +56,26 @@ exports.createConversation = async (req, res) => {
     });
 
     await conversation.save();
-    await conversation.populate('participants', 'fullName email profilePicture');
+    await conversation.populate('participants', 'fullName email phone roles');
+
+    // Send webhook for new conversation
+    const { sendWebhook } = require('../../services/webhook.service');
+    await sendWebhook('new_conversation', {
+      conversation: {
+        id: conversation._id,
+        type: conversation.type,
+        participants: conversation.participants.map(p => ({
+          id: p._id,
+          name: p.fullName,
+          email: p.email,
+          phone: p.phone,
+          roles: p.roles
+        }))
+      },
+      createdBy: {
+        id: userId
+      }
+    });
 
     // If serviceId is provided, send auto-response message (if no messages exist yet)
     if (serviceId) {

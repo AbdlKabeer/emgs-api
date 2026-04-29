@@ -59,12 +59,32 @@ const chatSocket = (io) => {
         });
 
         await message.save();
-        await message.populate('sender', 'name avatar');
+        await message.populate('sender', 'fullName email phone roles');
 
         // Update conversation
         conversation.lastMessage = message._id;
         conversation.lastActivity = new Date();
         await conversation.save();
+
+        // Send webhook
+        const direction = message.sender.roles.includes('user') ? 'in' : 'out';
+        const { sendWebhook } = require('../services/webhook.service');
+        await sendWebhook('new_message', {
+          contact: {
+            id: message.sender._id,
+            name: message.sender.fullName,
+            email: message.sender.email,
+            phone: message.sender.phone
+          },
+          message: {
+            body: message.content.text,
+            direction,
+            timestamp: message.createdAt
+          },
+          conversation: {
+            id: conversationId
+          }
+        });
 
         // Emit to all participants
         io.to(conversationId).emit('new-message', message);
