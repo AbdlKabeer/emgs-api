@@ -37,8 +37,8 @@ const newFlowCourseRoutes = require('./routes/new-flow/course.routes');
 const categoryRoutes = require('./routes/category.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const serviceSessionRoutes = require('./routes/service-session.routes');
-// const swaggerUi = require('swagger-ui-express');
-// const swaggerSpec = require('./config/swagger');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 // Initialize express app
 const app = express();
@@ -80,6 +80,9 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '200mb' })); // Support large JSON payloads
 app.use(express.urlencoded({ extended: true, limit: '200mb' })); // Support large form data
 
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
@@ -118,7 +121,6 @@ app.use('/api/v2/chat', chatRoutes);
 app.use('/api/v2/new-flow/courses', newFlowCourseRoutes);
 app.use('/api/v1/tutors', tutorRoutes);
 app.use('/api/v2/tutors', tutorRoutes); // fallback catch
-// app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerSpec)); // Swagger disabled
 
 // 404 Fallback
 app.use('*', (req, res) => {
