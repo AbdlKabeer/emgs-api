@@ -274,6 +274,31 @@ router.post('/forgot-password/verify', resetPasswordValidator, authController.re
 
 /**
  * @swagger
+ * /api/v1/auth/webhook/test:
+ *   get:
+ *     summary: Test webhook forwarding
+ *     description: Sends a test webhook to the configured GHL webhook target using the provided action query parameter.
+ *     tags:
+ *       - Webhook
+ *     parameters:
+ *       - name: action
+ *         in: query
+ *         required: true
+ *         description: The action/event type to send to the webhook.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Webhook test sent successfully
+ *       400:
+ *         description: Missing action query parameter
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/webhook/test', authController.testWebhook);
+
+/**
+ * @swagger
  * /api/v1/auth/verify-email:
  *   post:
  *     summary: Verify user email with 6-digit code
