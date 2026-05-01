@@ -9,7 +9,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/account/tutor-request-status:
+ * /api/v2/account/tutor-request-status:
  *   get:
  *     summary: Get status of user's tutor request
  *     description: Returns the status and rejection message (if any) of the user's tutor application
@@ -28,7 +28,7 @@ router.get('/tutor-request-status', authenticate, accountController.getTutorRequ
 
 /**
  * @swagger
- * /api/v1/account/active-role:
+ * /api/v2/account/active-role:
  *   put:
  *     summary: Switch active role
  *     description: Switches the user's active role (user, tutor, admin)
@@ -62,7 +62,7 @@ router.put('/active-role', authenticate, accountController.switchActiveRole);
 
 /**
  * @swagger
- * /api/v1/account/request-tutor:
+ * /api/v2/account/request-tutor:
  *   post:
  *     summary: Request to become a tutor
  *     description: Allows a student to request to become a tutor
@@ -84,7 +84,7 @@ router.post('/request-tutor', authenticate, accountController.requestToBecomeTut
 
 /**
  * @swagger
- * /api/v1/account/profile:
+ * /api/v2/account/profile:
  *   get:
  *     summary: Get user profile
  *     description: Retrieves the current user's profile information
@@ -104,7 +104,7 @@ router.get('/profile', authenticate, accountController.getUserProfile);
 
 /**
  * @swagger
- * /api/v1/account/profile:
+ * /api/v2/account/profile:
  *   put:
  *     summary: Update user profile
  *     description: Updates the current user's profile information
@@ -135,7 +135,7 @@ router.put('/profile', authenticate, accountController.updateUserProfile);
 
 /**
  * @swagger
- * /api/v1/account/profile-picture:
+ * /api/v2/account/profile-picture:
  *   post:
  *     summary: Upload profile picture
  *     description: Uploads and updates the user's profile picture
@@ -170,7 +170,7 @@ router.put(
 
 /**
  * @swagger
- * /api/v1/account/profile-picture:
+ * /api/v2/account/profile-picture:
  *   delete:
  *     summary: Delete profile picture
  *     description: Removes the user's current profile picture
@@ -188,7 +188,7 @@ router.delete('/profile-picture', authenticate, accountController.deleteProfileP
 
 /**
  * @swagger
- * /api/v1/account/language:
+ * /api/v2/account/language:
  *   put:
  *     summary: Update language preference
  *     description: Updates the user's preferred language
@@ -218,7 +218,7 @@ router.put('/language', authenticate, accountController.updateLanguagePreference
 
 /**
  * @swagger
- * /api/v1/account/notifications:
+ * /api/v2/account/notifications:
  *   put:
  *     summary: Toggle notifications
  *     description: Enables or disables user notifications

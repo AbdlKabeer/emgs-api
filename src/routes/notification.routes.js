@@ -6,7 +6,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/notifications:
+ * /api/v2/notifications:
  *   get:
  *     summary: Get all user notifications
  *     description: Retrieves all notifications for the authenticated user with pagination
@@ -41,7 +41,7 @@ router.get('/', authenticate, notificationController.getUserNotifications);
 
 /**
  * @swagger
- * /api/v1/notifications/stream:
+ * /api/v2/notifications/stream:
  *   get:
  *     summary: Get notifications stream (SSE)
  *     description: Real-time notification stream using Server-Sent Events
@@ -59,7 +59,7 @@ router.get('/stream', authenticate, notificationController.getNotificationStream
 
 /**
  * @swagger
- * /api/v1/notifications/{notificationId}:
+ * /api/v2/notifications/{notificationId}:
  *   get:
  *     summary: Get a single notification
  *     description: Retrieves a specific notification by ID and marks it as read
@@ -88,7 +88,7 @@ router.get('/:notificationId', authenticate, notificationController.getNotificat
 
 /**
  * @swagger
- * /api/v1/notifications/{notificationId}/read:
+ * /api/v2/notifications/{notificationId}/read:
  *   put:
  *     summary: Mark notification as read
  *     description: Marks a specific notification as read
@@ -117,7 +117,7 @@ router.put('/:notificationId/read', authenticate, notificationController.markAsR
 
 /**
  * @swagger
- * /api/v1/notifications/read/all:
+ * /api/v2/notifications/read/all:
  *   put:
  *     summary: Mark all notifications as read
  *     description: Marks all user notifications as read
@@ -137,7 +137,7 @@ router.put('/read/all', authenticate, notificationController.markAllAsRead);
 
 /**
  * @swagger
- * /api/v1/notifications/{notificationId}:
+ * /api/v2/notifications/{notificationId}:
  *   delete:
  *     summary: Delete a notification
  *     description: Deletes a specific notification
@@ -166,7 +166,7 @@ router.delete('/:notificationId', authenticate, notificationController.deleteNot
 
 /**
  * @swagger
- * /api/v1/notifications:
+ * /api/v2/notifications:
  *   delete:
  *     summary: Delete all notifications
  *     description: Deletes all notifications for the authenticated user
@@ -186,7 +186,7 @@ router.delete('/', authenticate, notificationController.deleteAllNotifications);
 
 /**
  * @swagger
- * /api/v1/notifications:
+ * /api/v2/notifications:
  *   post:
  *     summary: Create a notification
  *     description: Creates a new notification (admin only)

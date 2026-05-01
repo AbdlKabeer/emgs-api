@@ -14,7 +14,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/quizzes:
+ * /api/v2/quizzes:
  *   post:
  *     summary: Create a new quiz
  *     description: Creates a new quiz with questions and options (admin only)
@@ -74,7 +74,7 @@ router.post('/', authenticate,isTutor, quizController.createQuizAdded);
 
 /**
  * @swagger
- * /api/v1/quizzes/{quizId}:
+ * /api/v2/quizzes/{quizId}:
  *   put:
  *     summary: Update a quiz
  *     description: Updates an existing quiz (admin only)
@@ -133,7 +133,7 @@ router.put('/:quizId', authenticate,isTutor,updateQuizValidator, quizController.
 
 /**
  * @swagger
- * /api/v1/quizzes/{quizId}:
+ * /api/v2/quizzes/{quizId}:
  *   delete:
  *     summary: Delete a quiz
  *     description: Deletes a quiz and all associated progress records (admin only)
@@ -163,7 +163,7 @@ router.delete('/:quizId',authenticate, isTutor,getQuizValidator, quizController.
 
 /**
  * @swagger
- * /api/v1/quizzes:
+ * /api/v2/quizzes:
  *   get:
  *     summary: Get all quizzes
  *     description: Retrieves all quizzes with pagination
@@ -197,7 +197,7 @@ router.get('/course/:courseId', quizController.getAllCourseQuizzes);
 
 /**
  * @swagger
- * /api/v1/quizzes/{quizId}:
+ * /api/v2/quizzes/{quizId}:
  *   get:
  *     summary: Get a quiz
  *     description: Retrieves a single quiz by ID (without correct answers)
@@ -221,7 +221,7 @@ router.get('/:quizId',authenticate, getQuizValidator, quizController.getQuiz);
 
 /**
  * @swagger
- * /api/v1/quizzes/{quizId}/with-answers:
+ * /api/v2/quizzes/{quizId}/with-answers:
  *   get:
  *     summary: Get quiz with answers
  *     description: Retrieves a quiz with correct answers (admin only)
@@ -251,7 +251,7 @@ router.get('/:quizId/with-answers', authenticate, quizController.getQuizWithAnsw
 
 /**
  * @swagger
- * /api/v1/quizzes/{quizId}/submit:
+ * /api/v2/quizzes/{quizId}/submit:
  *   post:
  *     summary: Submit quiz answers
  *     description: Submits user answers for a quiz and calculates score
@@ -305,7 +305,7 @@ router.post('/:quizId/mark', authenticate, quizController.submitQuiz);
 
 /**
  * @swagger
- * /api/v1/quizzes/{quizId}/progress:
+ * /api/v2/quizzes/{quizId}/progress:
  *   get:
  *     summary: Get user's quiz progress
  *     description: Retrieves the authenticated user's progress for a specific quiz
@@ -331,7 +331,7 @@ router.get('/:quizId/progress', authenticate,getQuizProgressValidator, quizContr
 
 /**
  * @swagger
- * /api/v1/quizzes/progress/all:
+ * /api/v2/quizzes/progress/all:
  *   get:
  *     summary: Get all user's quiz progress
  *     description: Retrieves progress records for all quizzes attempted by the user
@@ -364,7 +364,7 @@ router.get('/progress/all', authenticate, quizController.getAllUserQuizProgress)
 
 /**
  * @swagger
- * /api/v1/quizzes/{quizId}/statistics:
+ * /api/v2/quizzes/{quizId}/statistics:
  *   get:
  *     summary: Get quiz statistics
  *     description: Retrieves statistics for a quiz (admin only)

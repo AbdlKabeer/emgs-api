@@ -6,7 +6,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/progress/course/{courseId}:
+ * /api/v2/progress/course/{courseId}:
  *   get:
  *     summary: Get user progress for a specific course
  *     description: Retrieves the user's progress for a specified course
@@ -35,7 +35,7 @@ router.get('/course/:courseId', authenticate, progressController.getUserCoursePr
 
 /**
  * @swagger
- * /api/v1/progress/lesson/{lessonId}/complete:
+ * /api/v2/progress/lesson/{lessonId}/complete:
  *   post:
  *     summary: Mark a lesson as completed
  *     description: Marks a specific lesson as completed for the authenticated user
@@ -84,7 +84,7 @@ router.get('/', authenticate, progressController.getAllUserProgress);
 
 /**
  * @swagger
- * /api/v1/progress/course/{courseId}/reset:
+ * /api/v2/progress/course/{courseId}/reset:
  *   put:
  *     summary: Reset progress for a course
  *     description: Resets all progress for a specific course

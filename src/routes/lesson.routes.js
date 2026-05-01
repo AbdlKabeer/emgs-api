@@ -11,7 +11,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/lessons:
+ * /api/v2/lessons:
  *   post:
  *     summary: Create a new lesson
  *     description: Allows admins to create a new lesson for a course.
@@ -57,7 +57,7 @@ router.post('/', [authenticate, isTutor],lessonController.createLesson);
 
 /**
  * @swagger
- * /api/v1/lessons/course/{courseId}:
+ * /api/v2/lessons/course/{courseId}:
  *   get:
  *     summary: Get all lessons for a specific course
  *     description: Fetches all lessons associated with a given course.
@@ -82,7 +82,7 @@ router.get('/course/:courseId', lessonController.getLessonsForCourse);
 
 /**
  * @swagger
- * /api/v1/lessons/lesson/{id}:
+ * /api/v2/lessons/lesson/{id}:
  *   get:
  *     summary: Get a specific lesson by its ID
  *     description: Fetches the details of a specific lesson by its ID.
@@ -109,7 +109,7 @@ router.get('/lesson/:id', lessonController.getLessonById);
 
 /**
  * @swagger
- * /api/v1/lessons/lesson/{id}:
+ * /api/v2/lessons/lesson/{id}:
  *   put:
  *     summary: Update an existing lesson
  *     description: Allows admins to update the details of an existing lesson.
@@ -154,7 +154,7 @@ router.put('/lesson/:id', [authenticate, isTutor],updateLessonValidator, lessonC
 
 /**
  * @swagger
- * /api/v1/lessons/lesson/{id}:
+ * /api/v2/lessons/lesson/{id}:
  *   delete:
  *     summary: Delete an existing lesson
  *     description: Allows admins to delete a lesson by its ID.
