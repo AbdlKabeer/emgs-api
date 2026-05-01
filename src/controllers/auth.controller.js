@@ -432,6 +432,70 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
+const getWebhookTestPayload = (action) => {
+  const now = new Date().toISOString();
+  switch (action) {
+    case 'signup':
+      return {
+        userId: 'test-user-123',
+        fullName: 'Test User',
+        email: 'test.user@example.com',
+        phone: '+1234567890',
+        role: 'student',
+        referralCode: 'TESTREF123',
+        referredBy: null,
+        createdAt: now
+      };
+    case 'new_message':
+      return {
+        conversationId: 'test-conv-123',
+        message: 'This is a test message from webhook helper',
+        sender: 'Test User',
+        timestamp: now
+      };
+    case 'new_conversation':
+      return {
+        conversationId: 'test-conv-123',
+        subject: 'Test conversation',
+        createdBy: 'Test User',
+        createdAt: now
+      };
+    default:
+      return {
+        message: 'Webhook test payload',
+        action,
+        sentAt: now
+      };
+  }
+};
+
+// Webhook test helper (unauthenticated)
+exports.testWebhook = async (req, res) => {
+  try {
+    const { action } = req.query;
+
+    if (!action) {
+      return badRequestResponse('action query parameter is required', 'BAD_REQUEST', 400, res);
+    }
+
+    const data = getWebhookTestPayload(action);
+    const { sendWebhook } = require('../services/webhook.service');
+    await sendWebhook(action, data);
+
+    return successResponse(
+      {
+        action,
+        payload: data
+      },
+      res,
+      200,
+      'Webhook test sent'
+    );
+  } catch (error) {
+    return internalServerErrorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
+  }
+};
+
 // Google login route (GET request)
 exports.googleLogin = (req, res) => {
   const { redirect_url } = req.query;

@@ -82,6 +82,7 @@ app.use(express.urlencoded({ extended: true, limit: '200mb' })); // Support larg
 
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
