@@ -82,7 +82,6 @@ app.use(express.urlencoded({ extended: true, limit: '200mb' })); // Support larg
 
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -93,6 +92,7 @@ mongoose.connect(process.env.MONGODB_URI, {
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
 // API Routes
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v2/auth', authRoutes);
 app.use('/api/v2/account', accountRoutes);
 app.use('/api/v2/courses', courseRoutes);
