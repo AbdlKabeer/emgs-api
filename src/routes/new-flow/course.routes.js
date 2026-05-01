@@ -7,7 +7,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/new-flow/courses:
+ * /api/v2/new-flow/courses:
  *   get:
  *     summary: Get all courses (new flow)
  *     description: Fetch a list of all available courses with enhanced structure.
@@ -23,7 +23,7 @@ router.get('/', courseController.getAllCourses);
 
 /**
  * @swagger
- * /api/v1/new-flow/courses:
+ * /api/v2/new-flow/courses:
  *   post:
  *     summary: Create a new course (basic)
  *     description: Create a new course with basic information.
@@ -76,7 +76,7 @@ router.post('/', [authenticate, isTutor], courseController.createCourse);
 
 /**
  * @swagger
- * /api/v1/new-flow/courses/with-content:
+ * /api/v2/new-flow/courses/with-content:
  *   post:
  *     summary: Create a comprehensive course with modules, lessons, and quizzes
  *     description: Create a complete course structure including modules, lessons, and quizzes in one request.
@@ -194,7 +194,7 @@ router.post('/with-content', [authenticate, isTutor], courseController.createCou
 
 /**
  * @swagger
- * /api/v1/new-flow/courses/{id}:
+ * /api/v2/new-flow/courses/{id}:
  *   put:
  *     summary: Update a course
  *     description: Update course information.
@@ -225,7 +225,7 @@ router.put('/:id', [authenticate, isTutor], courseController.updateCourse);
 
 /**
  * @swagger
- * /api/v1/new-flow/courses/{id}/submit-review:
+ * /api/v2/new-flow/courses/{id}/submit-review:
  *   post:
  *     summary: Submit course for review
  *     description: Submit a course for admin review.
@@ -254,7 +254,7 @@ router.post('/:id/submit-review', [authenticate, isTutor], courseController.subm
 
 /**
  * @swagger
- * /api/v1/new-flow/courses/{id}/details:
+ * /api/v2/new-flow/courses/{id}/details:
  *   get:
  *     summary: Get detailed course information
  *     description: Get comprehensive course details including modules, lessons, and quizzes.
