@@ -7,7 +7,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/crm/services:
+ * /api/v2/crm/services:
  *   get:
  *     summary: Get all active services
  *     description: Fetches all active services (Admin only)
@@ -25,7 +25,7 @@ router.get('/services', [authenticate, isAdmin], crmController.getAllServices);
 // CRM Chat Endpoints
 /**
  * @swagger
- * /api/v1/crm/chat/send:
+ * /api/v2/crm/chat/send:
  *   post:
  *     summary: Send a message to a student
  *     description: CRM sends a message to a student (Admin only)
@@ -56,7 +56,7 @@ router.post('/chat/send', [authenticate, isAdmin], crmController.sendMessageToSt
 
 /**
  * @swagger
- * /api/v1/crm/chat/{studentId}:
+ * /api/v2/crm/chat/{studentId}:
  *   get:
  *     summary: Get chat history with a student
  *     description: Fetch chat history between CRM and a student (Admin only)
@@ -85,7 +85,7 @@ router.get('/chat/:studentId', [authenticate, isAdmin], crmController.getChatWit
 
 /**
  * @swagger
- * /api/v1/crm/inquiries:
+ * /api/v2/crm/inquiries:
  *   get:
  *     summary: Get all inquiries (Admin only)
  *     description: Fetches all customer inquiries. Only accessible by admins.
@@ -103,7 +103,7 @@ router.get('/inquiries', [authenticate, isAdmin], crmController.getAllInquiries)
 
 /**
  * @swagger
- * /api/v1/crm/inquiries/{id}:
+ * /api/v2/crm/inquiries/{id}:
  *   get:
  *     summary: Get a specific inquiry
  *     description: Fetches an inquiry by its ID. Admins can access all, users can access their own.
@@ -132,7 +132,7 @@ router.get('/inquiries/:id', authenticate, crmController.getInquiryById);
 
 /**
  * @swagger
- * /api/v1/crm/inquiries/{id}:
+ * /api/v2/crm/inquiries/{id}:
  *   put:
  *     summary: Update the status of an inquiry (Admin only)
  *     description: Allows admins to update the status of an inquiry by its ID.
@@ -171,7 +171,7 @@ router.put('/inquiries/:id', [authenticate, isAdmin],inquiryStatusValidator, crm
 
 /**
  * @swagger
- * /api/v1/crm/inquiries/{id}/response:
+ * /api/v2/crm/inquiries/{id}/response:
  *   post:
  *     summary: Add a response to an inquiry (Admin only)
  *     description: Allows admins to add a response to an inquiry.
@@ -210,7 +210,7 @@ router.post('/inquiries/:id/response', [authenticate, isAdmin], crmController.ad
 
 /**
  * @swagger
- * /api/v1/crm/followups:
+ * /api/v2/crm/followups:
  *   get:
  *     summary: Get follow-up inquiries (Admin only)
  *     description: Fetches all follow-up inquiries. Only accessible by admins.
@@ -228,7 +228,7 @@ router.get('/followups', [authenticate, isAdmin], crmController.getFollowupInqui
 
 /**
  * @swagger
- * /api/v1/crm/analytics:
+ * /api/v2/crm/analytics:
  *   get:
  *     summary: Get CRM analytics (Admin only)
  *     description: Fetches analytics data related to the CRM. Only accessible by admins.
@@ -246,7 +246,7 @@ router.get('/analytics', [authenticate, isAdmin], crmController.getCRMAnalytics)
 
 /**
  * @swagger
- * /api/v1/crm/user/inquiries:
+ * /api/v2/crm/user/inquiries:
  *   get:
  *     summary: Get inquiries by the authenticated user
  *     description: Fetches all inquiries made by the currently authenticated user.

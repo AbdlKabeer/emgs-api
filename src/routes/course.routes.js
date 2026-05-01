@@ -11,7 +11,7 @@ router.get('/user/completed-courses', authenticate, courseController.getComplete
 
 /**
  * @swagger
- * /api/v1/courses:
+ * /api/v2/courses:
  *   get:
  *     summary: Get all courses
  *     description: Fetch a list of all available courses.
@@ -27,7 +27,7 @@ router.get('/',authenticate, courseController.getAllCourses);
 
 /**
  * @swagger
- * /api/v1/courses/{id}:
+ * /api/v2/courses/{id}:
  *   get:
  *     summary: Get a specific course
  *     description: Fetch a course by its ID.
@@ -53,7 +53,7 @@ router.get('/:id',authenticate, courseController.getCourseById);
 
 /**
  * @swagger
- * /api/v1/courses:
+ * /api/v2/courses:
  *   post:
  *     summary: Create a new course
  *     description: Only accessible to tutors. Creates a new course.
@@ -96,7 +96,7 @@ router.post('/', [authenticate, isTutor], createCourseValidator, courseControlle
 
 /**
  * @swagger
- * /api/v1/courses/{id}/thumbnail:
+ * /api/v2/courses/{id}/thumbnail:
  *   patch:
  *     summary: Update course thumbnail
  *     description: Only accessible to tutors. Updates a course's thumbnail by its ID.
@@ -139,7 +139,7 @@ router.patch('/:id/thumbnail', [authenticate, isTutor], courseController.updateC
 
 /**
  * @swagger
- * /api/v1/courses/{id}:
+ * /api/v2/courses/{id}:
  *   put:
  *     summary: Update an existing course
  *     description: Only accessible to admins. Updates a course by its ID.
@@ -195,7 +195,7 @@ router.put('/:id/notes', [authenticate, isTutor], courseController.addCourseNote
 
 /**
  * @swagger
- * /api/v1/courses/{id}:
+ * /api/v2/courses/{id}:
  *   delete:
  *     summary: Delete a course
  *     description: Only accessible to admins. Deletes a course by its ID.
@@ -225,7 +225,7 @@ router.put('/:courseId/lessons/:lessonId/completed', authenticate, courseControl
 
 /**
  * @swagger
- * /api/v1/courses/{id}/resources:
+ * /api/v2/courses/{id}/resources:
  *   post:
  *     summary: Upload resources/documents to a course
  *     description: Only accessible to tutors. Uploads resources/documents to a course.
@@ -271,7 +271,7 @@ router.post('/:id/resources', [authenticate, isTutor], courseController.uploadCo
 
 /**
  * @swagger
- * /api/v1/courses/{id}/progress:
+ * /api/v2/courses/{id}/progress:
  *   post:
  *     summary: Save course creation progress
  *     description: Only accessible to tutors. Saves course creation progress.
@@ -310,7 +310,7 @@ router.post('/:id/progress', [authenticate, isTutor], courseController.saveCours
 
 /**
  * @swagger
- * /api/v1/courses/{courseId}/enroll:
+ * /api/v2/courses/{courseId}/enroll:
  *   post:
  *     summary: Enroll a user in a course
  *     description: Allows authenticated users to enroll in a course.
@@ -341,7 +341,7 @@ router.put('/courses/:courseId/completed', authenticate, courseController.markCo
 
 /**
  * @swagger
- * /api/v1/courses/user/enrolled:
+ * /api/v2/courses/user/enrolled:
  *   get:
  *     summary: Get all courses a user is enrolled in
  *     description: Fetches all courses the currently authenticated user is enrolled in.
@@ -359,7 +359,7 @@ router.get('/user/enrolled', authenticate, courseController.getUserCourses);
 
 /**
  * @swagger
- * /api/v1/courses/lesson/{lessonId}/progress:
+ * /api/v2/courses/lesson/{lessonId}/progress:
  *   post:
  *     summary: Track user progress for a lesson
  *     description: Allows authenticated users to track their progress in a lesson.
@@ -399,7 +399,7 @@ router.post('/:courseId/lesson/:lessonId/progress', authenticate, courseControll
 
 /**
  * @swagger
- * /api/v1/courses/{courseId}/rate:
+ * /api/v2/courses/{courseId}/rate:
  *   post:
  *     summary: Rate a course
  *     description: Allows enrolled users to rate and review a course
@@ -441,7 +441,7 @@ router.post('/:courseId/rate', authenticate, courseController.rateCourse);
 
 /**
  * @swagger
- * /api/v1/courses/{courseId}/ratings:
+ * /api/v2/courses/{courseId}/ratings:
  *   get:
  *     summary: Get course ratings
  *     description: Retrieve all ratings and reviews for a course
@@ -466,7 +466,7 @@ router.get('/:courseId/ratings', courseController.getCourseRatings);
 
 /**
  * @swagger
- * /api/v1/courses/{courseId}/bookmark:
+ * /api/v2/courses/{courseId}/bookmark:
  *   post:
  *     summary: Bookmark or unbookmark a course
  *     description: Allows users to bookmark or remove bookmark from a course
@@ -493,7 +493,7 @@ router.post('/:courseId/bookmark', authenticate, courseController.toggleBookmark
 
 /**
  * @swagger
- * /api/v1/courses/user/bookmarked:
+ * /api/v2/courses/user/bookmarked:
  *   get:
  *     summary: Get user's bookmarked courses
  *     description: Retrieves all courses bookmarked by the authenticated user

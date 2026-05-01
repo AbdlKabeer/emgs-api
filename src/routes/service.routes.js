@@ -7,7 +7,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/services:
+ * /api/v2/services:
  *   get:
  *     summary: Get all services
  *     description: Fetches all available services.
@@ -24,7 +24,7 @@ router.get('/flat',authenticate, serviceController.getAllServicesFlat);
 
 /**
  * @swagger
- * /api/v1/services/{id}:
+ * /api/v2/services/{id}:
  *   get:
  *     summary: Get a specific service by ID
  *     description: Fetches the details of a specific service by its ID.
@@ -49,7 +49,7 @@ router.get('/:id', serviceController.getServiceById);
 
 /**
  * @swagger
- * /api/v1/services/category/{category}:
+ * /api/v2/services/category/{category}:
  *   get:
  *     summary: Get services by category
  *     description: Fetches services based on a specific category.
@@ -74,7 +74,7 @@ router.get('/category/:category', serviceController.getServicesByCategory);
 
 /**
  * @swagger
- * /api/v1/services:
+ * /api/v2/services:
  *   post:
  *     summary: Create a new service
  *     description: Allows admins to create a new service.
@@ -113,7 +113,7 @@ router.post('/', [authenticate, isAdmin],serviceCreateValidator, serviceControll
 
 /**
  * @swagger
- * /api/v1/services/{id}:
+ * /api/v2/services/{id}:
  *   put:
  *     summary: Update an existing service
  *     description: Allows admins to update the details of an existing service.
@@ -161,7 +161,7 @@ router.put('/:id', [authenticate, isAdmin],serviceCreateValidator, serviceContro
 
 /**
  * @swagger
- * /api/v1/services/{id}:
+ * /api/v2/services/{id}:
  *   delete:
  *     summary: Delete a specific service
  *     description: Allows admins to delete a service by its ID.
@@ -188,7 +188,7 @@ router.delete('/:id', [authenticate, isAdmin], serviceController.deleteService);
 
 /**
  * @swagger
- * /api/v1/services/inquiry:
+ * /api/v2/services/inquiry:
  *   post:
  *     summary: Create a service inquiry
  *     description: Allows users to create an inquiry for a specific service.
@@ -221,7 +221,7 @@ router.post('/inquiry', authenticate, serviceController.createInquiry);
 
 /**
  * @swagger
- * /api/v1/services/my-services:
+ * /api/v2/services/my-services:
  *   get:
  *     summary: Get all services created by the authenticated user
  *     description: Retrieves all services that belong to the currently authenticated user.
@@ -241,7 +241,7 @@ router.get('/my-services', authenticate, serviceController.getUserServices);
 
 /**
  * @swagger
- * /api/v1/services/my-services:
+ * /api/v2/services/my-services:
  *   post:
  *     summary: Create a new service for the authenticated user
  *     description: Allows authenticated users to create their own service.
@@ -299,7 +299,7 @@ router.post('/my-services', authenticate, serviceCreateValidator, serviceControl
 
 /**
  * @swagger
- * /api/v1/services/my-services/{id}:
+ * /api/v2/services/my-services/{id}:
  *   put:
  *     summary: Update user's own service
  *     description: Allows authenticated users to update their own service.
@@ -363,7 +363,7 @@ router.put('/my-services/:id', authenticate, serviceController.updateUserService
 
 /**
  * @swagger
- * /api/v1/services/my-services/{id}:
+ * /api/v2/services/my-services/{id}:
  *   delete:
  *     summary: Delete user's own service
  *     description: Allows authenticated users to delete their own service.
@@ -392,7 +392,7 @@ router.delete('/my-services/:id', authenticate, serviceController.deleteUserServ
 
 /**
  * @swagger
- * /api/v1/services/my-services/{id}/price:
+ * /api/v2/services/my-services/{id}/price:
  *   patch:
  *     summary: Update the price of user's own service
  *     description: Allows authenticated users to update only the price of their own service.

@@ -53,7 +53,7 @@ router.get('/', categoryController.getAllCategories);
 
 /**
  * @swagger
- * /api/v1/categories/{id}:
+ * /api/v2/categories/{id}:
  *   get:
  *     summary: Get Category by ID or Slug
  *     description: Retrieves a specific category by ID or slug
@@ -119,7 +119,7 @@ router.post('/', authenticate, isAdmin, createCategoryValidator, categoryControl
 
 /**
  * @swagger
- * /api/v1/categories/{id}:
+ * /api/v2/categories/{id}:
  *   put:
  *     summary: Update Category (Admin Only)
  *     description: Updates an existing course category
@@ -167,7 +167,7 @@ router.put('/:id', authenticate, isAdmin, updateCategoryValidator, categoryContr
 
 /**
  * @swagger
- * /api/v1/categories/{id}:
+ * /api/v2/categories/{id}:
  *   delete:
  *     summary: Delete Category (Admin Only)
  *     description: Deletes a course category if no courses are using it
@@ -198,7 +198,7 @@ router.delete('/:id', authenticate, isAdmin, deleteCategoryValidator, categoryCo
 
 /**
  * @swagger
- * /api/v1/categories/stats/all:
+ * /api/v2/categories/stats/all:
  *   get:
  *     summary: Get Category Statistics (Admin Only)
  *     description: Retrieves statistics for all categories including course counts

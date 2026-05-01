@@ -10,7 +10,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/faq:
+ * /api/v2/faq:
  *   post:
  *     summary: Add a new FAQ
  *     description: Admin only. Creates a new FAQ 

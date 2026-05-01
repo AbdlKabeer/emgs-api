@@ -13,7 +13,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/auth/register:
+ * /api/v2/auth/register:
  *   post:
  *     summary: Register a new user
  *     description: Creates a new user in the system.
@@ -47,7 +47,7 @@ router.post('/register', registerValidator, authController.register);
 
 /**
  * @swagger
- * /api/v1/auth/register-tutor:
+ * /api/v2/auth/register-tutor:
  *   post:
  *     summary: Register a new tutor
  *     description: Creates a new tutor account in the system with additional tutor-specific information.
@@ -97,7 +97,7 @@ router.post('/register-tutor', registerValidator, authController.registerTutor);
 
 /**
  * @swagger
- * /api/v1/auth/verify/{token}:
+ * /api/v2/auth/verify/{token}:
  *   get:
  *     summary: Verify user email
  *     description: Verifies the email of the user using a token sent to their email.
@@ -125,7 +125,7 @@ router.get('/verify/:token', authController.verifyEmailToken);
 
 /**
  * @swagger
- * /api/v1/auth/login:
+ * /api/v2/auth/login:
  *   post:
  *     summary: Login a user
  *     description: Authenticates the user and provides a JWT token for further requests.
@@ -155,7 +155,7 @@ router.post('/login', loginValidator, authController.login);
 
 /**
  * @swagger
- * /api/v1/auth/google-login:
+ * /api/v2/auth/google-login:
  *   get:
  *     summary: Redirect to Google login
  *     description: Initiates the Google OAuth 2.0 login flow.
@@ -179,7 +179,7 @@ router.get('/google-login', authController.googleLogin);
 
 /**
  * @swagger
- * /api/v1/auth/google-login-callback:
+ * /api/v2/auth/google-login-callback:
  *   get:
  *     summary: Handle Google login callback
  *     description: Handles the Google login callback, retrieves the user's information, and issues tokens.
@@ -211,7 +211,7 @@ router.get('/google-login-callback', authController.googleCallback);
 
 /**
  * @swagger
- * /api/v1/auth/forgot-password:
+ * /api/v2/auth/forgot-password:
  *   post:
  *     summary: Forgot password
  *     description: Sends a password reset email to the user.
@@ -238,7 +238,7 @@ router.post('/forgot-password', forgotPasswordValidator, authController.forgotPa
 
 /**
  * @swagger
- * /api/v1/auth/reset-password/{token}:
+ * /api/v2/auth/reset-password/{token}:
  *   post:
  *     summary: Reset password
  *     description: Resets the user's password using a valid token.
@@ -274,7 +274,7 @@ router.post('/forgot-password/verify', resetPasswordValidator, authController.re
 
 /**
  * @swagger
- * /api/v1/auth/webhook/test:
+ * /api/v2/auth/webhook/test:
  *   get:
  *     summary: Test webhook forwarding
  *     description: Sends a test webhook to the configured GHL webhook target using the provided action query parameter.
@@ -299,7 +299,7 @@ router.get('/webhook/test', authController.testWebhook);
 
 /**
  * @swagger
- * /api/v1/auth/verify-email:
+ * /api/v2/auth/verify-email:
  *   post:
  *     summary: Verify user email with 6-digit code
  *     description: Verifies the email of the user using a 6-digit verification code.
@@ -330,7 +330,7 @@ router.post('/verify-email', verifyEmailValidator, authController.verifyEmail);
 
 /**
  * @swagger
- * /api/v1/auth/resend-verification-code:
+ * /api/v2/auth/resend-verification-code:
  *   post:
  *     summary: Resend email verification code
  *     description: Generates and sends a new 6-digit verification code to the user's email.
