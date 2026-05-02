@@ -335,17 +335,17 @@ exports.login = async (req, res) => {
     // Check if user is verified
     if (!user.isVerified && user.role !== 'tutor') {
       // Generate verification code
-      const verificationCode = generateVerificationCode();
-      user.verificationCode = verificationCode;
-      user.verificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); 
-      await user.save();
+      // const verificationCode = generateVerificationCode();
+      // user.verificationCode = verificationCode;
+      // user.verificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000); 
+      // await user.save();
 
-      // Send verification email
-      try {
-        await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
-      } catch (error) {
-        console.error('Error sending verification email during login:', error);
-      }
+      // // Send verification email
+      // try {
+      //   await emailService.sendVerificationCodeEmail(user.email, user.fullName, verificationCode);
+      // } catch (error) {
+      //   console.error('Error sending verification email during login:', error);
+      // }
 
       return badRequestResponse(
         'Your email address is not verified. A new verification code has been sent to your email.', 
