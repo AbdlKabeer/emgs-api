@@ -14,6 +14,8 @@ const {
   paginationResponse
 } = require('../utils/custom_response/responses');
 const emailService = require('../services/email.service');
+const { sendWebhook } = require('../services/webhook.service');
+
 
 
 
@@ -222,6 +224,26 @@ async function handleBusinessLogic(metadata, payment, userId, res) {
         payment.amount, 
         payment._id
       ).catch(emailError => console.error('Error sending course purchase email:', emailError));
+      
+      // Send webhook to GHL
+      sendWebhook('course_payment_success', {
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          phone: user.phone
+        },
+        course: {
+          id: course._id,
+          title: course.title,
+          price: course.price
+        },
+        payment: {
+          id: payment._id,
+          amount: payment.amount,
+          transactionRef: payment.transactionRef
+        }
+      }).catch(webhookError => console.error('Error sending GHL webhook for course:', webhookError));
 
       return successResponse(null, res, 200, 'Enrolled in course successfully');
 
@@ -333,6 +355,26 @@ async function handleBusinessLogic(metadata, payment, userId, res) {
         payment.amount, 
         payment._id
       ).catch(emailError => console.error('Error sending one-on-one purchase email:', emailError));
+
+      // Send webhook to GHL
+      sendWebhook('one_on_one_payment_success', {
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          phone: user.phone
+        },
+        tutor: {
+          id: tutor._id,
+          fullName: tutor.fullName,
+          email: tutor.email
+        },
+        payment: {
+          id: payment._id,
+          amount: payment.amount,
+          transactionRef: payment.transactionRef
+        }
+      }).catch(webhookError => console.error('Error sending GHL webhook for one-on-one:', webhookError));
 
       return successResponse(null, res, 200, 'One-on-one tutoring subscription successful');
 
