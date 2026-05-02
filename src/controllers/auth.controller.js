@@ -484,6 +484,44 @@ const getWebhookTestPayload = (action) => {
         createdBy: 'Test User',
         createdAt: now
       };
+    case 'course_payment_success':
+      return {
+        user: {
+          id: 'test-user-123',
+          fullName: 'Test User',
+          email: 'test.user@example.com',
+          phone: '+1234567890'
+        },
+        course: {
+          id: 'test-course-456',
+          title: 'Mastering Webhooks (Test)',
+          price: 50000
+        },
+        payment: {
+          id: 'test-pay-789',
+          amount: 50000,
+          transactionRef: 'TEST_REF_999'
+        }
+      };
+    case 'one_on_one_payment_success':
+      return {
+        user: {
+          id: 'test-user-123',
+          fullName: 'Test User',
+          email: 'test.user@example.com',
+          phone: '+1234567890'
+        },
+        tutor: {
+          id: 'test-tutor-001',
+          fullName: 'Expert Tutor',
+          email: 'tutor@emgs.global'
+        },
+        payment: {
+          id: 'test-pay-888',
+          amount: 25000,
+          transactionRef: 'TEST_REF_111'
+        }
+      };
     default:
       return {
         message: 'Webhook test payload',
