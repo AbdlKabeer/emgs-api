@@ -10,13 +10,13 @@ const successResponse = (data = null, res, statusCode = 200, message="Success") 
     return res.status(statusCode).json(responseData);
 };
 
-const errorResponse = (message = 'An error occurred', group = 'BAD_REQUEST', statusCode = 400, res= null) => {
-
+const errorResponse = (message = 'An error occurred', group = 'BAD_REQUEST', statusCode = 400, res = null, data = null) => {
     const responseData = {
         status: false,
         group,
         detail: message,
-        message
+        message,
+        data
     };
     return res.status(statusCode).json(responseData);
 };
@@ -43,8 +43,8 @@ const verificationSuccessResponse = (data = null, message = 'Success', responseC
     return res.status(statusCode).json(responseData);
 };
 
-const badRequestResponse = (message = 'Bad Request', group = 'BAD_REQUEST', statusCode = 400, res) => {
-    return errorResponse(message, group, statusCode, res);
+const badRequestResponse = (message = 'Bad Request', group = 'BAD_REQUEST', statusCode = 400, res, data = null) => {
+    return errorResponse(message, group, statusCode, res, data);
 };
 
 const internalServerErrorResponse = (message = 'Internal Server Error', res, statusCode = 500) => {
