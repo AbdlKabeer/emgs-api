@@ -348,7 +348,7 @@ exports.login = async (req, res) => {
       // }
 
       return badRequestResponse(
-        'Your email address is not verified. A new verification code has been sent to your email.', 
+        'Your email address is not verified.', 
         'EMAIL_NOT_VERIFIED', 
         401, 
         res,
