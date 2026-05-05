@@ -1029,6 +1029,70 @@ exports.validatePaymentOld = async (req, res) => {
   }
 };
 
+/**
+ * Processes abandoned payments (pending for more than 1 hour)
+ * and sends a webhook to GHL.
+ */
+exports.processAbandonedPayments = async () => {
+  try {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    
+    // Find pending payments older than 1 hour that haven't been notified yet
+    const abandonedPayments = await Payment.find({
+      status: 'pending',
+      abandonedWebhookSent: { $ne: true },
+      createdAt: { $lt: oneHourAgo }
+    }).populate('userId', 'fullName email phone');
+
+    if (abandonedPayments.length > 0) {
+      console.log(`🔍 Found ${abandonedPayments.length} potentially abandoned payments.`);
+    }
+
+    for (const payment of abandonedPayments) {
+      try {
+        const user = payment.userId;
+        if (!user) {
+          console.warn(`⚠️ User not found for payment ${payment._id}, skipping abandoned webhook.`);
+          continue;
+        }
+
+        const data = {
+          paymentId: payment._id,
+          amount: payment.amount,
+          currency: payment.currency,
+          itemType: payment.itemType,
+          itemId: payment.itemId,
+          user: {
+            id: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            phone: user.phone
+          },
+          createdAt: payment.createdAt
+        };
+
+        // Send webhook to GHL
+        await sendWebhook('abandoned_checkout', data);
+        
+        // Mark as sent to prevent duplicate webhooks in next run
+        payment.abandonedWebhookSent = true;
+        await payment.save();
+        
+        console.log(`✅ Abandoned checkout webhook sent for payment: ${payment._id}`);
+      } catch (innerError) {
+        console.error(`❌ Error processing abandoned payment ${payment._id}:`, innerError.message);
+      }
+    }
+
+    return {
+      totalProcessed: abandonedPayments.length
+    };
+  } catch (error) {
+    console.error('❌ Error in processAbandonedPayments:', error.message);
+    throw error;
+  }
+};
+
 
 
 

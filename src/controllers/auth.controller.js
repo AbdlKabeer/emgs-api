@@ -522,6 +522,21 @@ const getWebhookTestPayload = (action) => {
           transactionRef: 'TEST_REF_111'
         }
       };
+    case 'abandoned_checkout':
+      return {
+        paymentId: 'test-pay-abandoned-123',
+        amount: 50000,
+        currency: 'NGN',
+        itemType: 'course',
+        itemId: 'test-course-456',
+        user: {
+          id: 'test-user-123',
+          fullName: 'Test User',
+          email: 'test.user@example.com',
+          phone: '+1234567890'
+        },
+        createdAt: now
+      };
     default:
       return {
         message: 'Webhook test payload',
