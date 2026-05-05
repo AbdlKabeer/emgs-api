@@ -190,6 +190,10 @@ chatSocket(io);
 const { startSubscriptionScheduler } = require('./utils/subscription.scheduler');
 startSubscriptionScheduler();
 
+// Start abandoned checkout scheduler
+const { startAbandonedCheckoutScheduler } = require('./utils/abandoned-checkout.scheduler');
+startAbandonedCheckoutScheduler();
+
 // Start Server
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {

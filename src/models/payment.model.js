@@ -21,6 +21,7 @@ const paymentSchema = new mongoose.Schema(
     },
     invoiceNumber: { type: String },
     receiptUrl: { type: String },
+    abandonedWebhookSent: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
