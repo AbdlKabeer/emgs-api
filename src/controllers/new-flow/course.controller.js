@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const User = require('../../models/user.model');
 const Course = require('../../models/course.model');
+const CourseCategory = require('../../models/courseCategory.model');
 const Lesson = require('../../models/lesson.model');
 const Module = require('../../models/module.model');
 const Quiz = require('../../models/quiz.model');
@@ -839,7 +841,7 @@ exports.getCourseDetails = async (req, res) => {
 exports.createCourseWithContent = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : null;
-    const { 
+    let { 
       title, 
       description, 
       category, 
@@ -859,6 +861,16 @@ exports.createCourseWithContent = async (req, res) => {
     // Validation
     if (!title || !description ) {
       return errorResponse('Title, description, and category are required', 'VALIDATION_ERROR', 400, res);
+    }
+
+    if (category && !mongoose.Types.ObjectId.isValid(category)) {
+      // Find a category matching the string, or create a default one
+      let courseCategory = await CourseCategory.findOne({ name: { $regex: new RegExp(`^${category}$`, 'i') } });
+      if (!courseCategory) {
+        courseCategory = new CourseCategory({ name: category, description: `${category} courses`, isActive: true });
+        await courseCategory.save();
+      }
+      category = courseCategory._id;
     }
 
 
