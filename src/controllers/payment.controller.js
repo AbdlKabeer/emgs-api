@@ -47,6 +47,9 @@ exports.getUserPaymentHistory = async (req, res) => {
 // Get user progress for a specific course
 exports.initiatePayment = async (req, res) => {
   try {
+    console.log('[Payment Controller] initiatePayment called');
+    console.log('[Payment Controller] Request body:', req.body);
+    console.log('[Payment Controller] User ID:', req.user?.id);
     const { itemType, itemId } = req.body;
     const userId = req.user.id; 
 
@@ -158,12 +161,17 @@ exports.initiatePayment = async (req, res) => {
     
     return successResponse(progress, res);
   } catch (error) {
+    console.error('[Payment Controller] Error in initiatePayment:', error);
     return internalServerErrorResponse(error.message, res);
   }
 };
 
 // Helper to run business logic for all providers
 async function handleBusinessLogic(metadata, payment, userId, res) {
+  console.log('[Payment Controller] handleBusinessLogic called');
+  console.log('[Payment Controller] metadata:', metadata);
+  console.log('[Payment Controller] payment ID:', payment?._id);
+  console.log('[Payment Controller] userId:', userId);
   let id = metadata?.transactionRef || metadata?.id;
   let itemType = metadata?.itemType;
   let paymentId = metadata?.itemId;
@@ -388,6 +396,9 @@ async function handleBusinessLogic(metadata, payment, userId, res) {
 
 exports.validatePayment = async (req, res) => {
   try {
+    console.log('[Payment Controller] validatePayment called');
+    console.log('[Payment Controller] Request body:', req.body);
+    console.log('[Payment Controller] User ID:', req.user?.id);
     let {paymentProvider } = req.body;
     const userId = req.user.id;
     let payment;
@@ -508,6 +519,7 @@ exports.validatePayment = async (req, res) => {
       return badRequestResponse('Unsupported payment provider', 'UNSUPPORTED_PROVIDER', 400, res);
     }
   } catch (error) {
+    console.error('[Payment Controller] Error in validatePayment:', error);
     return internalServerErrorResponse(error.message, res);
   }
 };
@@ -563,6 +575,9 @@ exports.stripeWebhook = async (req, res) => {
 
 exports.initiateCardPayment = async (req, res) => {
   try {
+    console.log('[Payment Controller] initiateCardPayment called');
+    console.log('[Payment Controller] Request body:', req.body);
+    console.log('[Payment Controller] User ID:', req.user?.id);
     const { itemType, itemId, callbackUrl, paymentProvider } = req.body;
     const userId = req.user.id;
     const provider = (paymentProvider || 'flutterwave').toLowerCase();
@@ -682,6 +697,7 @@ exports.initiateCardPayment = async (req, res) => {
         }
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
+          console.log('[Payment Controller] Initializing Stripe checkout session with amount:', amount, 'and metadata:', metadata);
           const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [
@@ -702,8 +718,10 @@ exports.initiateCardPayment = async (req, res) => {
             metadata: metadata,
             customer_email: req.user.email,
           });
+          console.log('[Payment Controller] Stripe checkout session created successfully:', session.id);
           return successResponse({ url: session.url, id: session.id }, res, 200, 'Payment initialization successful (Stripe)');
         } catch (err) {
+          console.error('[Payment Controller] Stripe payment initialization failed:', err);
           return badRequestResponse('Stripe payment initialization failed: ' + err.message, 'INIT_FAILED', 400, res);
         }
       } else {
@@ -791,6 +809,7 @@ exports.initiateCardPayment = async (req, res) => {
         }
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
+          console.log('[Payment Controller] Initializing Stripe checkout session with amount:', amount, 'and metadata:', metadata);
           const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [
@@ -811,8 +830,10 @@ exports.initiateCardPayment = async (req, res) => {
             metadata: metadata,
             customer_email: req.user.email,
           });
+          console.log('[Payment Controller] Stripe checkout session created successfully:', session.id);
           return successResponse({ url: session.url, id: session.id }, res, 200, 'Payment initialization successful (Stripe)');
         } catch (err) {
+          console.error('[Payment Controller] Stripe payment initialization failed:', err);
           return badRequestResponse('Stripe payment initialization failed: ' + err.message, 'INIT_FAILED', 400, res);
         }
       } else {
@@ -901,6 +922,7 @@ exports.initiateCardPayment = async (req, res) => {
         }
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         try {
+          console.log('[Payment Controller] Initializing Stripe checkout session with amount:', amount, 'and metadata:', metadata);
           const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [
@@ -921,8 +943,10 @@ exports.initiateCardPayment = async (req, res) => {
             metadata: metadata,
             customer_email: req.user.email,
           });
+          console.log('[Payment Controller] Stripe checkout session created successfully:', session.id);
           return successResponse({ url: session.url, id: session.id }, res, 200, 'Payment initialization successful (Stripe)');
         } catch (err) {
+          console.error('[Payment Controller] Stripe payment initialization failed:', err);
           return badRequestResponse('Stripe payment initialization failed: ' + err.message, 'INIT_FAILED', 400, res);
         }
       } else {
@@ -930,7 +954,7 @@ exports.initiateCardPayment = async (req, res) => {
       }
     }
   } catch (error) {
-    console.error('Error initializing card payment:', error);
+    console.error('[Payment Controller] Error initializing card payment:', error);
     return internalServerErrorResponse('Failed to initiate payment', res);
   }
 };
@@ -1052,7 +1076,7 @@ exports.processAbandonedPayments = async () => {
       try {
         const user = payment.userId;
         if (!user) {
-          console.warn(`⚠️ User not found for payment ${payment._id}, skipping abandoned webhook.`);
+          // console.warn(`⚠️ User not found for payment ${payment._id}, skipping abandoned webhook.`);
           continue;
         }
 
