@@ -685,6 +685,8 @@ exports.initiateCardPayment = async (req, res) => {
         if (response.data.status === 'success') {
           // Flutterwave returns a link to redirect the user
           const data = response.data.data;
+          data.authorization_url = data.link;
+          data.reference = data.tx_ref || payment._id.toString();
           return successResponse(data, res, 200, 'Payment initialization successful (Flutterwave)');
         } else {
           return badRequestResponse('Flutterwave payment initialization failed', 'INIT_FAILED', 400, res);
@@ -719,7 +721,12 @@ exports.initiateCardPayment = async (req, res) => {
             customer_email: req.user.email,
           });
           console.log('[Payment Controller] Stripe checkout session created successfully:', session.id);
-          return successResponse({ url: session.url, id: session.id }, res, 200, 'Payment initialization successful (Stripe)');
+          return successResponse({ 
+            url: session.url, 
+            id: session.id,
+            authorization_url: session.url,
+            reference: session.id
+          }, res, 200, 'Payment initialization successful (Stripe)');
         } catch (err) {
           console.error('[Payment Controller] Stripe payment initialization failed:', err);
           return badRequestResponse('Stripe payment initialization failed: ' + err.message, 'INIT_FAILED', 400, res);
@@ -797,6 +804,9 @@ exports.initiateCardPayment = async (req, res) => {
         if (response.data.status === 'success') {
           // Flutterwave returns a link to redirect the user
           const data = response.data.data;
+          // Normalize for frontend that expects authorization_url
+          data.authorization_url = data.link;
+          data.reference = data.tx_ref || payment._id.toString();
           return successResponse(data, res, 200, 'Payment initialization successful (Flutterwave)');
         } else {
           return badRequestResponse('Flutterwave payment initialization failed', 'INIT_FAILED', 400, res);
@@ -831,7 +841,12 @@ exports.initiateCardPayment = async (req, res) => {
             customer_email: req.user.email,
           });
           console.log('[Payment Controller] Stripe checkout session created successfully:', session.id);
-          return successResponse({ url: session.url, id: session.id }, res, 200, 'Payment initialization successful (Stripe)');
+          return successResponse({ 
+            url: session.url, 
+            id: session.id,
+            authorization_url: session.url,
+            reference: session.id
+          }, res, 200, 'Payment initialization successful (Stripe)');
         } catch (err) {
           console.error('[Payment Controller] Stripe payment initialization failed:', err);
           return badRequestResponse('Stripe payment initialization failed: ' + err.message, 'INIT_FAILED', 400, res);
@@ -910,6 +925,8 @@ exports.initiateCardPayment = async (req, res) => {
         if (response.data.status === 'success') {
           // Flutterwave returns a link to redirect the user
           const data = response.data.data;
+          data.authorization_url = data.link;
+          data.reference = data.tx_ref || payment._id.toString();
           return successResponse(data, res, 200, 'Payment initialization successful (Flutterwave)');
         } else {
           return badRequestResponse('Flutterwave payment initialization failed', 'INIT_FAILED', 400, res);
@@ -944,7 +961,12 @@ exports.initiateCardPayment = async (req, res) => {
             customer_email: req.user.email,
           });
           console.log('[Payment Controller] Stripe checkout session created successfully:', session.id);
-          return successResponse({ url: session.url, id: session.id }, res, 200, 'Payment initialization successful (Stripe)');
+          return successResponse({ 
+            url: session.url, 
+            id: session.id,
+            authorization_url: session.url,
+            reference: session.id
+          }, res, 200, 'Payment initialization successful (Stripe)');
         } catch (err) {
           console.error('[Payment Controller] Stripe payment initialization failed:', err);
           return badRequestResponse('Stripe payment initialization failed: ' + err.message, 'INIT_FAILED', 400, res);
