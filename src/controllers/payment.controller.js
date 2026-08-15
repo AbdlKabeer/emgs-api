@@ -416,7 +416,7 @@ exports.validatePayment = async (req, res) => {
     //   }
     //   paymentProvider = payment?.paymentMethod || 'paystack';
     // }
-    paymentProvider = paymentProvider.toLowerCase();
+    paymentProvider = (paymentProvider || 'paystack').toLowerCase();
 
 
     if (paymentProvider === 'paystack') {
