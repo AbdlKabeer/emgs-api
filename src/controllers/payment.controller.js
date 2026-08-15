@@ -580,7 +580,7 @@ exports.initiateCardPayment = async (req, res) => {
     console.log('[Payment Controller] User ID:', req.user?.id);
     const { itemType, itemId, callbackUrl, paymentProvider } = req.body;
     const userId = req.user.id;
-    const provider = (paymentProvider || 'flutterwave').toLowerCase();
+    const provider = (paymentProvider || 'paystack').toLowerCase();
 
 
     // Helper to get Paystack headers
