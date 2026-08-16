@@ -108,14 +108,21 @@ exports.getMessages = async (req, res) => {
         { path: 'replyTo', select: 'content sender' }
       ]);
 
-    // ✅ Respond using the format expected by the frontend
+    // ✅ Respond using the format expected by the frontend (which expects 'results' and 'currentPage' at the root, and 'messages' for logging)
     return res.status(200).json({
       status: true,
       message: 'Success',
-      messages,
+      results: messages,
+      messages: messages,
       totalCount: total,
       currentPage: parsedPage,
-      totalPages: Math.ceil(total / parsedLimit)
+      totalPages: Math.ceil(total / parsedLimit),
+      metadata: {
+        totalItems: total,
+        totalPages: Math.ceil(total / parsedLimit),
+        currentPage: parsedPage,
+        itemsPerPage: parsedLimit
+      }
     });
 
   } catch (error) {
