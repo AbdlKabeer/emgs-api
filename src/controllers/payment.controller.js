@@ -639,14 +639,14 @@ exports.initiateCardPayment = async (req, res) => {
 
       await payment.save();
 
-      const metadata = {
+      let metadata = {
         transactionRef: payment._id.toString(),
         itemId,
         itemType
       };
 
       if (provider === 'paystack') {
-        metadata = {...metadata, courseId: itemId, source: 'course'};
+        metadata = {...metadata, serviceId: itemId, source: 'service'};
         const payload = {
           amount: 100 * amount, // Paystack expects amount in kobo
           email: req.user.email,
