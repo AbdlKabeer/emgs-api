@@ -104,12 +104,19 @@ exports.getMessages = async (req, res) => {
       .skip(skip)
       .limit(parsedLimit)
       .populate([
-        { path: 'sender', select: 'name avatar' },
+        { path: 'sender', select: 'fullName profilePicture email' },
         { path: 'replyTo', select: 'content sender' }
       ]);
 
-    // ✅ Respond using same paginationResponse format
-    return paginationResponse(messages, total, parsedPage, parsedLimit, res);
+    // ✅ Respond using the format expected by the frontend
+    return res.status(200).json({
+      status: true,
+      message: 'Success',
+      messages,
+      totalCount: total,
+      currentPage: parsedPage,
+      totalPages: Math.ceil(total / parsedLimit)
+    });
 
   } catch (error) {
     console.error(error);
