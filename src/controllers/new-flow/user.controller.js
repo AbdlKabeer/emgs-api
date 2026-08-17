@@ -1940,11 +1940,16 @@ exports.getAllTutors = async (req, res) => {
       completedSessions.map(session => session.tutorId.toString())
     );
 
-    const tutorsWithFlags = tutors.map(tutor => ({
-      ...tutor,
-      isSubscribed: subscribedTutorIds.has(tutor._id.toString()),
-      sessionMarkCompleted: completedSessionTutorIds.has(tutor._id.toString())
-    }));
+    const tutorsWithFlags = tutors.map(tutor => {
+      const isSubscribed = subscribedTutorIds.has(tutor._id.toString());
+      const sessionMarkCompleted = completedSessionTutorIds.has(tutor._id.toString());
+      return {
+        ...tutor,
+        isSubscribed,
+        sessionMarkCompleted,
+        canRebook: sessionMarkCompleted && !isSubscribed, // student completed a session and is not currently subscribed
+      };
+    });
 
     return paginationResponse(tutorsWithFlags, total, page, limit, res);
 
@@ -1985,10 +1990,13 @@ exports.getSingleTutor = async (req, res) => {
       session.tutorId.toString() === tutorId
     );
 
+    const canRebook = sessionMarkCompleted && !isSubscribed;
+
     const tutorWithFlags = {
       ...tutor,
       isSubscribed,
-      sessionMarkCompleted
+      sessionMarkCompleted,
+      canRebook, // student can book another session with this tutor
     };
 
     return successResponse(tutorWithFlags, res, 200, 'Tutor fetched successfully');

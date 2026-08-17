@@ -36,6 +36,10 @@ const userSchema = new mongoose.Schema(
       enum: ['English', 'German', 'Spanish', 'French', 'Dutch'], 
       default: 'English' 
     },
+    spokenLanguages: {
+      type: [String],
+      default: []
+    },
     verificationCode: {
       type: String,
       default: null

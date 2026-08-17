@@ -1,9 +1,9 @@
-// src/controllers/service.controller.js - continued
 const Service = require('../models/service.model');
 const User = require('../models/user.model');
 const Inquiry = require('../models/inquiry.model');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
 const Support = require('../models/support.model');
+const AppConfig = require('../models/app-config.model');
 const { sendEmail } = require('../services/email.service');
 
 
@@ -213,6 +213,49 @@ exports.updateSupportRequest = async (req, res) => {
     await supportRequest.save();
     
     return successResponse(supportRequest, res, 200, 'Support request updated successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+// ──────────────────────────────────────────
+// Contact Info (admin manages, public reads)
+// ──────────────────────────────────────────
+
+/** GET /api/v2/support/contact-info — public */
+exports.getContactInfo = async (req, res) => {
+  try {
+    let config = await AppConfig.findOne({ key: 'global' });
+
+    if (!config) {
+      // Seed default values on first access
+      config = await AppConfig.create({
+        key: 'global',
+        contactInfo: {
+          phones: [{ label: 'Support', number: '+234 123 456 7890' }],
+          emails: [{ label: 'Support', address: 'support@emgs.com' }],
+          whatsapp: '',
+        },
+      });
+    }
+
+    return successResponse(config.contactInfo, res, 200, 'Contact info fetched');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+/** PUT /api/v2/support/contact-info — admin only */
+exports.updateContactInfo = async (req, res) => {
+  try {
+    const { phones, emails, whatsapp } = req.body;
+
+    const config = await AppConfig.findOneAndUpdate(
+      { key: 'global' },
+      { $set: { 'contactInfo.phones': phones, 'contactInfo.emails': emails, 'contactInfo.whatsapp': whatsapp } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return successResponse(config.contactInfo, res, 200, 'Contact info updated');
   } catch (error) {
     return internalServerErrorResponse(error.message, res);
   }

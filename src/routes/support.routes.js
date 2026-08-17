@@ -10,9 +10,11 @@ router.post('/submit', supportController.submitSupportRequest);
 
 router.get('/user', authenticate, supportController.getUserSupportRequests);
 router.get('/all', [authenticate, isAdmin], supportController.getAllSupportRequests);
-router.get('/:requestId', [authenticate,isAdmin], supportController.updateSupportRequest);
 
-// router.get('/all', authenticate, authorize(['admin', 'support']), supportController.getAllSupportRequests);
-// router.put('/:requestId', authenticate, authorize(['admin', 'support']), supportController.updateSupportRequest);
+// Contact info — public read, admin write
+router.get('/contact-info', supportController.getContactInfo);
+router.put('/contact-info', [authenticate, isAdmin], supportController.updateContactInfo);
+
+router.get('/:requestId', [authenticate,isAdmin], supportController.updateSupportRequest);
 
 module.exports = router;

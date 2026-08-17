@@ -910,6 +910,7 @@ exports.registerTutor = async (req, res) => {
       password, 
       phone, 
       bio, 
+      spokenLanguages,
       preferredLanguage, 
       proficiency,
       certificateType,
@@ -931,12 +932,14 @@ exports.registerTutor = async (req, res) => {
       password,
       phone,
       bio,
+      spokenLanguages: spokenLanguages ? (Array.isArray(spokenLanguages) ? spokenLanguages : spokenLanguages.split(',').map(s => s.trim())) : [],
       preferredLanguage,
       proficiency,
       certificateType,
       certificate,
       introduction,
       role: 'tutor',
+      roles: ['tutor', 'user'],
       referralCode: generateReferralCode(),
     });
 
@@ -948,19 +951,19 @@ exports.registerTutor = async (req, res) => {
       }
     }
 
-    // // Generate verification code
-    // const verificationCode = generateVerificationCode();
-    // tutor.verificationCode = verificationCode;
-    // tutor.verificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000);
+    // Generate verification code
+    const verificationCode = generateVerificationCode();
+    tutor.verificationCode = verificationCode;
+    tutor.verificationCodeExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
     await tutor.save();
 
-    // // Send verification email with code
-    // try {
-    //   await emailService.sendVerificationCodeEmail(tutor.email, tutor.fullName, verificationCode);
-    // } catch (error) {
-    //   console.error('Error sending verification email:', error);
-    // }
+    // Send verification email with code
+    try {
+      await emailService.sendVerificationCodeEmail(tutor.email, tutor.fullName, verificationCode);
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+    }
 
     return successResponse(
       { userId: tutor._id}, 

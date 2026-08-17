@@ -6,6 +6,7 @@ const tutorRequestSchema = new mongoose.Schema({
   email: { type: String, required: true },
   phone: { type: String },
   bio: { type: String },
+  spokenLanguages: { type: [String] },
   preferredLanguage: { type: String },
   proficiency: { type: String },
   certificateType: { type: String },
