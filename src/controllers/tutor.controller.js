@@ -939,7 +939,7 @@ exports.registerTutor = async (req, res) => {
       certificate,
       introduction,
       role: 'tutor',
-      roles: ['tutor', 'user'],
+      roles: ['user', 'tutor'],
       referralCode: generateReferralCode(),
     });
 
