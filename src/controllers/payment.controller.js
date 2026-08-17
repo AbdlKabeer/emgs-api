@@ -75,7 +75,7 @@ exports.initiatePayment = async (req, res) => {
         userId,
         itemId,
         itemType,
-        amount:100,
+        amount: course.price || 0,
         status:"pending",
       });
       
@@ -742,7 +742,7 @@ exports.initiateCardPayment = async (req, res) => {
         return badRequestResponse('Course not found', 'NOT_FOUND', 404, res);
       }
       
-      amount = course.price || 100; // Set amount for course
+      amount = course.price || 0; // Set amount for course
 
       let payment = new Payment({
         userId,
