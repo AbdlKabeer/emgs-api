@@ -1,0 +1,22 @@
+name: Prembly Security Scanner
+
+on:
+  push:
+    branches: [ "dev", "main", "feat/*" ]
+  pull_request:
+    branches: [ "dev", "main" ]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Security Scanner
+        run: node scripts/security-check.mjs
