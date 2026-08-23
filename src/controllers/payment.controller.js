@@ -744,6 +744,56 @@ exports.initiateCardPayment = async (req, res) => {
       
       amount = course.price || 0; // Set amount for course
 
+      const user = await User.findById(userId);
+      if (user && user.enrolledCourses && user.enrolledCourses.some(id => id.toString() === itemId.toString())) {
+        return successResponse({ autoEnrolled: true, message: 'You are already enrolled in this course' }, res, 200, 'Already enrolled in course');
+      }
+
+      // If course is free or 0 naira, auto-enroll directly
+      if (amount === 0 || course.isFree || !course.price) {
+        let payment = new Payment({
+          userId,
+          itemId,
+          itemType,
+          amount: 0,
+          status: "completed",
+          paymentMethod: 'free',
+          metadata: {
+            courseId: itemId,
+            source: 'course',
+          }
+        });
+        await payment.save();
+
+        await User.findByIdAndUpdate(userId, { $addToSet: { enrolledCourses: itemId } });
+        await Course.findByIdAndUpdate(itemId, { $addToSet: { enrolledUsers: userId } });
+
+        const notification = new Notification({
+          userId,
+          title: 'Course Enrollment',
+          message: `You have successfully enrolled in ${course.title}`,
+          type: 'course',
+          relatedItemId: itemId
+        });
+        await notification.save();
+
+        if (user && user.email) {
+          emailService.sendPurchaseSuccessEmail(
+            user.email,
+            user.fullName || 'Student',
+            course.title,
+            0,
+            payment._id
+          ).catch(emailError => console.error('Error sending free course enrollment email:', emailError));
+        }
+
+        return successResponse({
+          autoEnrolled: true,
+          reference: payment._id.toString(),
+          message: 'Enrolled in course successfully'
+        }, res, 200, 'Course activated successfully');
+      }
+
       let payment = new Payment({
         userId,
         itemId,

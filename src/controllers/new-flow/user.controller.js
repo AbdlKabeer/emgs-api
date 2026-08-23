@@ -237,11 +237,16 @@ exports.getEnrolledCourseContent = async (req, res) => {
       { upsert: true }
     );
 
+    // Count modules for this course
+    const moduleCount = await Module.countDocuments({ courseId });
+
     return successResponse({
       course: {
         ...course.toObject(),
+        moduleCount,
         lessons: structuredLessons
       },
+      moduleCount,
       progress: progress.progressPercentage || 0
     }, res, 200);
   } catch (error) {
