@@ -70,7 +70,7 @@ exports.getAllCourses = async (req, res) => {
           courseObj.category = "General";
         }
 
-        courseObj.moduleCount = courseObj.modules ? courseObj.modules.length : 0;
+        courseObj.moduleCount = await Module.countDocuments({ courseId: course._id });
 
         // Add isBookmarked
         courseObj.isBookmarked = bookmarks.some(bookmark =>
@@ -83,6 +83,7 @@ exports.getAllCourses = async (req, res) => {
           : false;
 
         courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+
 
         // Add lesson count (from populated lessons)
         const lessonCount = courseObj.modules?.reduce((sum, m) => sum + (m.lessons?.length || 0), 0) || 0;
