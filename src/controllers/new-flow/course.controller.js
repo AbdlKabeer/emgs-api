@@ -854,8 +854,8 @@ exports.createCourseWithContent = async (req, res) => {
       aboutCourse
     } = req.body;
 
-    // get the completed value from query param
-    const isSaveProgress = req.query.completed === 'false';
+    // get the completed value from query param or body
+    const isSaveProgress = req.query.completed === 'false' || req.body.completed === false;
 
     
     // Validation

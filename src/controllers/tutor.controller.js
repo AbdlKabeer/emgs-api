@@ -180,7 +180,7 @@ exports.getTutorCourses = async (req, res) => {
     }
 
     // Optional query parameters for filtering
-    const { isPublished, category, sort } = req.query;
+    const { isPublished, category, sort, status, search } = req.query;
 
     // Build query
     const query = { createdBy: tutorId };
@@ -192,6 +192,14 @@ exports.getTutorCourses = async (req, res) => {
 
     if (category) {
       query.category = category;
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (search) {
+      query.title = { $regex: search, $options: 'i' };
     }
 
     // Define sort options
@@ -218,7 +226,8 @@ exports.getTutorCourses = async (req, res) => {
     }
 
     const courses = await Course.find(query)
-      .select('title description category thumbnail isPublished price averageRating enrolledUsers lessons createdAt')
+      .select('title description category thumbnail isPublished status price averageRating enrolledUsers lessons createdAt')
+      .populate('category', 'name')
       .populate('lessons', 'title duration')
       .populate('createdBy', 'name email')
       .sort(sortOptions);
@@ -227,6 +236,14 @@ exports.getTutorCourses = async (req, res) => {
     const enhancedCourses = await Promise.all(
       courses.map(async (course) => {
         const courseObj = course.toObject();
+        
+        // Map category object back to just the category name for the frontend
+        if (courseObj.category && courseObj.category.name) {
+          courseObj.category = courseObj.category.name;
+        } else if (courseObj.category && courseObj.category._id) {
+          courseObj.category = courseObj.category._id.toString();
+        }
+
 
         // Add lesson count
         courseObj.lessonCount = course.lessons.length;
