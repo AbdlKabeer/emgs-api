@@ -312,7 +312,7 @@ exports.updateCourse = async (req, res) => {
 // Submit Course for Review
 exports.submitCourseForReview = async (req, res) => {
   try {
-    const { courseId } = req.params;
+    const courseId = req.params.id || req.params.courseId;
     const userId = req.user.id;
 
     const course = await Course.findOne({ _id: courseId, createdBy: userId });
@@ -352,8 +352,9 @@ exports.submitCourseForReview = async (req, res) => {
 
     return successResponse({
       message: 'Course submitted for review successfully',
+      _id: course._id,
       courseId: course._id
-    }, res, 200);
+    }, res, 200, 'Course submitted for review successfully');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
