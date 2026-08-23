@@ -1260,14 +1260,12 @@ exports.getAllCourses = async (req, res) => {
         // Get module count
         const moduleCount = await Module.countDocuments({
           courseId: course._id,
-          isPublished: true,
         });
         courseObj.moduleCount = moduleCount;
 
         // Get all modules
         const modules = await Module.find({
           courseId: course._id,
-          isPublished: true,
         }).select('_id');
 
         const moduleIds = modules.map(m => m._id);
@@ -1275,7 +1273,6 @@ exports.getAllCourses = async (req, res) => {
         // Get lesson count
         const totalLessons = await Lesson.countDocuments({
           moduleId: { $in: moduleIds },
-          isPublished: true,
         });
         courseObj.lessonCount = totalLessons;
 
@@ -1376,14 +1373,12 @@ exports.getCompletedCourses = async (req, res) => {
         // Get module count
         const moduleCount = await Module.countDocuments({
           courseId: course._id,
-          isPublished: true,
         });
         courseObj.moduleCount = moduleCount;
 
         // Get all modules
         const modules = await Module.find({
           courseId: course._id,
-          isPublished: true,
         }).select('_id');
 
         const moduleIds = modules.map(m => m._id);
@@ -1391,7 +1386,6 @@ exports.getCompletedCourses = async (req, res) => {
         // Get lesson count
         const totalLessons = await Lesson.countDocuments({
           moduleId: { $in: moduleIds },
-          isPublished: true,
         });
         courseObj.lessonCount = totalLessons;
 
