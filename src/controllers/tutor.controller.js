@@ -240,10 +240,14 @@ exports.getTutorCourses = async (req, res) => {
         // Map category object back to just the category name for the frontend
         if (courseObj.category && courseObj.category.name) {
           courseObj.category = courseObj.category.name;
-        } else if (courseObj.category && courseObj.category._id) {
-          courseObj.category = courseObj.category._id.toString();
+        } else {
+          // Fallback if category was deleted or not populated
+          courseObj.category = "General";
         }
 
+        // Add module count
+        const Module = mongoose.model('Module');
+        courseObj.moduleCount = await Module.countDocuments({ courseId: course._id });
 
         // Add lesson count
         courseObj.lessonCount = course.lessons.length;
