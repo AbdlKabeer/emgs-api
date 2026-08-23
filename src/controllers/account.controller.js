@@ -1,6 +1,7 @@
 const User = require('../models/user.model');
 const TutorRequest = require('../models/tutorRequest.model');
 const Notification = require('../models/notification.model');
+const Course = require('../models/course.model');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
 
 
@@ -163,6 +164,12 @@ exports.getUserProfile = async (req, res) => {
     const TutorRequest = require('../models/tutorRequest.model');
     const hasPendingTutorRequest = await TutorRequest.exists({ user: user._id, status: 'pending' });
     
+    // Get total courses created if user is a tutor
+    let totalCoursesCreated = 0;
+    if (user.roles && user.roles.includes('tutor')) {
+      totalCoursesCreated = await Course.countDocuments({ createdBy: user._id });
+    }
+
     // Base response data
     const responseData = {
       user: {
@@ -181,6 +188,8 @@ exports.getUserProfile = async (req, res) => {
         enrolledCourses: user.enrolledCourses,
         completedLessons: user.completedLessons,
         completedCoursesCount: user.completedCourses.length,
+        totalCoursesCreated: totalCoursesCreated,
+        averageRating: user.averageRating || 0,
         referralCode: user.referralCode,
         inProgressCoursesCount: user.enrolledCourses.length - user.completedCourses.length,
         roles: user.roles,
