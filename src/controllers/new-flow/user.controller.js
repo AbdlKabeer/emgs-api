@@ -658,21 +658,18 @@ exports.getBookmarkedCourses = async (req, res) => {
         // Module count
         const moduleCount = await Module.countDocuments({
           courseId: course._id,
-          isPublished: true,
         });
         courseObj.moduleCount = moduleCount;
 
         // Lesson count
         const modules = await Module.find({
           courseId: course._id,
-          isPublished: true,
         }).select('_id');
 
         const moduleIds = modules.map(m => m._id);
 
         const totalLessons = await Lesson.countDocuments({
           moduleId: { $in: moduleIds },
-          isPublished: true,
         });
         courseObj.lessonCount = totalLessons;
 

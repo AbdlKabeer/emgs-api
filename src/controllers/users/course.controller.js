@@ -5,6 +5,7 @@ const Progress = require('../models/progress.model');
 const Lesson = require('../models/lesson.model');
 const Quiz = require('../models/quiz.model');
 const Bookmark = require('../models/bookmark.model');
+const Module = require('../models/module.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../utils/custom_response/responses');
 
 
@@ -674,13 +675,63 @@ exports.getUserCourses = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    const user = await User.findById(userId)
-      .populate({
-        path: 'enrolledCourses',
-        populate: { path: 'createdBy', select: 'fullName profilePicture' }
-      });
-    
-    return successResponse(user.enrolledCourses, res);
+    const [user, bookmarkDocs] = await Promise.all([
+      User.findById(userId)
+        .populate({
+          path: 'enrolledCourses',
+          populate: { path: 'createdBy', select: 'fullName profilePicture' }
+        }),
+      Bookmark.find({ userId }).select('courseId')
+    ]);
+
+    if (!user || !user.enrolledCourses) {
+      return successResponse([], res);
+    }
+
+    const completedLessons = user.completedLessons ? user.completedLessons.map(id => id.toString()) : [];
+    const bookmarkedCourseIds = new Set(bookmarkDocs.map(b => b.courseId.toString()));
+
+    const enhancedCourses = await Promise.all(
+      user.enrolledCourses.map(async (course) => {
+        if (!course) return null;
+        const courseObj = course.toObject();
+
+        courseObj.isBookmarked = bookmarkedCourseIds.has(course._id.toString());
+        courseObj.isEnrolled = true;
+        courseObj.enrolledStudentsCount = course.enrolledUsers?.length || 0;
+
+        // Get module count
+        const moduleCount = await Module.countDocuments({
+          courseId: course._id,
+        });
+        courseObj.moduleCount = moduleCount;
+
+        // Get all modules for lessons
+        const modules = await Module.find({
+          courseId: course._id,
+        }).select('_id');
+        const moduleIds = modules.map(m => m._id);
+
+        const totalLessons = await Lesson.countDocuments({
+          moduleId: { $in: moduleIds },
+        });
+        courseObj.lessonCount = totalLessons;
+
+        // Calculate progress
+        const completedLessonsForCourse = await Lesson.countDocuments({
+          moduleId: { $in: moduleIds },
+          _id: { $in: completedLessons },
+        });
+
+        courseObj.progress = totalLessons > 0
+          ? Math.round((completedLessonsForCourse / totalLessons) * 100)
+          : 0;
+
+        return courseObj;
+      })
+    );
+
+    return successResponse(enhancedCourses.filter(Boolean), res);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
