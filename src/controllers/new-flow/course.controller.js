@@ -14,7 +14,7 @@ const { successResponse, errorResponse, badRequestResponse, paginationResponse }
 
 exports.getAllCourses = async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, search, status } = req.query;
     const userId = req.user ? req.user.id : null;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -24,12 +24,15 @@ exports.getAllCourses = async (req, res) => {
     let query = { createdBy: userId };
     // let query = { isPublished: true, createdBy: userId };
     if (category) query.category = category;
+    if (status) query.status = status;
+    if (search) query.title = { $regex: search, $options: 'i' };
 
     const total = await Course.countDocuments(query);
 
     const courses = await Course.find(query)
       .select('title description category thumbnail isFree price aboutCourse tutorId enrolledUsers ratings averageRating createdBy isPublished status')
       .populate('createdBy', 'fullName email profilePicture bio')
+      .populate('category', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -60,6 +63,14 @@ exports.getAllCourses = async (req, res) => {
     const enhancedCourses = await Promise.all(
       courses.map(async (course) => {
         const courseObj = course.toObject();
+
+        if (courseObj.category && courseObj.category.name) {
+          courseObj.category = courseObj.category.name;
+        } else {
+          courseObj.category = "General";
+        }
+
+        courseObj.moduleCount = courseObj.modules ? courseObj.modules.length : 0;
 
         // Add isBookmarked
         courseObj.isBookmarked = bookmarks.some(bookmark =>
