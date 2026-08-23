@@ -1576,14 +1576,13 @@ exports.markLessonCompleted = async (req, res) => {
       { $addToSet: { completedLessons: lessonId } } // only adds if not already present
     );
 
-    // 5. Get all modules for the course
-    const allModules = await Module.find({ courseId: course._id, isPublished: true }).select('_id');
+    // 5. Get all modules for the course (no isPublished filter)
+    const allModules = await Module.find({ courseId: course._id }).select('_id');
     const moduleIds = allModules.map(mod => mod._id);
 
-    // 6. Get all lessons for the course
+    // 6. Get all lessons for the course (no isPublished filter)
     const allLessons = await Lesson.find({
       moduleId: { $in: moduleIds },
-      isPublished: true
     }).select('_id');
     const allLessonIds = allLessons.map(lesson => lesson._id.toString());
 
@@ -1592,14 +1591,21 @@ exports.markLessonCompleted = async (req, res) => {
     const completedLessons = user.completedLessons.map(id => id.toString());
 
     // 8. Check if user has completed all lessons in this course
-    const hasCompletedAll = allLessonIds.every(id => completedLessons.includes(id));
+    const completedCount = allLessonIds.filter(id => completedLessons.includes(id)).length;
+    const hasCompletedAll = allLessonIds.length > 0 && completedCount === allLessonIds.length;
 
     if (hasCompletedAll && !user.completedCourses.includes(courseId)) {
       user.completedCourses.push(courseId);
       await user.save();
     }
 
-    return successResponse({}, res, 200, 'Lesson marked as completed successfully');
+    return successResponse({
+      lessonId,
+      courseCompleted: hasCompletedAll,
+      progress: allLessonIds.length > 0
+        ? Math.round((completedCount / allLessonIds.length) * 100)
+        : 0,
+    }, res, 200, 'Lesson marked as completed successfully');
   } catch (error) {
     console.error('Error marking lesson completed:', error);
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);

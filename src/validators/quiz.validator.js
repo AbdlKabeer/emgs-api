@@ -98,12 +98,12 @@ exports.submitQuizValidator = [
   body('answers')
     .isArray()
     .withMessage('Answers must be provided as an array'),
-  body('answers.*.questionIndex')
-    .isInt({ min: 0 })
-    .withMessage('Question index must be a non-negative integer'),
-  body('answers.*.selectedOptionIndex')
-    .isInt({ min: 0 })
-    .withMessage('Selected option index must be a non-negative integer'),
+  body('answers.*.questionId')
+    .isMongoId()
+    .withMessage('Question ID must be a valid Mongo ID'),
+  body('answers.*.questionType')
+    .isIn(['singleChoice', 'multipleChoice', 'boolean', 'fillInBlank'])
+    .withMessage('Invalid question type'),
   validateRequest
 ];
 
