@@ -162,6 +162,18 @@ exports.rejectTutorRequest = async (req, res) => {
     tutorRequest.reviewedBy = adminId;
     tutorRequest.reviewedAt = new Date();
     await tutorRequest.save();
+
+    // Send notification to user
+    const notification = new Notification({
+      user: tutorRequest.user,
+      title: 'Tutor Application Update',
+      message: rejectionMessage 
+        ? `Your application to become a tutor was not approved. Reason: ${rejectionMessage}` 
+        : 'Your application to become a tutor was not approved.',
+      type: 'account',
+      read: false
+    });
+    await notification.save();
     return successResponse(tutorRequest, res, 200, 'Tutor request rejected');
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
