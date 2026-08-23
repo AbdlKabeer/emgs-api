@@ -1777,6 +1777,19 @@ exports.getLessonById = async (req, res) => {
       ? nextLesson._id
       : null;
 
+    // Check if next lesson belongs to a different module
+    const currentModuleId = lesson.moduleId?.toString();
+    const nextModuleId = nextLesson?.moduleId?.toString();
+    lessonObj.isLastInModule = !nextLesson || (nextModuleId && nextModuleId !== currentModuleId);
+    lessonObj.isLastLesson = !nextLesson;
+
+    // If next lesson is in a different module, flag it
+    if (nextLesson && nextModuleId !== currentModuleId) {
+      lessonObj.nextIsNewModule = true;
+    } else {
+      lessonObj.nextIsNewModule = false;
+    }
+
     return successResponse(lessonObj, res, 200, '');
   } catch (error) {
     console.error('Error getting lesson by ID:', error);
