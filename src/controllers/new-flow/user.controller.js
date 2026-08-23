@@ -1885,8 +1885,10 @@ exports.getCourseModules = async (req, res) => {
 
         moduleObj.lessons = enrichedLessons;
         moduleObj.lessonCount = enrichedLessons.length;
+        moduleObj.completedLessonsCount = enrichedLessons.filter(l => l.isCompleted).length;
+        moduleObj.isCompleted = enrichedLessons.length > 0 &&
+          enrichedLessons.every(l => l.isCompleted);
         moduleObj.quizzes = moduleQuizzes;
-
 
         return moduleObj;
       })
