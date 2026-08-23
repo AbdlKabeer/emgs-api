@@ -1913,13 +1913,12 @@ exports.getAllTutors = async (req, res) => {
       page = 1,
       limit = 10,
       tutorType,   // optional: 'emgs' or 'partner'
-      search       // optional: fullName search
+      search,      // optional: fullName search
+      isSubscribed // optional: 'true' or 'false'
     } = req.query;
 
     const userId = req.user.id;
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
-
     const query = { role: 'tutor' };
 
     if (tutorType) {
@@ -1930,16 +1929,7 @@ exports.getAllTutors = async (req, res) => {
       query.fullName = { $regex: search, $options: 'i' };
     }
 
-    const total = await User.countDocuments(query);
-
-    const tutors = await User.find(query)
-      .select('fullName email phone profilePicture tutorType bio servicePrice averageRating preferredLanguage')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
-
-    // Fetch current user's subscriptions AND completed sessions
+    // Fetch current user's subscriptions AND completed sessions early to allow filtering
     const currentUser = await User.findById(userId)
       .select('oneOnOneSubscriptions completedOneOnOneSessions')
       .lean();
@@ -1957,14 +1947,28 @@ exports.getAllTutors = async (req, res) => {
       completedSessions.map(session => session.tutorId.toString())
     );
 
+    if (isSubscribed === 'true') {
+      // Filter the query to only include tutors the user is subscribed to
+      query._id = { $in: Array.from(subscribedTutorIds) };
+    }
+
+    const total = await User.countDocuments(query);
+
+    const tutors = await User.find(query)
+      .select('fullName email phone profilePicture tutorType bio servicePrice averageRating preferredLanguage')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
     const tutorsWithFlags = tutors.map(tutor => {
-      const isSubscribed = subscribedTutorIds.has(tutor._id.toString());
+      const isSubbed = subscribedTutorIds.has(tutor._id.toString());
       const sessionMarkCompleted = completedSessionTutorIds.has(tutor._id.toString());
       return {
         ...tutor,
-        isSubscribed,
+        isSubscribed: isSubbed,
         sessionMarkCompleted,
-        canRebook: sessionMarkCompleted && !isSubscribed, // student completed a session and is not currently subscribed
+        canRebook: sessionMarkCompleted && !isSubbed, // student completed a session and is not currently subscribed
       };
     });
 
