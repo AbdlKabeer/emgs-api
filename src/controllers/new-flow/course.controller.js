@@ -926,7 +926,6 @@ exports.createCourseWithContent = async (req, res) => {
         res
       );
     }
-    // Create the course first
     const course = new Course({
       title,
       description,
@@ -937,8 +936,8 @@ exports.createCourseWithContent = async (req, res) => {
       goals: goals || [],
       notes: notes || [],
       createdBy: userId,
-      status: isSaveProgress ? 'draft': 'review',
-      isPublished: false,
+      status: isSaveProgress ? 'draft': 'published',
+      isPublished: !isSaveProgress,
       aboutCourse
     });
     
