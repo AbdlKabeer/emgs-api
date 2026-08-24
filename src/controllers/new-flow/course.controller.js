@@ -892,26 +892,26 @@ exports.createCourseWithContent = async (req, res) => {
     }
 
     const STATUS_MESSAGES = {
-      // pending: {
-      //   message: 'Your account is pending approval. Please verify your email.',
-      //   code: 'ACCOUNT_PENDING'
-      // },
-      // suspended: {
-      //   message: 'Your account has been suspended. Contact support.',
-      //   code: 'ACCOUNT_SUSPENDED'
-      // },
-      // banned: {
-      //   message: 'Your account has been permanently banned.',
-      //   code: 'ACCOUNT_BANNED'
-      // },
-      // inactive: {
-      //   message: 'Your account is inactive.',
-      //   code: 'ACCOUNT_INACTIVE'
-      // },
-      // rejected: {
-      //   message: 'Your account has been rejected. Contact support.',
-      //   code: 'ACCOUNT_REJECTED'
-      // }
+      pending: {
+        message: 'Your account is pending approval. Please verify your email.',
+        code: 'ACCOUNT_PENDING'
+      },
+      suspended: {
+        message: 'Your account has been suspended. Contact support.',
+        code: 'ACCOUNT_SUSPENDED'
+      },
+      banned: {
+        message: 'Your account has been permanently banned.',
+        code: 'ACCOUNT_BANNED'
+      },
+      inactive: {
+        message: 'Your account is inactive.',
+        code: 'ACCOUNT_INACTIVE'
+      },
+      rejected: {
+        message: 'Your account has been rejected. Contact support.',
+        code: 'ACCOUNT_REJECTED'
+      }
     };
 
     // check the status of the user
