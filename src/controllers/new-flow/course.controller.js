@@ -887,7 +887,7 @@ exports.createCourseWithContent = async (req, res) => {
     }
 
 
-    if (!modules || !Array.isArray(modules) || modules.length === 0) {
+    if (!isSaveProgress && (!modules || !Array.isArray(modules) || modules.length === 0)) {
       return errorResponse('At least one module is required', 'VALIDATION_ERROR', 400, res);
     }
 
@@ -947,7 +947,7 @@ exports.createCourseWithContent = async (req, res) => {
     // Create modules, lessons, and quizzes
     const createdModules = [];
     
-    for (let moduleIndex = 0; moduleIndex < modules.length; moduleIndex++) {
+    for (let moduleIndex = 0; moduleIndex < (modules || []).length; moduleIndex++) {
       const moduleData = modules[moduleIndex];
       
       // Create module
