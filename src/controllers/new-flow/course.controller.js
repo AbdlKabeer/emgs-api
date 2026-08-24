@@ -922,7 +922,7 @@ exports.createCourseWithContent = async (req, res) => {
       return errorResponse(
         statusData?.message || 'Your account is not active.',
         statusData?.code || 'ACCOUNT_RESTRICTED',
-        403,
+        400,
         res
       );
     }
