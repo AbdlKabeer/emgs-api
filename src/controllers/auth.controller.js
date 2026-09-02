@@ -135,7 +135,7 @@ exports.verifyEmail = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     return successResponse({
@@ -365,7 +365,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     return successResponse({
@@ -637,7 +637,7 @@ exports.googleCallback = async (req, res) => {
 
     if (user) {
       // User already exists, generate JWT tokens
-      const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
       const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
       // Redirect user to frontend with auth tokens
@@ -654,7 +654,7 @@ exports.googleCallback = async (req, res) => {
       await user.save();
 
       // Generate JWT tokens
-      const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
       const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
       // Redirect user to frontend with auth tokens
