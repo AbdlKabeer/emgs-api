@@ -39,6 +39,11 @@ const conversationSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  sessionStatus: {
+    type: String,
+    enum: ['ACTIVE', 'CLOSED'],
+    default: 'ACTIVE'
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

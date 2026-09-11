@@ -9,6 +9,17 @@ const createCourseValidator = [
   body('price')
     .optional()
     .isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('paymentType')
+    .optional()
+    .isIn(['one-time', 'subscription']).withMessage('Invalid payment type'),
+  body('subscriptionDuration')
+    .optional()
+    .custom((value) => {
+      if (value === null || ['1_month', '6_months', '1_year', '2_years'].includes(value)) {
+        return true;
+      }
+      throw new Error('Invalid subscription duration');
+    }),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -26,6 +37,17 @@ const updateCourseValidator = [
   body('price')
     .optional()
     .isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('paymentType')
+    .optional()
+    .isIn(['one-time', 'subscription']).withMessage('Invalid payment type'),
+  body('subscriptionDuration')
+    .optional()
+    .custom((value) => {
+      if (value === null || ['1_month', '6_months', '1_year', '2_years'].includes(value)) {
+        return true;
+      }
+      throw new Error('Invalid subscription duration');
+    }),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

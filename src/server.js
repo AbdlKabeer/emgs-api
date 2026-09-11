@@ -190,6 +190,10 @@ chatSocket(io);
 const { startSubscriptionScheduler } = require('./utils/subscription.scheduler');
 startSubscriptionScheduler();
 
+// Start course expiry scheduler
+const { startCourseExpiryJob } = require('./utils/course-expiry.scheduler');
+startCourseExpiryJob();
+
 // Start abandoned checkout scheduler
 const { startAbandonedCheckoutScheduler } = require('./utils/abandoned-checkout.scheduler');
 startAbandonedCheckoutScheduler();

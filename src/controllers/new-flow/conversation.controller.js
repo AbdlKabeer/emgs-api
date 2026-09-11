@@ -44,6 +44,22 @@ exports.createConversation = async (req, res) => {
       }
     }
 
+    // Check if a conversation for this service already exists for the user
+    if (serviceId) {
+      const existingServiceConv = await Conversation.findOne({
+        serviceId: serviceId,
+        participants: userId
+      });
+
+      if (existingServiceConv) {
+        if (existingServiceConv.sessionStatus === 'CLOSED') {
+          existingServiceConv.sessionStatus = 'ACTIVE';
+          await existingServiceConv.save();
+        }
+        return successResponse(existingServiceConv, res, 200, 'Conversation retrieved and reopened');
+      }
+    }
+
     // Create new conversation
     const conversation = new Conversation({
       participants: allParticipants,
@@ -222,5 +238,32 @@ exports.leaveConversation = async (req, res) => {
     return successResponse(res, null, 'Left conversation successfully');
   } catch (error) {
     return errorResponse(res, error.message, 500);
+  }
+};
+
+exports.closeConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const conversation = await Conversation.findOne({
+      _id: id,
+      participants: userId
+    });
+
+    if (!conversation) {
+      return badRequestResponse('Conversation not found', null, 404, res);
+    }
+
+    if (!conversation.serviceId) {
+      return badRequestResponse('Only service sessions can be closed', null, 400, res);
+    }
+
+    conversation.sessionStatus = 'CLOSED';
+    await conversation.save();
+
+    return successResponse(conversation, res, 200, 'Conversation closed successfully');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res, 500);
   }
 };

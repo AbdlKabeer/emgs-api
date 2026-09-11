@@ -10,6 +10,7 @@ router.get('/conversations', authenticate, conversationController.getUserConvers
 router.get('/conversations/:id', authenticate, conversationController.getConversation);
 router.put('/conversations/:id/participants', authenticate, conversationController.addParticipants);
 router.delete('/conversations/:id/leave', authenticate, conversationController.leaveConversation);
+router.put('/conversations/:id/close', authenticate, conversationController.closeConversation);
 
 // Message routes
 router.post('/conversations/:conversationId/messages', authenticate, messageController.sendMessage);

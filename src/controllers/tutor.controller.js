@@ -1392,6 +1392,14 @@ exports.markServiceSessionCompleted = async (req, res) => {
     }
     // Mark subscription as inactive (completed)
     user.serviceSubscriptions[subscriptionIndex].isActive = false;
+
+    // Remove from enrolledServices so they can re-enroll
+    if (user.enrolledServices) {
+      user.enrolledServices = user.enrolledServices.filter(
+        id => id.toString() !== serviceId.toString()
+      );
+    }
+
     // Log session completion
     user.completedServiceSessions = user.completedServiceSessions || [];
     user.completedServiceSessions.push({
