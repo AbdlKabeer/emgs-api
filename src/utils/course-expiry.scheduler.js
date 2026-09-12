@@ -8,14 +8,9 @@ const SCHEDULE = '0 0 * * *';
 
 let scheduledTask;
 
-const getDurationInDays = (durationStr) => {
-  switch (durationStr) {
-    case '1_month': return 30;
-    case '6_months': return 180;
-    case '1_year': return 365;
-    case '2_years': return 730;
-    default: return null;
-  }
+const getDurationInDays = (durationWeeks) => {
+  if (durationWeeks === null || isNaN(Number(durationWeeks))) return null;
+  return Number(durationWeeks) * 7;
 };
 
 const checkAndRevokeExpiredCourses = async () => {

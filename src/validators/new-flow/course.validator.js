@@ -18,7 +18,7 @@ const createCourseValidator = [
       if (value === null || (Number.isInteger(Number(value)) && Number(value) > 0)) {
         return true;
       }
-      throw new Error('Subscription duration must be a positive number of months');
+      throw new Error('Subscription duration must be a positive number of weeks');
     }),
   (req, res, next) => {
     const errors = validationResult(req);
@@ -46,7 +46,7 @@ const updateCourseValidator = [
       if (value === null || (Number.isInteger(Number(value)) && Number(value) > 0)) {
         return true;
       }
-      throw new Error('Subscription duration must be a positive number of months');
+      throw new Error('Subscription duration must be a positive number of weeks');
     }),
   (req, res, next) => {
     const errors = validationResult(req);
