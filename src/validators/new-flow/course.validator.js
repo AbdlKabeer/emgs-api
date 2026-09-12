@@ -15,10 +15,10 @@ const createCourseValidator = [
   body('subscriptionDuration')
     .optional()
     .custom((value) => {
-      if (value === null || ['1_month', '6_months', '1_year', '2_years'].includes(value)) {
+      if (value === null || (Number.isInteger(Number(value)) && Number(value) > 0)) {
         return true;
       }
-      throw new Error('Invalid subscription duration');
+      throw new Error('Subscription duration must be a positive number of months');
     }),
   (req, res, next) => {
     const errors = validationResult(req);
@@ -43,10 +43,10 @@ const updateCourseValidator = [
   body('subscriptionDuration')
     .optional()
     .custom((value) => {
-      if (value === null || ['1_month', '6_months', '1_year', '2_years'].includes(value)) {
+      if (value === null || (Number.isInteger(Number(value)) && Number(value) > 0)) {
         return true;
       }
-      throw new Error('Invalid subscription duration');
+      throw new Error('Subscription duration must be a positive number of months');
     }),
   (req, res, next) => {
     const errors = validationResult(req);

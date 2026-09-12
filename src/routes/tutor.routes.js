@@ -48,13 +48,13 @@ router.get('/profile/:userId', tutorController.getTutorProfile);
 router.post('/admin/add-emgs-tutor', [authenticate, isAdmin], tutorController.addEmgsTutor);
 
 // List all active one-on-one sessions for the logged-in tutor
-router.get('/me/active-sessions', authenticate, isTutor, tutorController.getMyActiveSessions);
+router.get('/me/one-on-one/active-sessions', authenticate, isTutor, tutorController.getMyActiveSessions);
 
 // List all completed one-on-one sessions for the logged-in tutor
-router.get('/me/completed-sessions', authenticate, isTutor, tutorController.getMyCompletedSessions);
+router.get('/me/one-on-one/completed-sessions', authenticate, isTutor, tutorController.getMyCompletedSessions);
 
 // Tutor marks a user's session as completed
-router.post('/me/complete-session', authenticate, isTutor, tutorController.markSessionCompleted);
+router.post('/me/one-on-one/complete-session', authenticate, isTutor, tutorController.markSessionCompleted);
 
 
 

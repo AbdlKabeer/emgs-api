@@ -25,8 +25,7 @@ const courseSchema = new mongoose.Schema({
     default: 'one-time'
   },
   subscriptionDuration: {
-    type: String,
-    enum: ['1_month', '6_months', '1_year', '2_years', null],
+    type: Number,
     default: null
   },
   price: {
