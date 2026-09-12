@@ -32,7 +32,13 @@ exports.getTutorRequestStatus = async (req, res) => {
 exports.switchActiveRole = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { role } = req.body;
+    let { role } = req.body;
+    
+    // Map 'student' to 'user'
+    if (role === 'student') {
+      role = 'user';
+    }
+
     const allowedRoles = ['user', 'tutor', 'admin'];
     if (!allowedRoles.includes(role)) {
       return badRequestResponse('Invalid role', 'INVALID_ROLE', 400, res);

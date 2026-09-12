@@ -263,16 +263,8 @@ exports.completeChunkedUpload = async (req, res) => {
       chunk_size: 6000000
     };
 
-    // Add detailed logging to completeChunkedUpload
-    console.log('Starting completeChunkedUpload for uploadId:', uploadId);
-    console.log('Upload session metadata:', uploadSession);
-
-    // Log chunk merging progress
-    console.log(`Merging ${uploadSession.totalChunks} chunks for uploadId: ${uploadId}`);
 
     // Log Cloudinary upload options
-    console.log('Cloudinary upload options:', uploadOptions);
-
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
@@ -439,7 +431,6 @@ exports.cleanupExpiredSessions = async () => {
         if (Date.now() > session.expiresAt) {
           const uploadId = session.uploadId;
           await cleanup(uploadId);
-          console.log(`Cleaned up expired session: ${uploadId}`);
         }
       } catch (error) {
         console.error(`Error processing session file ${sessionFile}:`, error);

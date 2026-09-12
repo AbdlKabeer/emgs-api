@@ -25,7 +25,6 @@ async function clearCompletedCourses() {
       { $set: { completedCourses: [] } } // Set completedCourses to an empty array
     );
 
-    console.log(`Successfully updated ${result.modifiedCount} users.`);
     process.exit(); // Exit after completion
 
   } catch (error) {

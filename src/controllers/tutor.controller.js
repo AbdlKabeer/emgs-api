@@ -327,7 +327,6 @@ exports.getTutorOverview = async (req, res) => {
       return acc.concat(course.enrolledUsers);
     }, []);
 
-    console.log('allEnrolledStudents:', allEnrolledStudents); // Log to debug
 
     // Count unique enrolled students
     const uniqueStudentIds = [...new Set(allEnrolledStudents.map(id => id.toString()))];

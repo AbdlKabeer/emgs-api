@@ -374,7 +374,6 @@ exports.processDueSubscriptions = async (req, res) => {
       nextBillingDate: { $lte: new Date() }
     });
 
-    console.log(`Processing ${dueSubscriptions.length} due subscriptions...`);
 
     const results = {
       total: dueSubscriptions.length,

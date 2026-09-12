@@ -80,12 +80,6 @@ exports.register = async (req, res) => {
       createdAt: user.createdAt
     });
 
-    // Log parameters before sending email
-    console.log('Sending verification email with:', {
-      email: user.email,
-      fullName: user.fullName,
-      verificationCode
-    });
 
     // Send verification email with code
     try {
@@ -313,12 +307,9 @@ exports.verifyEmailToken = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log("Login attempt for:", email);
-    console.log("Password provided:", password);
     
     // Find user
     const user = await User.findOne({ email });
-    console.log(user)
     if (!user) {
       return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
     }

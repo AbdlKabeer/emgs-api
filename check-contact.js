@@ -5,7 +5,6 @@ const AppConfig = require('./src/models/app-config.model');
 mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
     const config = await AppConfig.findOne({ key: 'global' });
-    console.log(`\n=== CONTACT INFO ===`);
     if (config) {
       console.log(JSON.stringify(config.contactInfo, null, 2));
     } else {

@@ -6,7 +6,6 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
     const count = await FAQ.countDocuments();
     const faqs = await FAQ.find().limit(3);
-    console.log(`\n=== FAQ RECORDS ===`);
     console.log(`Total count: ${count}`);
     if (count > 0) {
       console.log(`\nFirst few records:`);

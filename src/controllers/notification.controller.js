@@ -170,7 +170,6 @@ exports.getNotificationStream = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  console.log(`SSE: User ${userId} connected to notification stream`);
 
   // Send initial unread notifications
   try {

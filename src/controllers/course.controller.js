@@ -103,7 +103,6 @@ exports.getAllCourses = async (req, res) => {
 exports.getCourseById = async (req, res) => {
   try {
     const userId = req.user ? req.user.id : null;
-    console.log(userId);
 
     const course = await Course.findById(req.params.id)
       .populate('lessons')
