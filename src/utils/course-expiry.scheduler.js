@@ -2,6 +2,8 @@ const cron = require('node-cron');
 const Course = require('../models/course.model');
 const User = require('../models/user.model');
 const Payment = require('../models/payment.model');
+const Notification = require('../models/notification.model');
+const notificationEmitter = require('./notificationEmitter');
 
 // Run daily at midnight
 const SCHEDULE = '0 0 * * *'; 
@@ -51,6 +53,41 @@ const checkAndRevokeExpiredCourses = async () => {
             await User.findByIdAndUpdate(userId, {
               $pull: { enrolledCourses: course._id }
             });
+
+            const notification = new Notification({
+              userId,
+              title: 'Course Subscription Expired',
+              message: `Your subscription for "${course.title}" has expired.`,
+              type: 'course',
+              relatedItemId: course._id
+            });
+            await notification.save();
+            notificationEmitter.emit('new-notification', notification);
+          } else {
+            const timeDiff = expiryDate.getTime() - now.getTime();
+            const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+            
+            if (daysRemaining === 3) {
+              const notification = new Notification({
+                userId,
+                title: 'Course Subscription Expiring Soon',
+                message: `Your subscription for "${course.title}" will expire in about 3 days.`,
+                type: 'course',
+                relatedItemId: course._id
+              });
+              await notification.save();
+              notificationEmitter.emit('new-notification', notification);
+            } else if (daysRemaining === 1) {
+              const notification = new Notification({
+                userId,
+                title: 'Course Subscription Expiring Soon',
+                message: `Your subscription for "${course.title}" expires in less than 24 hours.`,
+                type: 'course',
+                relatedItemId: course._id
+              });
+              await notification.save();
+              notificationEmitter.emit('new-notification', notification);
+            }
           }
         }
       }
