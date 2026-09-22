@@ -506,9 +506,14 @@ exports.enrollInCourse = async (req, res) => {
 exports.getUserCourses = async (req, res) => {
   try {
     const userId = req.user.id;
-    
     const user = await User.findById(userId)
-      .populate('enrolledCourses');
+      .populate({
+        path: 'enrolledCourses',
+        populate: {
+          path: 'createdBy',
+          select: 'fullName profilePicture'
+        }
+      });
     
     return successResponse(user.enrolledCourses, res);
   } catch (error) {
