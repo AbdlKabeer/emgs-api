@@ -306,14 +306,13 @@ exports.verifyEmailToken = async (req, res) => {
 // Login user
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, platform } = req.body;
     
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
     }
-
 
     // Check if password is correct
     const isMatch = await user.comparePassword(password);
@@ -322,6 +321,17 @@ exports.login = async (req, res) => {
       return badRequestResponse('Invalid credentials', 'BAD_REQUEST', 400, res);
     }
 
+    // iOS Platform Restriction Check
+    if (platform === 'ios' && user.role === 'user') {
+      if (user.roles && user.roles.includes('tutor')) {
+        // Automatically switch their active role to tutor
+        user.role = 'tutor';
+        await user.save();
+      } else {
+        // Block login
+        return badRequestResponse('Student is not allowed to login on iOS.', 'FORBIDDEN', 403, res);
+      }
+    }
 
     // Check if user is verified
     if (!user.isVerified && user.role !== 'tutor') {
