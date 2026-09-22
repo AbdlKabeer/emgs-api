@@ -323,7 +323,7 @@ exports.login = async (req, res) => {
 
     // iOS Platform Restriction Check
     if (platform === 'ios' && user.role === 'user') {
-      if (user.roles && user.roles.includes('tutor')) {
+      if (user.roles && user.roles.includes('tutor') && 2 == 1) {
         // Automatically switch their active role to tutor
         user.role = 'tutor';
         await user.save();
