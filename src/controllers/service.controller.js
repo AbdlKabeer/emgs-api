@@ -230,28 +230,40 @@ exports.createService = async (req, res) => {
 
 exports.updateService = async (req, res) => {
   try {
-    const { name, description, category, whatsappContact, price, isActive } = req.body;
+    const { name, description, category, whatsappContact, price, features, autoResponderMessage, isActive, userId } = req.body;
     
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (category !== undefined) updateData.category = category;
+    if (whatsappContact !== undefined) updateData.whatsappContact = whatsappContact;
+    if (price !== undefined) updateData.price = price;
+    if (features !== undefined) updateData.features = features;
+    if (autoResponderMessage !== undefined) updateData.autoResponderMessage = autoResponderMessage;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    const targetUserId = userId !== undefined ? userId : req.body.user;
+    if (targetUserId) {
+      const userExists = await User.findById(targetUserId);
+      if (!userExists) {
+        return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+      }
+      updateData.user = targetUserId;
+    }
+
     const service = await Service.findByIdAndUpdate(
       req.params.id,
-      {
-        name,
-        description,
-        category,
-        whatsappContact,
-        price,
-        isActive
-      },
+      updateData,
       { new: true }
     );
     
     if (!service) {
-      return badRequestResponse('Service not found',"NOT_FOUND",404,res)
+      return badRequestResponse('Service not found', "NOT_FOUND", 404, res);
     }
     
     return successResponse({
       serviceId: service._id
-    },res,200, 'Service updated successfully')
+    }, res, 200, 'Service updated successfully');
   } catch (error) {
     return internalServerErrorResponse(error.message, res, 500);
   }
