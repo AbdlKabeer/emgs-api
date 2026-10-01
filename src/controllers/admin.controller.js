@@ -1204,12 +1204,22 @@ exports.createService = async (req, res) => {
 // Update a service
 exports.updateService = async (req, res) => {
   try {
-    const { name, description, category, whatsappContact, price, features, isActive, autoResponderMessage } = req.body;
+    const { name, description, category, whatsappContact, price, features, isActive, autoResponderMessage, userId } = req.body;
     
     const service = await Service.findById(req.params.id);
     
     if (!service) {
       return errorResponse('Service not found', 'NOT_FOUND', 404, res);
+    }
+
+    // If userId or user is provided, verify the user exists and update tutor assignment
+    const targetUserId = userId !== undefined ? userId : req.body.user;
+    if (targetUserId) {
+      const user = await User.findById(targetUserId);
+      if (!user) {
+        return errorResponse('User not found', 'NOT_FOUND', 404, res);
+      }
+      service.user = targetUserId;
     }
 
     // Update fields
