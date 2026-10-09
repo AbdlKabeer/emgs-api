@@ -297,6 +297,27 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
     assert.equal((await call('POST', '/payment/webhook/paystack', null, {})).status, 404);
   });
 
+  console.log('\nPush token');
+  await t('PUT /account/push-token stores a valid Expo token; garbage is rejected', async () => {
+    const u = await mkUser(); const tk = tokenFor(u); const tok = `ExponentPushToken[${uniq()}${uniq()}]`;
+    assert.equal((await call('PUT', '/account/push-token', null, { pushToken: tok })).status, 401);
+    assert.equal((await call('PUT', '/account/push-token', tk, { pushToken: 'Error: Must use physical device' })).status, 400);
+    assert.equal((await call('PUT', '/account/push-token', tk, {})).status, 400);
+    const r = await call('PUT', '/account/push-token', tk, { pushToken: tok });
+    assert.equal(r.status, 200); assert.equal(r.data.devices, 1);
+    await call('PUT', '/account/push-token', tk, { pushToken: tok });
+    assert.equal((await User.findById(u._id)).pushTokens.length, 1);
+  });
+  await t('a device token moves to the newest account that registers it; DELETE removes it', async () => {
+    const a = await mkUser(); const b = await mkUser(); const tok = `ExponentPushToken[${uniq()}${uniq()}]`;
+    await call('PUT', '/account/push-token', tokenFor(a), { pushToken: tok });
+    await call('PUT', '/account/push-token', tokenFor(b), { pushToken: tok });
+    assert.equal((await User.findById(a._id)).pushTokens.length, 0);
+    assert.equal((await User.findById(b._id)).pushTokens.length, 1);
+    await call('DELETE', '/account/push-token', tokenFor(b), { pushToken: tok });
+    assert.equal((await User.findById(b._id)).pushTokens.length, 0);
+  });
+
   console.log(`\n${passed} passed, ${failures.length} failed`);
   await mongoose.disconnect();
   process.exit(failures.length ? 1 : 0);

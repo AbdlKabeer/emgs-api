@@ -71,6 +71,8 @@ const userSchema = new mongoose.Schema(
     },
 
     notificationsEnabled: { type: Boolean, default: true },
+    // Expo push tokens, one per signed-in device
+    pushTokens: { type: [String], default: [] },
     enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     enrolledServices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service' }],
     activeSubscriptions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Subscription' }],
