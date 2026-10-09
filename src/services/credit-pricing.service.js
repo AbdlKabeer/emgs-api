@@ -5,7 +5,7 @@ const DEFAULTS = {
   platformCommissionPct: 0.2,
   storeFeePct: 0.15,
   feeBearer: 'student',
-  showFiatToStudents: false,
+  showFiatToStudents: true,
   renewalGraceDays: 3,
   lowBalanceThreshold: 50,
   referralRewardPct: 0.1,
