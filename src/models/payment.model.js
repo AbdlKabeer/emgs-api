@@ -12,13 +12,15 @@ const paymentSchema = new mongoose.Schema(
     },
     paymentMethod: { type: String },
     paymentGatewayId: { type: String }, // Transaction ID from payment gateway
-    itemType: { type: String, enum: ['course', 'service','oneOnOne','one-on-one'], required: true },
+    itemType: { type: String, enum: ['course', 'service','oneOnOne','one-on-one', 'subscription'], required: true },
     itemId: { type: mongoose.Schema.Types.ObjectId, required: true }, // Reference to course or service
     metadata: {
       courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
       tutorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       source: { type: String },
     },
+    credits: { type: Number }, // credits spent when paymentMethod === 'credits'
+    pricing: { type: mongoose.Schema.Types.Mixed }, // snapshot from credit-pricing.service
     invoiceNumber: { type: String },
     receiptUrl: { type: String },
     abandonedWebhookSent: { type: Boolean, default: false },

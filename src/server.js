@@ -37,6 +37,8 @@ const newFlowCourseRoutes = require('./routes/new-flow/course.routes');
 const categoryRoutes = require('./routes/category.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const serviceSessionRoutes = require('./routes/service-session.routes');
+const creditRoutes = require('./routes/credit.routes');
+const creditAdminRoutes = require('./routes/credit-admin.routes');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 
@@ -106,6 +108,8 @@ app.use('/api/v2/progress', progressRoutes);
 app.use('/api/v2/notifications', notificationRoutes);
 app.use('/api/v2/quizzes', quizRoutes);
 app.use('/api/v2/payment', paymentRoutes);
+app.use('/api/v2/credits', creditRoutes);
+app.use('/api/v2/admin/credits', creditAdminRoutes);
 app.use('/api/v2/faqs', faqRoutes);
 app.use('/api/v2/file', imageRoutes);
 app.use('/api/v2/file/chunked', chunkedUploadRoutes);
@@ -195,8 +199,6 @@ const { startCourseExpiryJob } = require('./utils/course-expiry.scheduler');
 startCourseExpiryJob();
 
 // Start abandoned checkout scheduler
-const { startAbandonedCheckoutScheduler } = require('./utils/abandoned-checkout.scheduler');
-startAbandonedCheckoutScheduler();
 
 // Start Server
 const PORT = process.env.PORT || 5001;

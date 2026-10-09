@@ -80,7 +80,7 @@ exports.getVerificationEmailTemplate = (userName, verificationLink) => {
           <p>Thank you for your purchase. Your payment for <strong>${itemName}</strong> has been confirmed.</p>
           <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
             <p style="margin: 5px 0;"><strong>Item:</strong> ${itemName}</p>
-            <p style="margin: 5px 0;"><strong>Amount:</strong> ₦${amount}</p>
+            <p style="margin: 5px 0;"><strong>Amount:</strong> ${amount}</p>
             <p style="margin: 5px 0;"><strong>Transaction Ref:</strong> ${transactionRef}</p>
             <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
           </div>
@@ -89,6 +89,6 @@ exports.getVerificationEmailTemplate = (userName, verificationLink) => {
           <p>Thank you for choosing EMGS!</p>
         </div>
       `,
-      text: `Hello ${userName},\n\nThank you for your purchase. Your payment for ${itemName} has been confirmed.\n\nPurchase Details:\nItem: ${itemName}\nAmount: ₦${amount}\nTransaction Ref: ${transactionRef}\nDate: ${new Date().toLocaleDateString()}\n\nYou can now access your purchase through your dashboard.\n\nThank you for choosing EMGS!`
+      text: `Hello ${userName},\n\nThank you for your purchase. Your payment for ${itemName} has been confirmed.\n\nPurchase Details:\nItem: ${itemName}\nAmount: ${amount}\nTransaction Ref: ${transactionRef}\nDate: ${new Date().toLocaleDateString()}\n\nYou can now access your purchase through your dashboard.\n\nThank you for choosing EMGS!`
     };
   };

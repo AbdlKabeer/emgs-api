@@ -1,22 +1,13 @@
-// Get payment history for authenticated user
-
 const express = require('express');
 const paymentController = require('../controllers/payment.controller');
+const creditController = require('../controllers/credit.controller');
 const { authenticate } = require('../middleware/auth.middleware');
-const { initiatePaymentValidator,verifyPaymentValidator } = require('../validators/payment.validator');
 
 const router = express.Router();
 
-
-router.post('/initiate-old', authenticate, initiatePaymentValidator, paymentController.initiatePayment);
-router.post('/initiate', authenticate, initiatePaymentValidator, paymentController.initiateCardPayment);
-router.post('/verify', authenticate, paymentController.validatePayment);
+// All purchases are paid with credits. Card/Paystack/Flutterwave/Stripe checkout was removed
+// to comply with App Store guideline 3.1.1 (see CREDIT_SYSTEM_PLAN.md).
+router.post('/pay-with-credits', authenticate, creditController.payWithCredits);
 router.get('/history', authenticate, paymentController.getUserPaymentHistory);
-// router.post('/verify', authenticate,verifyPaymentValidator, paymentController.validatePayment);
-
-// Webhook endpoints for payment providers
-router.post('/webhook/paystack', paymentController.paystackWebhook);
-router.post('/webhook/flutterwave', paymentController.flutterwaveWebhook);
-router.post('/webhook/stripe', paymentController.stripeWebhook);
 
 module.exports = router;
