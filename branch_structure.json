@@ -1,0 +1,30 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "feat/credits",
+    "feat/webhook-logging",
+    "fix/credit-ledger-and-referrals",
+    "fix/service-tutor-assignment",
+    "fix/web-card-payments",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "feat/credits": "main",
+    "feat/webhook-logging": "main",
+    "fix/credit-ledger-and-referrals": "main",
+    "fix/service-tutor-assignment": "main",
+    "fix/web-card-payments": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "feat/credits",
+    "feat/webhook-logging",
+    "fix/credit-ledger-and-referrals",
+    "fix/service-tutor-assignment",
+    "fix/web-card-payments",
+    "origin"
+  ]
+}
