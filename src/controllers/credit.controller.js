@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Payment = require('../models/payment.model');
 const CreditPack = require('../models/credit-pack.model');
 const CreditTransaction = require('../models/credit-transaction.model');
@@ -159,6 +160,11 @@ exports.payWithCredits = async (req, res) => {
 // ---- Grants from the stores ----
 
 async function grantPack({ userId, productId, storeTransactionId, platform, eventId }) {
+  if (!storeTransactionId) return { ok: false, reason: 'Event has no transaction id' };
+  // RevenueCat can send anonymous ids ($RCAnonymousID:...) or test-event UUIDs: never let them throw
+  if (!mongoose.Types.ObjectId.isValid(userId) || String(userId).length !== 24) {
+    return { ok: false, reason: `app_user_id is not one of our user ids: ${userId}` };
+  }
   const pack = await CreditPack.findOne({ productId });
   if (!pack) return { ok: false, reason: `Unknown product ${productId}` };
   const user = await User.findById(userId).select('_id');

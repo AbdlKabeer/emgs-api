@@ -118,6 +118,13 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
     assert.equal((await rc({ ...purchaseEvent, id: `evt-${run}-x`, product_id: 'nope', transaction_id: `GPA.${run}-x` })).status, 200);
     assert.equal(await bal(student), 525);
   });
+  await t('webhook with an anonymous/invalid app_user_id or missing transaction id is acknowledged, not crashed', async () => {
+    const base = { type: 'NON_RENEWING_PURCHASE', product_id: 'credits_100', store: 'TEST_STORE' };
+    assert.equal((await rc({ ...base, id: `e-${run}-a1`, app_user_id: '$RCAnonymousID:abc123', transaction_id: `T-${run}-a1` })).status, 200);
+    assert.equal((await rc({ ...base, id: `e-${run}-a2`, app_user_id: 'ec662a5e-b26d-4e02-99ef-476707400111', transaction_id: `T-${run}-a2` })).status, 200);
+    assert.equal((await rc({ ...base, id: `e-${run}-a3`, app_user_id: student._id.toString(), transaction_id: null })).status, 200);
+    assert.equal(await bal(student), 525);
+  });
   await t('dev mock purchase credits_1000 -> +1100', async () => {
     const r = await call('POST', '/credits/dev/mock-purchase', sToken, { productId: 'credits_1000' });
     assert.equal(r.status, 200); assert.equal(await bal(student), 1625);
