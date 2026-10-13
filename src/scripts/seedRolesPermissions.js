@@ -99,6 +99,10 @@ const permissionsData = [
   { module: 'waitlist', action: 'update', description: 'Update waitlist entries' },
   { module: 'waitlist', action: 'delete', description: 'Remove from waitlist' },
 
+  // ==================== CREDITS ====================
+  { module: 'credits', action: 'read', description: 'View credit config, packs, ledger and stats' },
+  { module: 'credits', action: 'manage', description: 'Change credit rate/fees, manage packs, adjust balances, refund' },
+
   // ==================== WALLET ====================
   { module: 'wallet', action: 'create', description: 'Create wallet transactions' },
   { module: 'wallet', action: 'read', description: 'View wallet details' },
@@ -158,6 +162,7 @@ const rolesData = [
     permissions: [
       'payments.create', 'payments.read', 'payments.update', 'payments.refund',
       'wallet.read', 'wallet.update',
+      'credits.read', 'credits.manage',
       'users.read',
       'analytics.read', 'analytics.export'
     ]

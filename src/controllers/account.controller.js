@@ -349,6 +349,43 @@ exports.updateLanguagePreference = async (req, res) => {
 };
 
 // Toggle notifications
+const EXPO_PUSH_TOKEN_RE = /^Expo(nent)?PushToken\[[^\]\s]+\]$/;
+
+// PUT /account/push-token  { pushToken }  — register this device for push notifications
+exports.updatePushToken = async (req, res) => {
+  try {
+    const { pushToken } = req.body;
+    if (typeof pushToken !== 'string' || !EXPO_PUSH_TOKEN_RE.test(pushToken)) {
+      return badRequestResponse('A valid Expo push token is required', 'VALIDATION', 400, res);
+    }
+    // A device token belongs to one account at a time (e.g. after logging out and into another account)
+    await User.updateMany({ _id: { $ne: req.user.id }, pushTokens: pushToken }, { $pull: { pushTokens: pushToken } });
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $addToSet: { pushTokens: pushToken } },
+      { new: true }
+    ).select('pushTokens');
+    if (!user) return badRequestResponse('User not found', 'NOT_FOUND', 404, res);
+    return successResponse({ registered: true, devices: user.pushTokens.length }, res, 200, 'Push token saved');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
+// DELETE /account/push-token  { pushToken }  — unregister this device (e.g. on logout)
+exports.removePushToken = async (req, res) => {
+  try {
+    const { pushToken } = req.body;
+    if (typeof pushToken !== 'string' || !pushToken) {
+      return badRequestResponse('pushToken is required', 'VALIDATION', 400, res);
+    }
+    await User.findByIdAndUpdate(req.user.id, { $pull: { pushTokens: pushToken } });
+    return successResponse({ registered: false }, res, 200, 'Push token removed');
+  } catch (error) {
+    return internalServerErrorResponse(error.message, res);
+  }
+};
+
 exports.toggleNotifications = async (req, res) => {
   try {
     const { enableNotifications } = req.body;

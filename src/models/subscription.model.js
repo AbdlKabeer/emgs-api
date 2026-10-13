@@ -19,17 +19,18 @@ const subscriptionSchema = new mongoose.Schema(
         enum: ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'], 
         required: true 
       },
-      amount: { type: Number, required: true },
+      amount: { type: Number, required: true }, // base price in NGN
+      credits: { type: Number }, // credits charged per cycle (snapshot)
       currency: { type: String, default: 'NGN' }
     },
     status: { 
       type: String, 
-      enum: ['active', 'cancelled', 'paused', 'expired', 'failed'], 
+      enum: ['active', 'cancelled', 'paused', 'expired', 'failed', 'lapsed'], 
       default: 'active',
       index: true
     },
     paymentMethod: {
-      type: { type: String, enum: ['card', 'bank_account', 'wallet'] },
+      type: { type: String, enum: ['card', 'bank_account', 'wallet', 'credits'] },
       authorizationCode: { type: String }, // For Paystack recurring charges
       cardLast4: { type: String },
       cardBrand: { type: String },
@@ -39,6 +40,7 @@ const subscriptionSchema = new mongoose.Schema(
     nextBillingDate: { type: Date, required: true },
     lastBillingDate: { type: Date },
     endDate: { type: Date }, // For cancelled subscriptions
+    graceUntil: { type: Date }, // renewal grace window when credits are short
     trialEndDate: { type: Date }, // Optional trial period
     paystackSubscriptionCode: { type: String }, // Paystack subscription reference
     paystackCustomerCode: { type: String }, // Paystack customer reference

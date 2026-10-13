@@ -2,7 +2,9 @@ const Subscription = require('../models/subscription.model');
 const Payment = require('../models/payment.model');
 const Service = require('../models/service.model');
 const User = require('../models/user.model');
-const axios = require('axios');
+const Notification = require('../models/notification.model');
+const ledger = require('../services/credit-ledger.service');
+const pricing = require('../services/credit-pricing.service');
 const { 
   successResponse, 
   badRequestResponse, 
@@ -10,119 +12,78 @@ const {
   paginationResponse
 } = require('../utils/custom_response/responses');
 
-// Create a new subscription
+// Create a new subscription, paid with credits (first cycle is charged immediately)
 exports.createSubscription = async (req, res) => {
   try {
-    const { serviceId, interval, paymentReference } = req.body;
+    const { serviceId, interval } = req.body;
     const userId = req.user.id;
 
-    // Validate service
     const service = await Service.findById(serviceId);
     if (!service) {
       return badRequestResponse('Service not found', 'NOT_FOUND', 404, res);
     }
 
-    // Check if service price is set
-    if (!service.price) {
+    const plan = (service.subscriptionPlans || []).find((p) => p.interval === interval);
+    const basePrice = plan?.price || service.price;
+    if (!basePrice) {
       return badRequestResponse('This service does not support subscriptions', 'BAD_REQUEST', 400, res);
     }
 
-    // Check for existing active subscription
-    const existingSubscription = await Subscription.findOne({
-      userId,
-      serviceId,
-      status: 'active'
-    });
-
-    if (existingSubscription) {
+    const existing = await Subscription.findOne({ userId, serviceId, status: { $in: ['active', 'paused'] } });
+    if (existing) {
       return badRequestResponse('You already have an active subscription for this service', 'ALREADY_EXISTS', 409, res);
     }
 
-    // Verify initial payment with Paystack
-    const headers = {
-      'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-    };
-
-    const paystackResponse = await axios.get(
-      `https://api.paystack.co/transaction/verify/${paymentReference}`,
-      { headers }
-    );
-
-    const transactionData = paystackResponse.data.data;
-    
-    if (transactionData.status !== 'success') {
-      return badRequestResponse('Payment verification failed', 'PAYMENT_FAILED', 400, res);
+    const cfg = await pricing.getCreditConfig();
+    const q = pricing.quote(basePrice, cfg);
+    if (req.body.expectedCredits !== undefined && Number(req.body.expectedCredits) !== q.creditPrice) {
+      return badRequestResponse('The price has changed', 'PRICE_CHANGED', 409, res, { creditPrice: q.creditPrice });
     }
 
-    // Extract authorization code for recurring charges
-    const authorization = transactionData.authorization;
-
-    // Calculate next billing date
     const startDate = new Date();
-    const nextBillingDate = calculateNextDate(startDate, interval);
-
-    // Create subscription
-    const subscription = new Subscription({
+    const subscription = await Subscription.create({
       userId,
       serviceId,
-      plan: {
-        interval,
-        amount: service.price,
-        currency: 'NGN'
-      },
+      plan: { interval, amount: basePrice, credits: q.creditPrice, currency: 'NGN' },
       status: 'active',
-      paymentMethod: {
-        type: 'card',
-        authorizationCode: authorization?.authorization_code,
-        cardLast4: authorization?.last4,
-        cardBrand: authorization?.brand,
-        bank: authorization?.bank
-      },
+      paymentMethod: { type: 'credits' },
       startDate,
-      nextBillingDate,
-      paystackCustomerCode: transactionData.customer?.customer_code
+      nextBillingDate: calculateNextDate(startDate, interval),
     });
 
-    await subscription.save();
+    const payment = await Payment.create({
+      userId, itemId: serviceId, itemType: 'service', amount: basePrice, currency: 'NGN',
+      status: 'pending', paymentMethod: 'credits', credits: q.creditPrice, pricing: q,
+      metadata: { subscriptionId: subscription._id, isRecurring: true, billingCycle: interval },
+    });
 
-    // Create initial payment record
-    const payment = new Payment({
-      userId,
-      amount: service.price,
-      currency: 'NGN',
-      status: 'completed',
-      paymentMethod: 'card',
-      paymentGatewayId: transactionData.reference,
-      itemType: 'service',
-      itemId: serviceId,
-      metadata: {
-        subscriptionId: subscription._id,
-        isRecurring: true,
-        billingCycle: interval
+    try {
+      await ledger.spend({
+        userId, amount: q.creditPrice, type: 'spend', idempotencyKey: `sub-create:${subscription._id}`,
+        ref: { itemType: 'subscription', itemId: serviceId, itemName: service.name, paymentId: payment._id, subscriptionId: subscription._id },
+        pricing: q, note: `${service.name} (${interval})`,
+      });
+    } catch (e) {
+      await Subscription.deleteOne({ _id: subscription._id });
+      payment.status = 'failed';
+      await payment.save();
+      if (e.code === 'INSUFFICIENT_CREDITS') {
+        return badRequestResponse('Insufficient credits', 'INSUFFICIENT_CREDITS', 402, res,
+          { required: e.required, balance: e.balance, shortfall: e.shortfall });
       }
-    });
+      throw e;
+    }
 
+    payment.status = 'completed';
     await payment.save();
-
-    // Add payment to subscription history
     subscription.billingHistory.push(payment._id);
     subscription.lastBillingDate = new Date();
     await subscription.save();
 
-    // Enroll user in service if not already enrolled
-    const user = await User.findById(userId);
-    if (!user.enrolledServices.includes(serviceId)) {
-      await User.findByIdAndUpdate(userId, { $push: { enrolledServices: serviceId } });
-      await Service.findByIdAndUpdate(serviceId, { $push: { enrolledUsers: userId } });
-    }
+    await User.findByIdAndUpdate(userId, { $addToSet: { enrolledServices: serviceId } });
+    await Service.findByIdAndUpdate(serviceId, { $addToSet: { enrolledUsers: userId } });
 
-    return successResponse(
-      subscription, 
-      res, 
-      201, 
-      'Subscription created successfully'
-    );
-
+    return successResponse(subscription, res, 201, 'Subscription created successfully');
   } catch (error) {
     console.error('Error creating subscription:', error);
     return internalServerErrorResponse(error.message, res);
@@ -271,96 +232,70 @@ exports.resumeSubscription = async (req, res) => {
 // Process recurring payment (called by cron job)
 exports.processRecurringPayment = async (subscriptionId) => {
   try {
-    const subscription = await Subscription.findById(subscriptionId)
-      .populate('serviceId')
-      .populate('userId');
-
+    const subscription = await Subscription.findById(subscriptionId).populate('serviceId');
     if (!subscription || subscription.status !== 'active') {
       return { success: false, message: 'Subscription not active' };
     }
-
     if (!subscription.isDueForBilling()) {
       return { success: false, message: 'Billing not due yet' };
     }
 
-    const headers = {
-      'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-      'Content-Type': 'application/json'
-    };
+    const cfg = await pricing.getCreditConfig();
+    // Re-quote each cycle so rate changes apply to renewals; the cycle snapshot is kept on the ledger row
+    const q = pricing.quote(subscription.plan.amount, cfg);
+    const cycleKey = new Date(subscription.nextBillingDate).toISOString().slice(0, 10);
 
-    // Charge authorization using Paystack
-    const chargeData = {
-      authorization_code: subscription.paymentMethod.authorizationCode,
-      email: subscription.userId.email,
-      amount: subscription.plan.amount * 100, // Paystack expects amount in kobo
-      metadata: {
-        subscriptionId: subscription._id,
-        serviceId: subscription.serviceId._id,
-        billingCycle: subscription.plan.interval
-      }
-    };
-
-    const chargeResponse = await axios.post(
-      'https://api.paystack.co/transaction/charge_authorization',
-      chargeData,
-      { headers }
-    );
-
-    const transactionData = chargeResponse.data.data;
-
-    if (transactionData.status === 'success') {
-      // Create payment record
-      const payment = new Payment({
-        userId: subscription.userId._id,
-        amount: subscription.plan.amount,
-        currency: subscription.plan.currency,
-        status: 'completed',
-        paymentMethod: 'card',
-        paymentGatewayId: transactionData.reference,
-        itemType: 'service',
-        itemId: subscription.serviceId._id,
-        metadata: {
-          subscriptionId: subscription._id,
-          isRecurring: true,
-          billingCycle: subscription.plan.interval
-        }
+    try {
+      const payment = await Payment.create({
+        userId: subscription.userId, itemId: subscription.serviceId._id, itemType: 'service',
+        amount: subscription.plan.amount, currency: 'NGN', status: 'pending', paymentMethod: 'credits',
+        credits: q.creditPrice, pricing: q,
+        metadata: { subscriptionId: subscription._id, isRecurring: true, billingCycle: subscription.plan.interval },
       });
-
+      await ledger.spend({
+        userId: subscription.userId, amount: q.creditPrice, type: 'renewal',
+        idempotencyKey: `renewal:${subscription._id}:${cycleKey}`,
+        ref: { itemType: 'subscription', itemId: subscription.serviceId._id, itemName: subscription.serviceId.name, paymentId: payment._id, subscriptionId: subscription._id },
+        pricing: q, note: `${subscription.serviceId.name} renewal`,
+      });
+      payment.status = 'completed';
       await payment.save();
 
-      // Update subscription
       subscription.billingHistory.push(payment._id);
       subscription.lastBillingDate = new Date();
       subscription.nextBillingDate = subscription.calculateNextBillingDate();
+      subscription.plan.credits = q.creditPrice;
       subscription.failedPaymentAttempts = 0;
+      subscription.graceUntil = undefined;
       await subscription.save();
-
-      return { success: true, message: 'Payment processed successfully', payment };
-    } else {
-      // Payment failed
-      subscription.failedPaymentAttempts += 1;
-      
-      // Cancel subscription after 3 failed attempts
-      if (subscription.failedPaymentAttempts >= 3) {
-        subscription.status = 'failed';
-        subscription.endDate = new Date();
+      return { success: true, message: 'Renewed with credits', payment };
+    } catch (e) {
+      if (e.code !== 'INSUFFICIENT_CREDITS') throw e;
+      // Not enough credits: start (or continue) the grace window, then lapse
+      const graceDays = cfg.renewalGraceDays;
+      if (!subscription.graceUntil) {
+        subscription.graceUntil = new Date(Date.now() + graceDays * 24 * 60 * 60 * 1000);
+        await Notification.create({
+          userId: subscription.userId, title: 'Top up to keep your service',
+          message: `Your ${subscription.serviceId.name} renewal needs ${q.creditPrice} credits (you have ${e.balance}). Top up within ${graceDays} days to keep access.`,
+          type: 'service', relatedItemId: subscription.serviceId._id,
+        });
       }
-      
+      subscription.failedPaymentAttempts += 1;
+      if (new Date() >= subscription.graceUntil) {
+        subscription.status = 'lapsed';
+        subscription.endDate = new Date();
+        await Notification.create({
+          userId: subscription.userId, title: 'Subscription lapsed',
+          message: `Your ${subscription.serviceId.name} subscription lapsed because your credits ran out.`,
+          type: 'service', relatedItemId: subscription.serviceId._id,
+        });
+      }
       await subscription.save();
-      
-      return { success: false, message: 'Payment failed', attempts: subscription.failedPaymentAttempts };
+      return { success: false, message: 'Insufficient credits', attempts: subscription.failedPaymentAttempts, status: subscription.status };
     }
-
   } catch (error) {
     console.error('Error processing recurring payment:', error);
-    
-    // Update failed attempts
-    if (subscriptionId) {
-      await Subscription.findByIdAndUpdate(subscriptionId, {
-        $inc: { failedPaymentAttempts: 1 }
-      });
-    }
-    
     return { success: false, message: error.message };
   }
 };

@@ -321,18 +321,6 @@ exports.login = async (req, res) => {
       return badRequestResponse('Invalid credentials', 'BAD_REQUEST', 400, res);
     }
 
-    // iOS Platform Restriction Check
-    if (platform === 'ios' && user.role === 'user') {
-      if (user.roles && user.roles.includes('tutor')) {
-        // Automatically switch their active role to tutor
-        user.role = 'tutor';
-        await user.save();
-      } else {
-        // Block login
-        return badRequestResponse('Student is not allowed to login on iOS.', 'FORBIDDEN', 403, res);
-      }
-    }
-
     // Check if user is verified
     if (!user.isVerified && user.role !== 'tutor') {
       // Generate verification code

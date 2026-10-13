@@ -242,6 +242,8 @@ router.put('/language', authenticate, accountController.updateLanguagePreference
  *         description: Internal server error
  */
 router.put('/notifications', authenticate, accountController.toggleNotifications);
+router.put('/push-token', authenticate, accountController.updatePushToken);
+router.delete('/push-token', authenticate, accountController.removePushToken);
 
 
 
