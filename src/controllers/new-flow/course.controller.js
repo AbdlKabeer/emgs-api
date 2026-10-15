@@ -944,8 +944,9 @@ exports.createCourseWithContent = async (req, res) => {
       goals: goals || [],
       notes: notes || [],
       createdBy: userId,
-      status: isSaveProgress ? 'draft': 'published',
-      isPublished: !isSaveProgress,
+      // submitted courses wait for admin approval (matches "submitted for review" in the app)
+      status: isSaveProgress ? 'draft' : 'review',
+      isPublished: false,
       aboutCourse
     });
     
