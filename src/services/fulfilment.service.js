@@ -25,7 +25,7 @@ class FulfilmentError extends Error {
 }
 
 // Pay a tutor/provider in NGN from the stored tutor share (their existing earnings wallet).
-async function creditTutorEarnings({ tutorId, tutorShare, platformFee = 0, description, paymentId, courseId }) {
+async function creditTutorEarnings({ tutorId, tutorShare, platformFee = 0, description, paymentId, courseId, source = 'credits' }) {
   if (!tutorId || !(tutorShare > 0)) return null;
   let wallet = await Wallet.findOne({ userId: tutorId });
   if (!wallet) wallet = new Wallet({ userId: tutorId });
@@ -34,12 +34,12 @@ async function creditTutorEarnings({ tutorId, tutorShare, platformFee = 0, descr
   await wallet.save();
   await Transaction.create({
     userId: tutorId, walletId: wallet._id, amount: tutorShare, type: 'earnings', status: 'completed',
-    metadata: { courseId, paymentId, source: 'credits' }, description,
+    metadata: { courseId, paymentId, source }, description,
   });
   if (platformFee > 0) {
     await Transaction.create({
       userId: tutorId, walletId: wallet._id, amount: platformFee, type: 'platform_fee', status: 'completed',
-      metadata: { courseId, paymentId, source: 'credits' }, description: `Platform fee: ${description}`,
+      metadata: { courseId, paymentId, source }, description: `Platform fee: ${description}`,
     });
   }
   return wallet;
@@ -69,6 +69,13 @@ async function rewardReferrer(user, creditsSpent) {
   await referrer.save();
 }
 
+
+// Credits purchases and card (web) purchases both carry a pricing snapshot; card payments have
+// credits === 0, so payouts key off the snapshot and referral rewards off the credit-equivalent price.
+const payoutSource = (payment) => (payment.paymentMethod === 'credits' ? 'credits' : 'card');
+const referralBasis = (payment) => (payment.credits > 0 ? payment.credits : Number(payment.pricing?.creditPrice) || 0);
+const priceLabel = (payment) => (payment.credits > 0 ? `${payment.credits} credits` : `₦${Number(payment.amount).toLocaleString()}`);
+
 async function fulfilCourse(payment) {
   const userId = payment.userId;
   const course = await Course.findById(payment.itemId);
@@ -86,24 +93,25 @@ async function fulfilCourse(payment) {
     type: 'course', relatedItemId: course._id,
   });
 
-  if (payment.credits > 0) {
+  {
     const pricing = payment.pricing || {};
     if (course.courseType !== 'emgs') {
       await creditTutorEarnings({
         tutorId: course.createdBy, tutorShare: pricing.tutorShare,
         platformFee: pricing.basePrice ? pricing.basePrice - pricing.tutorShare : 0,
         description: `Earnings from ${course.title}`, paymentId: payment._id, courseId: course._id,
+        source: payoutSource(payment),
       });
     }
-    await rewardReferrer(user, payment.credits);
+    if (referralBasis(payment) > 0) await rewardReferrer(user, referralBasis(payment));
   }
 
-  emailService.sendPurchaseSuccessEmail(user.email, user.fullName, course.title, `${payment.credits} credits`, payment._id)
+  emailService.sendPurchaseSuccessEmail(user.email, user.fullName, course.title, priceLabel(payment), payment._id)
     .catch((e) => console.error('Error sending course purchase email:', e));
   sendWebhook('course_payment_success', {
     user: { id: user._id, fullName: user.fullName, email: user.email, phone: user.phone },
     course: { id: course._id, title: course.title, price: course.price },
-    payment: { id: payment._id, credits: payment.credits },
+    payment: { id: payment._id, credits: payment.credits, method: payment.paymentMethod },
   }).catch((e) => console.error('Error sending GHL webhook for course:', e));
   return { itemName: course.title };
 }
@@ -139,8 +147,8 @@ async function fulfilService(payment) {
     type: 'service', relatedItemId: service._id,
   });
   // Provider payout happens when staff completes the session (service-session.controller).
-  if (payment.credits > 0) await rewardReferrer(user, payment.credits);
-  emailService.sendPurchaseSuccessEmail(user.email, user.fullName, service.name, `${payment.credits} credits`, payment._id)
+  if (referralBasis(payment) > 0) await rewardReferrer(user, referralBasis(payment));
+  emailService.sendPurchaseSuccessEmail(user.email, user.fullName, service.name, priceLabel(payment), payment._id)
     .catch((e) => console.error('Error sending service purchase email:', e));
   return { itemName: service.name, sessionExpiry: expiryDate, sessionValidityDays };
 }
@@ -166,21 +174,22 @@ async function fulfilOneOnOne(payment) {
     message: `You have successfully subscribed to one-on-one tutoring with ${tutor.fullName}`,
     type: 'service', relatedItemId: tutor._id,
   });
-  if (payment.credits > 0) {
+  {
     const pricing = payment.pricing || {};
     await creditTutorEarnings({
       tutorId: tutor._id, tutorShare: pricing.tutorShare,
       platformFee: pricing.basePrice ? pricing.basePrice - pricing.tutorShare : 0,
       description: `One-on-one subscription from ${user.fullName}`, paymentId: payment._id,
+      source: payoutSource(payment),
     });
-    await rewardReferrer(user, payment.credits);
+    if (referralBasis(payment) > 0) await rewardReferrer(user, referralBasis(payment));
   }
-  emailService.sendPurchaseSuccessEmail(user.email, user.fullName, `One-on-One Tutoring with ${tutor.fullName}`, `${payment.credits} credits`, payment._id)
+  emailService.sendPurchaseSuccessEmail(user.email, user.fullName, `One-on-One Tutoring with ${tutor.fullName}`, priceLabel(payment), payment._id)
     .catch((e) => console.error('Error sending one-on-one purchase email:', e));
   sendWebhook('one_on_one_payment_success', {
     user: { id: user._id, fullName: user.fullName, email: user.email, phone: user.phone },
     tutor: { id: tutor._id, fullName: tutor.fullName, email: tutor.email },
-    payment: { id: payment._id, credits: payment.credits },
+    payment: { id: payment._id, credits: payment.credits, method: payment.paymentMethod },
   }).catch((e) => console.error('Error sending GHL webhook for one-on-one:', e));
   return { itemName: `One-on-One with ${tutor.fullName}`, expiry: expiryDate };
 }
