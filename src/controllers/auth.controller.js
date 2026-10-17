@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const crypto = require('crypto');
 const User = require('../models/user.model');
+const { resolveReferralCode } = require('../services/referral.service');
 const { URLSearchParams } = require('url');
 const { successResponse, badRequestResponse, internalServerErrorResponse } = require('../utils/custom_response/responses');
 
@@ -47,16 +48,14 @@ exports.register = async (req, res) => {
     });
 
 
-    // Handle referral if provided
-    if (referralCode) {
-      const referrer = await User.findOne({ referralCode });
-      if (referrer) {
-        user.referredBy = referrer._id;
-      }else
-      {
+    // Handle referral if provided (case- and whitespace-insensitive)
+    const referral = await resolveReferralCode(referralCode);
+    if (referral.provided) {
+      if (!referral.referrer) {
         console.warn('Invalid referral code provided:', referralCode);
         return badRequestResponse('Invalid referral code', 'BAD_REQUEST', 400, res);
       }
+      user.referredBy = referral.referrer._id;
     }
 
     // Generate verification code

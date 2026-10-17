@@ -5,8 +5,10 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "test:ledger": "node test/credit-ledger.test.js",
+    "test:referral": "node test/referral.test.js",
+    "start": "node api.js && node src/server.js",
+    "dev": "node api.js && nodemon src/server.js",
     "seed:roles": "node src/scripts/seedRolesPermissions.js",
     "assign:admin-roles": "node scripts/assignAdminRoleToExistingAdmins.js"
   },

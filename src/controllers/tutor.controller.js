@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const Quiz = require('../models/quiz.model');
 const Service = require('../models/service.model');
 const emailService = require('../services/email.service');
+const { resolveReferralCode } = require('../services/referral.service');
 const { successResponse, badRequestResponse, internalServerErrorResponse, paginationResponse } = require('../utils/custom_response/responses');
 
 
@@ -963,12 +964,10 @@ exports.registerTutor = async (req, res) => {
       referralCode: generateReferralCode(),
     });
 
-    // Handle referral if provided
-    if (referralCode) {
-      const referrer = await User.findOne({ referralCode });
-      if (referrer) {
-        tutor.referredBy = referrer._id;
-      }
+    // Handle referral if provided (case- and whitespace-insensitive)
+    const { referrer } = await resolveReferralCode(referralCode);
+    if (referrer) {
+      tutor.referredBy = referrer._id;
     }
 
     // Generate verification code
