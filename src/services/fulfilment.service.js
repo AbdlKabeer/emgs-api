@@ -45,28 +45,31 @@ async function creditTutorEarnings({ tutorId, tutorShare, platformFee = 0, descr
   return wallet;
 }
 
-// Reward the referrer with credits on the referred user's first paid purchase.
+// Reward the referrer with credits on the referred user's first purchase that is large enough to
+// earn at least one whole credit. A smaller purchase leaves the referral open for the next one,
+// instead of using it up without paying anything.
 async function rewardReferrer(user, creditsSpent) {
   if (!user.referredBy || user.referralPointDisbursed) return;
-  const referrer = await User.findById(user.referredBy);
-  if (!referrer) return;
   const cfg = await getCreditConfig();
   const reward = Math.floor(creditsSpent * cfg.referralRewardPct);
-  if (reward > 0) {
-    await ledger.credit({
-      userId: referrer._id, amount: reward, type: 'referral', idempotencyKey: `referral:${user._id}`,
-      note: `Referral reward: ${user.fullName || 'a friend'} made their first purchase`,
-    });
+  if (reward < 1) return;
+  const referrer = await User.findById(user.referredBy).select('_id');
+  if (!referrer) return;
+
+  // Idempotent per referee, so concurrent first purchases can only pay once.
+  const result = await ledger.credit({
+    userId: referrer._id, amount: reward, type: 'referral', idempotencyKey: `referral:${user._id}`,
+    note: `Referral reward: ${user.fullName || 'a friend'} made their first purchase`,
+  });
+  if (result.applied) {
     await Notification.create({
       userId: referrer._id, title: 'Referral reward',
       message: `You earned ${reward} credits because ${user.fullName || 'someone you referred'} made a purchase.`,
       type: 'course',
     });
   }
-  if (!referrer.referrals.some((id) => id.toString() === user._id.toString())) referrer.referrals.push(user._id);
-  user.referralPointDisbursed = true;
-  await user.save();
-  await referrer.save();
+  await User.updateOne({ _id: user._id }, { $set: { referralPointDisbursed: true } });
+  await User.updateOne({ _id: referrer._id }, { $addToSet: { referrals: user._id } });
 }
 
 async function fulfilCourse(payment) {
@@ -195,4 +198,4 @@ async function fulfil(payment) {
   }
 }
 
-module.exports = { fulfil, FulfilmentError, creditTutorEarnings };
+module.exports = { fulfil, FulfilmentError, creditTutorEarnings, rewardReferrer };
