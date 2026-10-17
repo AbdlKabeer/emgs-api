@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:ledger": "node test/credit-ledger.test.js",
+    "test:referral": "node test/referral.test.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed:roles": "node src/scripts/seedRolesPermissions.js",

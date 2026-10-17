@@ -18,7 +18,9 @@ const creditTransactionSchema = new mongoose.Schema(
     store: {
       platform: String,
       productId: String,
+      // Purchase rows only: this is unique, so refund rows must reference the purchase via refundOfTransactionId.
       storeTransactionId: String,
+      refundOfTransactionId: String,
       eventId: String,
     },
     ref: {

@@ -19,6 +19,7 @@ const publicConfig = (cfg) => ({
   storeFeePct: cfg.storeFeePct,
   showFiatToStudents: cfg.showFiatToStudents,
   lowBalanceThreshold: cfg.lowBalanceThreshold,
+  referralRewardPct: cfg.referralRewardPct,
   mockPurchases: process.env.ENABLE_MOCK_PURCHASES === 'true' && process.env.NODE_ENV !== 'production',
 });
 
