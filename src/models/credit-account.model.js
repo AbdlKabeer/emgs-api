@@ -8,6 +8,9 @@ const creditAccountSchema = new mongoose.Schema(
     lifetimeSpent: { type: Number, default: 0 },
     // Set when a store refund pushes the balance below zero; blocks spending until cleared
     negativeSince: { type: Date, default: null },
+    // Most recent idempotency keys applied to this balance. The key check and the balance change
+    // happen in one atomic update, which is what stops concurrent duplicates from both applying.
+    appliedKeys: { type: [String], select: false, default: undefined },
   },
   { timestamps: true }
 );
