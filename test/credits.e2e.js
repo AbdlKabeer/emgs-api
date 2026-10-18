@@ -106,28 +106,28 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
   const txn = `GPA.${run}-1`;
   const purchaseEvent = { id: `evt-${run}-1`, type: 'NON_RENEWING_PURCHASE', app_user_id: student._id.toString(),
     product_id: 'credits_500', transaction_id: txn, store: 'PLAY_STORE' };
-  await t('RevenueCat purchase webhook grants pack + bonus (500+25)', async () => {
+  await t('RevenueCat purchase webhook grants the pack (500 credits, no bonus)', async () => {
     assert.equal((await rc(purchaseEvent)).status, 200);
-    assert.equal(await bal(student), 525);
+    assert.equal(await bal(student), 500);
   });
   await t('replayed webhook is idempotent (no double credit)', async () => {
     await rc(purchaseEvent); await rc({ ...purchaseEvent, id: `evt-${run}-1b` });
-    assert.equal(await bal(student), 525);
+    assert.equal(await bal(student), 500);
   });
   await t('unknown product is recorded as failed event, balance unchanged', async () => {
     assert.equal((await rc({ ...purchaseEvent, id: `evt-${run}-x`, product_id: 'nope', transaction_id: `GPA.${run}-x` })).status, 200);
-    assert.equal(await bal(student), 525);
+    assert.equal(await bal(student), 500);
   });
   await t('webhook with an anonymous/invalid app_user_id or missing transaction id is acknowledged, not crashed', async () => {
     const base = { type: 'NON_RENEWING_PURCHASE', product_id: 'credits_100', store: 'TEST_STORE' };
     assert.equal((await rc({ ...base, id: `e-${run}-a1`, app_user_id: '$RCAnonymousID:abc123', transaction_id: `T-${run}-a1` })).status, 200);
     assert.equal((await rc({ ...base, id: `e-${run}-a2`, app_user_id: 'ec662a5e-b26d-4e02-99ef-476707400111', transaction_id: `T-${run}-a2` })).status, 200);
     assert.equal((await rc({ ...base, id: `e-${run}-a3`, app_user_id: student._id.toString(), transaction_id: null })).status, 200);
-    assert.equal(await bal(student), 525);
+    assert.equal(await bal(student), 500);
   });
-  await t('dev mock purchase credits_1000 -> +1100', async () => {
+  await t('dev mock purchase credits_1000 -> +1000', async () => {
     const r = await call('POST', '/credits/dev/mock-purchase', sToken, { productId: 'credits_1000' });
-    assert.equal(r.status, 200); assert.equal(await bal(student), 1625);
+    assert.equal(r.status, 200); assert.equal(await bal(student), 1500);
   });
 
   console.log('\nSpending: course');
@@ -137,7 +137,7 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
   });
   await t('buy course: credits deducted, enrolled, tutor paid NGN 4000 from snapshot', async () => {
     const r = await call('POST', '/payment/pay-with-credits', sToken, { itemType: 'course', itemId: course._id, expectedCredits: 589 });
-    assert.equal(r.status, 200, JSON.stringify(r.body)); assert.equal(r.data.credits, 589); assert.equal(r.data.balance, 1036);
+    assert.equal(r.status, 200, JSON.stringify(r.body)); assert.equal(r.data.credits, 589); assert.equal(r.data.balance, 911);
     const u = await User.findById(student._id); assert.ok(u.enrolledCourses.some((id) => id.equals(course._id)));
     const w = await Wallet.findOne({ userId: tutor._id }); assert.equal(w.earned, 4000); assert.equal(w.balance, 4000);
     const row = await CreditTransaction.findOne({ userId: student._id, type: 'spend', 'ref.itemId': course._id });
@@ -145,11 +145,11 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
   });
   await t('buying the same course again -> 409 ALREADY_ENROLLED, no charge', async () => {
     const r = await call('POST', '/payment/pay-with-credits', sToken, { itemType: 'course', itemId: course._id });
-    assert.equal(r.status, 409); assert.equal(await bal(student), 1036);
+    assert.equal(r.status, 409); assert.equal(await bal(student), 911);
   });
   await t('free course enrols with 0 credits', async () => {
     const r = await call('POST', '/payment/pay-with-credits', sToken, { itemType: 'course', itemId: freeCourse._id });
-    assert.equal(r.status, 200); assert.equal(r.data.credits, 0); assert.equal(await bal(student), 1036);
+    assert.equal(r.status, 200); assert.equal(r.data.credits, 0); assert.equal(await bal(student), 911);
   });
   await t('ledger history lists purchase + spend rows', async () => {
     const r = await call('GET', '/credits/transactions', sToken);
