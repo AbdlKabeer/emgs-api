@@ -8,10 +8,10 @@ const mongoose = require('mongoose');
 const CreditPack = require('../models/credit-pack.model');
 
 const PACKS = [
-  { productId: 'credits_100',  credits: 100,  bonusCredits: 0,   label: 'Starter',  badge: '',           sortOrder: 1 },
-  { productId: 'credits_500',  credits: 500,  bonusCredits: 25,  label: 'Popular',  badge: '+5% bonus',  sortOrder: 2 },
-  { productId: 'credits_1000', credits: 1000, bonusCredits: 100, label: 'Value',    badge: '+10% bonus', sortOrder: 3 },
-  { productId: 'credits_5000', credits: 5000, bonusCredits: 500, label: 'Best deal', badge: '+10% bonus', sortOrder: 4 },
+  { productId: 'credits_100',  credits: 100,  bonusCredits: 0, label: 'Starter',   badge: '', sortOrder: 1 },
+  { productId: 'credits_500',  credits: 500,  bonusCredits: 0, label: 'Popular',   badge: '', sortOrder: 2 },
+  { productId: 'credits_1000', credits: 1000, bonusCredits: 0, label: 'Value',     badge: '', sortOrder: 3 },
+  { productId: 'credits_5000', credits: 5000, bonusCredits: 0, label: 'Best deal', badge: '', sortOrder: 4 },
 ];
 
 (async () => {
