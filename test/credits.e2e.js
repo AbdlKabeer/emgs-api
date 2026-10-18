@@ -298,9 +298,11 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
     s = await Subscription.findById(subscription._id); assert.equal(s.status, 'lapsed');
   });
 
-  console.log('\nLegacy payment paths removed');
-  await t('card checkout + paystack webhook routes are gone', async () => {
-    assert.equal((await call('POST', '/payment/initiate', sToken, { itemType: 'course', itemId: course._id })).status, 404);
+  console.log('\nWeb card checkout');
+  await t('card checkout is for the website only: needs auth, rejects bad input, paystack webhook stays gone', async () => {
+    assert.equal((await call('POST', '/payment/initiate', null, { itemType: 'course', itemId: course._id })).status, 401);
+    assert.equal((await call('POST', '/payment/initiate', sToken, { itemType: 'course', itemId: course._id, paymentProvider: 'paypal' })).status, 400);
+    assert.equal((await call('POST', '/payment/verify', sToken, { paymentProvider: 'flutterwave' })).status, 400);
     assert.equal((await call('POST', '/payment/webhook/paystack', null, {})).status, 404);
   });
 

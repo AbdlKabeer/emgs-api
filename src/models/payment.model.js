@@ -7,7 +7,7 @@ const paymentSchema = new mongoose.Schema(
     currency: { type: String, default: 'NGN' },
     status: { 
       type: String, 
-      enum: ['pending', 'completed', 'failed', 'refunded'], 
+      enum: ['pending', 'processing', 'completed', 'failed', 'refunded'], 
       default: 'pending' 
     },
     paymentMethod: { type: String },
