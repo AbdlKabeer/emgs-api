@@ -3,6 +3,7 @@ const User = require('../models/user.model');
 const Notification = require('../models/notification.model');
 const Progress = require('../models/progress.model');
 const Lesson = require('../models/lesson.model');
+const Module = require('../models/module.model');
 const Quiz = require('../models/quiz.model');
 const Bookmark = require('../models/bookmark.model');
 const { successResponse, errorResponse, badRequestResponse, paginationResponse } = require('../utils/custom_response/responses');
@@ -515,7 +516,14 @@ exports.getUserCourses = async (req, res) => {
         }
       });
     
-    return successResponse(user.enrolledCourses, res);
+    const courses = await Promise.all(user.enrolledCourses.map(async (course) => {
+      const courseObj = course.toObject();
+      courseObj.moduleCount = await Module.countDocuments({ courseId: course._id });
+      courseObj.enrolledStudentsCount = course.enrolledUsers ? course.enrolledUsers.length : 0;
+      return courseObj;
+    }));
+
+    return successResponse(courses, res);
   } catch (error) {
     return errorResponse(error.message, 'INTERNAL_SERVER_ERROR', 500, res);
   }
