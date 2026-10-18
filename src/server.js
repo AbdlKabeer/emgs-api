@@ -39,6 +39,7 @@ const subscriptionRoutes = require('./routes/subscription.routes');
 const serviceSessionRoutes = require('./routes/service-session.routes');
 const creditRoutes = require('./routes/credit.routes');
 const creditAdminRoutes = require('./routes/credit-admin.routes');
+const webhookLogRoutes = require('./routes/webhook-log.routes');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 
@@ -110,6 +111,7 @@ app.use('/api/v2/quizzes', quizRoutes);
 app.use('/api/v2/payment', paymentRoutes);
 app.use('/api/v2/credits', creditRoutes);
 app.use('/api/v2/admin/credits', creditAdminRoutes);
+app.use('/api/v2/admin/webhook-logs', webhookLogRoutes);
 app.use('/api/v2/faqs', faqRoutes);
 app.use('/api/v2/file', imageRoutes);
 app.use('/api/v2/file/chunked', chunkedUploadRoutes);
