@@ -3,6 +3,7 @@ const CreditPack = require('../models/credit-pack.model');
 const CreditAccount = require('../models/credit-account.model');
 const CreditTransaction = require('../models/credit-transaction.model');
 const CreditFailedEvent = require('../models/credit-failed-event.model');
+const CreditWebhookEvent = require('../models/credit-webhook-event.model');
 const Payment = require('../models/payment.model');
 const User = require('../models/user.model');
 const ledger = require('../services/credit-ledger.service');
@@ -171,5 +172,22 @@ exports.failedEvents = async (req, res) => {
   try {
     const rows = await CreditFailedEvent.find({ resolved: false }).sort({ createdAt: -1 }).limit(100).lean();
     return successResponse(rows, res);
+  } catch (e) { return internalServerErrorResponse(e.message, res); }
+};
+
+// GET /admin/credits/webhook-events?outcome=&type=&environment=&appUserId=&page=&limit=
+exports.webhookEvents = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+    const filter = {};
+    for (const key of ['outcome', 'type', 'environment', 'appUserId', 'productId']) {
+      if (req.query[key]) filter[key] = String(req.query[key]);
+    }
+    const [rows, total] = await Promise.all([
+      CreditWebhookEvent.find(filter).sort({ updatedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      CreditWebhookEvent.countDocuments(filter),
+    ]);
+    return paginationResponse(rows, total, page, limit, res);
   } catch (e) { return internalServerErrorResponse(e.message, res); }
 };
