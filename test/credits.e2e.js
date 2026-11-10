@@ -26,6 +26,7 @@ const Role = require('../src/models/role.model');
 const AppConfig = require('../src/models/app-config.model');
 const CreditAccount = require('../src/models/credit-account.model');
 const CreditTransaction = require('../src/models/credit-transaction.model');
+const CreditWebhookEvent = require('../src/models/credit-webhook-event.model');
 const Subscription = require('../src/models/subscription.model');
 const ledger = require('../src/services/credit-ledger.service');
 const subscriptions = require('../src/controllers/subscription.controller');
@@ -125,6 +126,30 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
     assert.equal((await rc({ ...base, id: `e-${run}-a3`, app_user_id: student._id.toString(), transaction_id: null })).status, 200);
     assert.equal(await bal(student), 500);
   });
+  await t('webhook deliveries are logged with their outcome (applied, redelivery count, failed, ignored, none for 401)', async () => {
+    const applied = await CreditWebhookEvent.findOne({ eventId: purchaseEvent.id });
+    assert.ok(applied, 'purchase event logged');
+    assert.equal(applied.outcome, 'duplicate'); // the earlier replay of this same event id was the last delivery
+    assert.equal(applied.attempts, 2);
+    assert.equal(applied.productId, 'credits_500'); assert.equal(applied.appUserId, student._id.toString());
+    const replayedTxn = await CreditWebhookEvent.findOne({ eventId: `evt-${run}-1b` });
+    assert.equal(replayedTxn.outcome, 'duplicate'); // new event id, same store transaction: not credited twice
+    const failed = await CreditWebhookEvent.findOne({ eventId: `evt-${run}-x` });
+    assert.equal(failed.outcome, 'failed'); assert.match(failed.reason, /Unknown product/);
+    const ignored = `evt-${run}-t`;
+    assert.equal((await rc({ id: ignored, type: 'TEST', app_user_id: student._id.toString(), environment: 'SANDBOX' })).status, 200);
+    assert.equal((await CreditWebhookEvent.findOne({ eventId: ignored })).outcome, 'ignored');
+    assert.equal((await rc({ id: `evt-${run}-401`, type: 'TEST' }, 'Bearer nope')).status, 401);
+    assert.equal(await CreditWebhookEvent.countDocuments({ eventId: `evt-${run}-401` }), 0);
+  });
+  await t('first delivery of a new purchase is logged as applied with attempts 1', async () => {
+    const buyer = await mkUser();
+    const ev = { id: `evt-${run}-fresh`, type: 'NON_RENEWING_PURCHASE', app_user_id: buyer._id.toString(),
+      product_id: 'credits_100', transaction_id: `GPA.${run}-fresh`, store: 'APP_STORE', environment: 'SANDBOX' };
+    assert.equal((await rc(ev)).status, 200);
+    const row = await CreditWebhookEvent.findOne({ eventId: ev.id });
+    assert.equal(row.outcome, 'applied'); assert.equal(row.attempts, 1); assert.equal(row.environment, 'SANDBOX');
+  });
   await t('dev mock purchase credits_1000 -> +1000', async () => {
     const r = await call('POST', '/credits/dev/mock-purchase', sToken, { productId: 'credits_1000' });
     assert.equal(r.status, 200); assert.equal(await bal(student), 1500);
@@ -199,6 +224,11 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
     await ledger.spend({ userId: u._id, amount: 90, idempotencyKey: `use:${u._id}` });
     await rc({ id: `e-${run}-r2`, type: 'REFUND', app_user_id: u._id.toString(), product_id: 'credits_100', transaction_id: `T-${run}-r`, store: 'APP_STORE' });
     assert.equal(await bal(u), -90);
+    assert.equal((await CreditWebhookEvent.findOne({ eventId: `e-${run}-r2` })).outcome, 'refunded');
+    await rc({ id: `e-${run}-r2b`, type: 'REFUND', app_user_id: u._id.toString(), product_id: 'credits_100', transaction_id: `T-${run}-r`, store: 'APP_STORE' });
+    assert.equal((await CreditWebhookEvent.findOne({ eventId: `e-${run}-r2b` })).outcome, 'refund_duplicate');
+    await rc({ id: `e-${run}-r2c`, type: 'REFUND', app_user_id: u._id.toString(), product_id: 'credits_100', transaction_id: `T-${run}-none`, store: 'APP_STORE' });
+    assert.equal((await CreditWebhookEvent.findOne({ eventId: `e-${run}-r2c` })).outcome, 'refund_unknown');
     await rc({ id: `e-${run}-r3`, type: 'NON_RENEWING_PURCHASE', app_user_id: u._id.toString(), product_id: 'credits_100', transaction_id: `T-${run}-r2`, store: 'APP_STORE' });
     assert.equal(await bal(u), 10);
     assert.equal((await CreditAccount.findOne({ userId: u._id })).negativeSince, null);
@@ -218,6 +248,14 @@ const uniq = () => Math.random().toString(36).slice(2, 8);
   const superRole = await Role.findOne({ slug: 'super_admin' });
   const admin = await mkUser({ role: 'admin', roles: ['admin'], assignedRole: superRole._id });
   const aToken = tokenFor(admin);
+  await t('admin lists webhook events (filter by outcome); a student cannot', async () => {
+    assert.equal((await call('GET', '/admin/credits/webhook-events', sToken)).status, 403);
+    const r = await call('GET', `/admin/credits/webhook-events?outcome=failed&limit=100`, aToken);
+    assert.equal(r.status, 200);
+    const rows = r.body.results || r.body.data || [];
+    assert.ok(rows.some((x) => x.eventId === `evt-${run}-x`), 'failed event is listed');
+    assert.ok(rows.every((x) => x.outcome === 'failed'));
+  });
   await t('student cannot change credit config (403)', async () => {
     assert.equal((await call('PUT', '/admin/credits/config', sToken, { nairaPerCredit: 1 })).status, 403);
   });

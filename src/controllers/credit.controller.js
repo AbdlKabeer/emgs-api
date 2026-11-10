@@ -3,6 +3,7 @@ const Payment = require('../models/payment.model');
 const CreditPack = require('../models/credit-pack.model');
 const CreditTransaction = require('../models/credit-transaction.model');
 const CreditFailedEvent = require('../models/credit-failed-event.model');
+const CreditWebhookEvent = require('../models/credit-webhook-event.model');
 const User = require('../models/user.model');
 const ledger = require('../services/credit-ledger.service');
 const pricing = require('../services/credit-pricing.service');
@@ -184,6 +185,25 @@ async function recordFailure(eventId, reason, payload) {
   console.error(`[Credits] webhook event not applied: ${reason}`);
 }
 
+// Record a webhook delivery and what we did with it. Never throws: logging must not break the webhook.
+async function logWebhookEvent(event, outcome, reason) {
+  try {
+    const fields = {
+      type: event.type, environment: event.environment, store: event.store, appUserId: event.app_user_id,
+      productId: event.product_id, transactionId: event.transaction_id || event.original_transaction_id,
+      outcome, reason: reason || undefined, payload: event,
+    };
+    if (event.id) {
+      await CreditWebhookEvent.findOneAndUpdate({ eventId: event.id }, { $set: fields, $inc: { attempts: 1 } }, { upsert: true });
+      // upsert sets attempts to 1 on insert ($inc on a missing field), 2+ on redelivery
+    } else {
+      await CreditWebhookEvent.create(fields);
+    }
+  } catch (e) {
+    console.error('[Credits] could not log webhook event:', e.message);
+  }
+}
+
 // POST /credits/webhook/revenuecat
 exports.revenueCatWebhook = async (req, res) => {
   if (!revenuecat.webhookAuthorized(req)) return res.status(401).json({ message: 'Unauthorized' });
@@ -192,35 +212,47 @@ exports.revenueCatWebhook = async (req, res) => {
   try {
     const txnId = event.transaction_id || event.original_transaction_id;
     const platform = event.store;
+    let outcome = 'ignored'; // TEST and other event types: acknowledge only
+    let reason;
     switch (event.type) {
       case 'INITIAL_PURCHASE':
       case 'NON_RENEWING_PURCHASE': {
         const r = await grantPack({
           userId: event.app_user_id, productId: event.product_id, storeTransactionId: txnId, platform, eventId: event.id,
         });
-        if (!r.ok) await recordFailure(event.id, r.reason, req.body);
+        if (!r.ok) {
+          await recordFailure(event.id, r.reason, req.body);
+          outcome = 'failed'; reason = r.reason;
+        } else {
+          outcome = r.applied ? 'applied' : 'duplicate';
+        }
         break;
       }
       case 'CANCELLATION':
       case 'REFUND': {
         const orig = await CreditTransaction.findOne({ 'store.storeTransactionId': txnId, type: 'purchase' });
         if (!orig) {
-          await recordFailure(event.id, `Refund for unknown transaction ${txnId}`, req.body);
+          reason = `Refund for unknown transaction ${txnId}`;
+          await recordFailure(event.id, reason, req.body);
+          outcome = 'refund_unknown';
           break;
         }
-        await ledger.clawback({
+        const r = await ledger.clawback({
           userId: orig.userId, amount: orig.amount, idempotencyKey: `clawback:${txnId}`,
           store: { platform, productId: event.product_id, storeTransactionId: txnId, eventId: event.id },
           note: 'Store refund',
         });
+        outcome = r.applied ? 'refunded' : 'refund_duplicate';
         break;
       }
       default:
-        break; // TEST and other event types: acknowledge only
+        break;
     }
+    await logWebhookEvent(event, outcome, reason);
     return res.status(200).json({ ok: true });
   } catch (e) {
     console.error('[Credits] webhook error:', e);
+    await logWebhookEvent(event, 'error', e.message);
     return res.status(500).json({ message: 'Webhook processing failed' }); // RevenueCat will retry
   }
 };
