@@ -1735,8 +1735,10 @@ exports.getLessonById = async (req, res) => {
       user?.completedLessons?.forEach(id => completedLessonIds.add(id.toString()));
     }
 
-    // 4. Get all modules in course (ordered)
-    const allModules = await Module.find({ courseId: course._id, isPublished: true })
+    // 4. Get all modules in course (ordered). Do not filter on isPublished: courses created in the
+    // app save their modules unpublished, and students still see/open them, so filtering here made
+    // every lesson look like both the first and the last lesson (no Previous, no Next).
+    const allModules = await Module.find({ courseId: course._id })
       .sort({ order: 1, createdAt: 1 })
       .select('_id order');
 
@@ -1784,7 +1786,7 @@ exports.getLessonById = async (req, res) => {
       : null;
 
     // Check if next lesson belongs to a different module
-    const currentModuleId = lesson.moduleId?.toString();
+    const currentModuleId = module?._id?.toString() || lesson.moduleId?.toString();
     const nextModuleId = nextLesson?.moduleId?.toString();
     lessonObj.isLastInModule = !nextLesson || (nextModuleId && nextModuleId !== currentModuleId);
     lessonObj.isLastLesson = !nextLesson;
